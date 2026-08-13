@@ -40,9 +40,9 @@ rolebench artifacts validate route-policy path/to/policy.json --json
 3. Keep each commit coherent. Do not mix contract changes, benchmark-result updates, and unrelated refactors.
 4. Add or update behavior-focused tests with the implementation.
 5. Run the focused command or benchmark scenario that exercises the changed path.
-6. Open a pull request against `main` using the checklist below.
+6. For contributor branches or changes that benefit from independent approval, open a pull request against `main` using the checklist below. Maintainers may fast-forward a reviewed branch directly for small, low-risk repository maintenance.
 
-`main` is protected. Do not force-push it, delete it, or bypass review. Prefer additive, reviewable contract changes over large cross-layer rewrites.
+`main` requires linear history and blocks force pushes and deletion. Direct maintainer integration is allowed; substantial contract, benchmark-methodology, security, or OMP runtime-boundary changes should still use a pull request. Prefer additive, reviewable contract changes over large cross-layer rewrites.
 
 For a substantial design change, open an issue or draft proposal before implementation. Include the affected artifact versions, compatibility impact, validation plan, and ownership boundary between RoleBench and OMP.
 
