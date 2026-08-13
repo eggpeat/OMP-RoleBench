@@ -1,0 +1,138 @@
+from __future__ import annotations
+
+from hashlib import sha256
+import json
+from pathlib import Path
+import stat
+import unittest
+from unittest.mock import patch
+
+from rolebench.contracts import canonical_json, validate_artifact
+from rolebench.worker import WorkerError, run_worker
+
+
+PRODUCT_ROOT = Path(__file__).resolve().parents[1]
+FIXTURE_ROOT = PRODUCT_ROOT / "fixtures" / "docker-runsc"
+MANIFEST_PATH = FIXTURE_ROOT / "worker-run-manifest.json"
+POLICY_PATH = PRODUCT_ROOT / "contracts" / "scored-worker-policy.json"
+BASE = "busybox@sha256:7a3ebe5bfd1a4a19797d20b0c0bb39d44393e9a03fd852c0865b0f540d868df0"
+ZERO_DIGEST = "0" * 64
+PAYLOAD = "rolebench-docker-runsc-fixture-v1"
+
+
+class DockerRunscFixtureTests(unittest.TestCase):
+    def read(self, name: str) -> str:
+        return (FIXTURE_ROOT / name).read_text(encoding="utf-8")
+
+    def manifest(self) -> dict[str, object]:
+        value = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        self.assertIsInstance(value, dict)
+        return value
+
+    def test_manifest_is_schema_valid_and_pins_the_canonical_policy(self) -> None:
+        result = validate_artifact(PRODUCT_ROOT, "worker-run-manifest", MANIFEST_PATH)
+        self.assertTrue(result.valid, result.diagnostics)
+
+        manifest = self.manifest()
+        policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+        expected_policy_digest = sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+        self.assertEqual(manifest["policy"], {
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": expected_policy_digest,
+        })
+        self.assertEqual(manifest["provider"], {"enabled": False})
+        self.assertEqual(
+            manifest["task"],
+            {"digest_sha256": sha256(b"docker-runsc-fixture-v1").hexdigest()},
+        )
+
+    def test_manifest_uses_distinct_explicitly_placeholder_images(self) -> None:
+        manifest = self.manifest()
+        agent = manifest["agent"]
+        verifier = manifest["verifier"]
+        self.assertIsInstance(agent, dict)
+        self.assertIsInstance(verifier, dict)
+        self.assertNotEqual(agent["image"], verifier["image"])
+        self.assertTrue(str(agent["image"]).endswith("@sha256:" + ZERO_DIGEST))
+        self.assertTrue(str(verifier["image"]).endswith("@sha256:" + ZERO_DIGEST))
+        self.assertEqual(agent["argv"], ["/usr/local/bin/rolebench-agent"])
+        self.assertEqual(verifier["argv"], ["/usr/local/bin/rolebench-verifier"])
+
+    def test_placeholder_manifest_is_rejected_before_any_docker_call(self) -> None:
+        with patch(
+            "rolebench.worker.subprocess.run",
+            side_effect=AssertionError("placeholder validation must precede Docker"),
+        ) as docker:
+            with self.assertRaises(WorkerError):
+                run_worker(PRODUCT_ROOT, MANIFEST_PATH)
+        docker.assert_not_called()
+
+    def test_images_share_only_the_pinned_base_and_use_distinct_users(self) -> None:
+        agent = self.read("Dockerfile.agent")
+        verifier = self.read("Dockerfile.verifier")
+        self.assertEqual(agent.splitlines()[0], f"FROM {BASE}")
+        self.assertEqual(verifier.splitlines()[0], f"FROM {BASE}")
+        self.assertIn("USER 1000:1000", agent)
+        self.assertIn("USER 2000:2000", verifier)
+        self.assertIn('CMD ["/usr/local/bin/rolebench-agent"]', agent)
+        self.assertIn('CMD ["/usr/local/bin/rolebench-verifier"]', verifier)
+        for dockerfile in (agent, verifier):
+            self.assertNotIn("VOLUME", dockerfile)
+            self.assertNotIn("ADD ", dockerfile)
+        self.assertNotIn("/workspace", verifier)
+        self.assertNotIn("/tmp", verifier)
+
+    def test_scripts_are_executable_posix_shell_programs(self) -> None:
+        for name in ("agent.sh", "verifier.sh"):
+            path = FIXTURE_ROOT / name
+            self.assertEqual(self.read(name).splitlines()[0], "#!/bin/sh")
+            self.assertTrue(path.stat().st_mode & stat.S_IXUSR)
+
+    def test_agent_probes_isolation_before_stdout_becomes_the_tar(self) -> None:
+        script = self.read("agent.sh")
+        required_probes = (
+            "id -u",
+            "id -g",
+            "root filesystem is writable",
+            "/workspace is not writable",
+            'NoNewPrivs:',
+            'CapEff:',
+            "/sys/class/net/*",
+            "/proc/net/route",
+            "/proc/net/ipv6_route",
+        )
+        for probe in required_probes:
+            with self.subTest(probe=probe):
+                self.assertIn(probe, script)
+
+        payload_write = f"printf '%s' '{PAYLOAD}' > \"$artifact\""
+        tar_command = "exec tar -cf - -C /workspace result.txt"
+        self.assertIn(payload_write, script)
+        self.assertIn("chmod 0600 \"$artifact\"", script)
+        self.assertIn("TZ=UTC0", script)
+        self.assertIn("touch -t 197001010000.00 \"$artifact\"", script)
+        self.assertIn(tar_command, script)
+        self.assertLess(script.index("NoNewPrivs:"), script.index(tar_command))
+        self.assertLess(script.index("/proc/net/ipv6_route"), script.index(tar_command))
+
+    def test_verifier_streams_each_member_once_without_writable_storage(self) -> None:
+        script = self.read("verifier.sh")
+        # --to-command receives each regular member directly on stdin. Requiring one
+        # captured marker, TAR_FILENAME=result.txt, size=33, and the exact payload
+        # makes this deterministic tar protocol verifiable in one archive pass.
+        self.assertEqual(script.count("tar -xf -"), 1)
+        self.assertIn('--to-command "$0"', script)
+        self.assertIn('[ "${TAR_FILENAME:-}" = result.txt ]', script)
+        self.assertIn('[ "${TAR_SIZE:-}" = 33 ]', script)
+        self.assertIn(f"[ \"$payload\" = '{PAYLOAD}' ]", script)
+        self.assertIn('[ "$markers" = result.txt ]', script)
+        self.assertNotIn("tar -tf", script)
+        self.assertNotIn("tar -xOf", script)
+        self.assertNotIn("mktemp", script)
+        self.assertNotIn("/tmp", script)
+        self.assertIn("'{\"outcome\":\"accepted\",\"reward\":1}'", script)
+        self.assertIn("'{\"outcome\":\"rejected\",\"reward\":0}'", script)
+
+
+if __name__ == "__main__":
+    unittest.main()

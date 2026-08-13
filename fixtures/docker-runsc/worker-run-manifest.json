@@ -1,0 +1,27 @@
+{
+  "schema_version": "omp.worker-run-manifest/v1",
+  "run_id": "docker-runsc-fixture-v1",
+  "role": "task",
+  "task": {
+    "digest_sha256": "0acc30b19e88c79f693723d87d8e59d97370e2d0b7293aa45c2cfe0ece578365"
+  },
+  "policy": {
+    "path": "contracts/scored-worker-policy.json",
+    "digest_sha256": "c773b99f959a64065d0237ac96af2c70f3e3fd6c676c87383645b94f8d1983ac"
+  },
+  "provider": {
+    "enabled": false
+  },
+  "agent": {
+    "image": "rolebench/docker-runsc-agent@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "argv": [
+      "/usr/local/bin/rolebench-agent"
+    ]
+  },
+  "verifier": {
+    "image": "rolebench/docker-runsc-verifier@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "argv": [
+      "/usr/local/bin/rolebench-verifier"
+    ]
+  }
+}

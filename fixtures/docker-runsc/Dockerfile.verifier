@@ -1,0 +1,10 @@
+FROM busybox@sha256:7a3ebe5bfd1a4a19797d20b0c0bb39d44393e9a03fd852c0865b0f540d868df0
+
+RUN mkdir -p /etc /usr/local/bin \
+    && printf '%s\n' 'verifier:x:2000:2000:RoleBench verifier:/:/bin/sh' >> /etc/passwd \
+    && printf '%s\n' 'verifier:x:2000:' >> /etc/group
+COPY --chmod=0555 verifier.sh /usr/local/bin/rolebench-verifier
+
+USER 2000:2000
+WORKDIR /
+CMD ["/usr/local/bin/rolebench-verifier"]
