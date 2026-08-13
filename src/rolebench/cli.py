@@ -235,12 +235,15 @@ def _print_fault_check_report(report: JSONObject, stdout: TextIO) -> None:
 
 
 _WORKER_DOCTOR_CHECKS = (
+    ("policy_valid", "Worker policy"),
+    ("local_socket", "Local rootless Docker socket"),
     ("docker_executable", "Docker executable"),
     ("docker_server", "Docker server"),
     ("rootless", "Rootless Docker"),
     ("runsc", "runsc runtime"),
     ("cgroup_v2", "cgroup v2"),
     ("delegation", "cgroup delegation"),
+    ("resource_enforcement", "runsc resource enforcement"),
 )
 
 

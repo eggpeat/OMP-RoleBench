@@ -31,25 +31,22 @@ workspace_probe="/workspace/.rolebench-write-probe.$$"
 rm -f "$workspace_probe" || fail 'cannot remove workspace probe'
 
 [ -r /proc/self/status ] || fail 'cannot read process status'
-no_new_privs=$(awk '$1 == "NoNewPrivs:" { value=$2 } END { if (value == "") exit 1; print value }' /proc/self/status) || fail 'NoNewPrivs is unavailable'
-[ "$no_new_privs" = 1 ] || fail "NoNewPrivs is $no_new_privs, expected 1"
+no_new_privs=$(awk '$1 == "NoNewPrivs:" { value=$2 } END { print value }' /proc/self/status) || fail 'cannot inspect NoNewPrivs'
+if [ -n "$no_new_privs" ]; then
+    [ "$no_new_privs" = 1 ] || fail "NoNewPrivs is $no_new_privs, expected 1"
+else
+    [ "$(cat /proc/gvisor/kernel_is_gvisor 2>/dev/null || true)" = gvisor ] \
+        || fail 'NoNewPrivs is unavailable outside a marked gVisor sandbox'
+fi
 cap_eff=$(awk '$1 == "CapEff:" { value=$2 } END { if (value == "") exit 1; print value }' /proc/self/status) || fail 'CapEff is unavailable'
 case "$cap_eff" in
     '' | *[!0]*) fail "CapEff is nonzero: $cap_eff" ;;
 esac
 
-[ -d /sys/class/net ] || fail 'network interface inventory is unavailable'
-found_loopback=false
-for interface_path in /sys/class/net/*; do
-    [ -e "$interface_path" ] || continue
-    interface_name=${interface_path##*/}
-    if [ "$interface_name" = lo ]; then
-        found_loopback=true
-    else
-        fail "non-loopback network interface is present: $interface_name"
-    fi
-done
-[ "$found_loopback" = true ] || fail 'loopback network interface is missing'
+[ -r /proc/net/dev ] || fail 'network interface inventory is unavailable'
+interfaces=$(awk 'NR > 2 { name=$1; sub(/:$/, "", name); print name }' /proc/net/dev) \
+    || fail 'cannot inspect network interfaces'
+[ "$interfaces" = lo ] || fail "network interfaces are not loopback-only: $interfaces"
 
 [ -r /proc/net/route ] || fail 'IPv4 route inventory is unavailable'
 if awk 'NR > 1 && $2 == "00000000" { found=1 } END { exit(found ? 0 : 1) }' /proc/net/route; then
@@ -60,12 +57,6 @@ if awk '$1 == "00000000000000000000000000000000" && $2 == "00" { found=1 } END {
     fail 'IPv6 default route is present'
 fi
 
-artifact=/workspace/result.txt
 umask 077
-printf '%s' 'rolebench-docker-runsc-fixture-v1' > "$artifact" || fail 'cannot create artifact payload'
-chmod 0600 "$artifact" || fail 'cannot normalize artifact mode'
-TZ=UTC0
-export TZ
-touch -t 197001010000.00 "$artifact" || fail 'cannot normalize artifact timestamp'
-printf '%s\n' 'rolebench-agent: isolation probes passed; emitting deterministic tar' >&2
-exec tar -cf - -C /workspace result.txt
+printf '%s' 'rolebench-docker-runsc-fixture-v1'
+printf '%s\n' 'rolebench-agent: isolation probes passed; emitting deterministic payload' >&2

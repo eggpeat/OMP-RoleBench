@@ -102,6 +102,17 @@ class WorkerManifestTests(unittest.TestCase):
         )
         self.assertIn("does not match", diagnostic.message)
 
+    def test_option_shaped_image_is_rejected(self) -> None:
+        manifest = self.manifest()
+        agent = manifest["agent"]
+        self.assertIsInstance(agent, dict)
+        agent["image"] = f"--env-file=/tmp/host-secrets@sha256:{'a' * 64}"
+        result = self.validate(manifest)
+        self.assertIn(
+            "$.agent.image",
+            {item.json_path for item in result.diagnostics},
+        )
+
     def test_argv_must_be_nonempty_and_start_with_a_nonempty_string(self) -> None:
         manifest = self.manifest()
         agent = manifest["agent"]
@@ -162,7 +173,19 @@ class WorkerManifestTests(unittest.TestCase):
         self.assertIsInstance(verifier, dict)
         verifier["image"] = agent["image"]
         self.assertIn(
-            "worker-run-manifest.json:$.verifier.image: must differ from agent image",
+            "worker-run-manifest.json:$.verifier.image: must use a different image digest from the agent",
+            self.rendered(self.validate(manifest)),
+        )
+
+    def test_image_aliases_cannot_reuse_the_same_digest(self) -> None:
+        manifest = self.manifest()
+        agent = manifest["agent"]
+        verifier = manifest["verifier"]
+        self.assertIsInstance(agent, dict)
+        self.assertIsInstance(verifier, dict)
+        verifier["image"] = f"other.invalid/alias@sha256:{'a' * 64}"
+        self.assertIn(
+            "worker-run-manifest.json:$.verifier.image: must use a different image digest from the agent",
             self.rendered(self.validate(manifest)),
         )
 

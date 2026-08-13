@@ -17,6 +17,7 @@ from .contracts import (
     load_repository,
     validate_artifact,
     validate_repository,
+    validate_value,
 )
 
 __all__ = [
@@ -32,5 +33,6 @@ __all__ = [
     "load_repository",
     "validate_artifact",
     "validate_repository",
+    "validate_value",
     "summarize_outcomes",
 ]

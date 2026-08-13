@@ -51,7 +51,7 @@
     },
     "image": {
       "type": "string",
-      "pattern": "^[^\\s@]+@sha256:[0-9a-f]{64}$"
+      "pattern": "^[^-\\s@][^\\s@]*@sha256:[0-9a-f]{64}$"
     },
     "argument": {
       "type": "string",

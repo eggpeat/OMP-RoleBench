@@ -5,7 +5,8 @@ RUN mkdir -p /etc /usr/local/bin /workspace \
     && printf '%s\n' 'rolebench:x:1000:' >> /etc/group \
     && chown 1000:1000 /workspace \
     && chmod 0700 /workspace
-COPY --chmod=0555 agent.sh /usr/local/bin/rolebench-agent
+COPY agent.sh /usr/local/bin/rolebench-agent
+RUN chmod 0555 /usr/local/bin/rolebench-agent
 
 USER 1000:1000
 WORKDIR /workspace

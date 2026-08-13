@@ -10,7 +10,7 @@ Requirements:
 
 - Python 3.12 or newer
 - Git
-- Docker/Harbor only when working on executable benchmark tasks; they are not required for contract work
+- Rootless Docker, gVisor `runsc`, RootlessKit, subordinate UID/GID mappings, and delegated cgroup v2 controllers only when changing the executable worker; they are not required for contract or accounting work
 
 Install an editable checkout:
 
@@ -26,6 +26,14 @@ Run the current required checks:
 rolebench contracts validate
 python -m unittest discover -s tests -v
 ```
+
+Worker contributors must also follow the [rootless Docker/`runsc` setup](README.md#rootless-dockerrunsc-worker-setup). Install the repository's `scripts/rolebench-runsc-wrapper` beside the real `runsc`, register that absolute wrapper path as Docker's `runsc` runtime, and verify the host before any runtime scenario:
+
+```bash
+rolebench worker doctor contracts/scored-worker-policy.json
+```
+
+The doctor must report every prerequisite as `PASS`, including the local rootless Docker socket and `runsc resource enforcement`. The worker always targets `/run/user/$(id -u)/docker.sock` explicitly. Do not weaken the policy, omit OCI resource flags, switch to privileged/rootful or remote Docker, or use raw `runsc` to make a failing host pass. Runtime manifests must use immutable repository digests for distinct agent and verifier images; never commit local manifests or runtime artifacts.
 
 Validate a standalone artifact with:
 
@@ -117,17 +125,19 @@ Preserve these rules:
 
 The classifier in `src/rolebench/accounting.py` is deterministic. New failure signals require a contract update and a focused fixture proving both their classification and whether they count.
 
-### Scored worker policy and fault check
+### Scored worker policy and runtime
 
-`omp.scored-worker-policy/v1` is the fail-closed contract for the future scored worker. Keep the canonical policy and schema synchronized. Changes must retain rootless Docker with `runsc`, non-root and non-privileged execution, dropped capabilities, no host namespaces/devices/mounts, a read-only root filesystem, ephemeral bounded scratch, provider-proxy-only networking without credentials, immutable artifact handoff, an isolated networkless verifier, and accounting that excludes infrastructure and verifier failures from model quality.
+`omp.scored-worker-policy/v1` is the fail-closed contract for the scored worker. Keep the canonical policy and schema synchronized. Changes must retain rootless Docker with `runsc`, non-root and non-privileged execution, dropped capabilities, no host namespaces/devices/mounts, a read-only root filesystem, ephemeral bounded scratch, provider-proxy-only networking without credentials, immutable artifact handoff, an isolated networkless verifier, and accounting that excludes infrastructure and verifier failures from model quality.
 
-Run the deterministic pre-install gate after changing the worker policy or accounting:
+Run the deterministic no-model gate after changing the worker policy or accounting:
 
 ```bash
 rolebench worker fault-check contracts/scored-worker-policy.json
 ```
 
-A clean result covers all 28 accounting reason codes with 4 scored controls, 18 retryable system failures, 5 quarantined controls, 1 cancellation, and zero external calls. The gate is synthetic: it validates policy and accounting behavior but does not prove that Docker, `runsc`, provider proxying, resource enforcement, or verifier isolation is installed or effective. Runtime worker changes need separate isolation, compatibility, and observed-fault tests before any scored benchmark.
+A clean result covers all 28 accounting reason codes with 4 scored controls, 18 retryable system failures, 5 quarantined controls, 1 cancellation, and zero external calls. The gate is synthetic: it validates policy and accounting behavior but does not prove installed runtime behavior.
+
+Changes to `worker.py`, `scripts/rolebench-runsc-wrapper`, the manifest contract, or the fixture images must also run the focused worker tests, a clean doctor, the provider-disabled fixture manifest, and representative observed failure probes. The runtime result must show `external_provider_calls: 0`, `resource_enforcement: true`, distinct images, immutable handoff, and the expected unscored accounting result. Provider-proxy integration and representative live model-task compatibility remain required before this worker can execute scored provider-backed benchmarks.
 
 ## Role contracts
 

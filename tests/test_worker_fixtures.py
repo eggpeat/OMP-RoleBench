@@ -16,7 +16,7 @@ FIXTURE_ROOT = PRODUCT_ROOT / "fixtures" / "docker-runsc"
 MANIFEST_PATH = FIXTURE_ROOT / "worker-run-manifest.json"
 POLICY_PATH = PRODUCT_ROOT / "contracts" / "scored-worker-policy.json"
 BASE = "busybox@sha256:7a3ebe5bfd1a4a19797d20b0c0bb39d44393e9a03fd852c0865b0f540d868df0"
-ZERO_DIGEST = "0" * 64
+PLACEHOLDER_DIGESTS = {"0" * 64, "f" * 64}
 PAYLOAD = "rolebench-docker-runsc-fixture-v1"
 
 
@@ -46,15 +46,18 @@ class DockerRunscFixtureTests(unittest.TestCase):
             {"digest_sha256": sha256(b"docker-runsc-fixture-v1").hexdigest()},
         )
 
-    def test_manifest_uses_distinct_explicitly_placeholder_images(self) -> None:
+    def test_manifest_uses_distinct_explicit_placeholder_images(self) -> None:
         manifest = self.manifest()
         agent = manifest["agent"]
         verifier = manifest["verifier"]
         self.assertIsInstance(agent, dict)
         self.assertIsInstance(verifier, dict)
         self.assertNotEqual(agent["image"], verifier["image"])
-        self.assertTrue(str(agent["image"]).endswith("@sha256:" + ZERO_DIGEST))
-        self.assertTrue(str(verifier["image"]).endswith("@sha256:" + ZERO_DIGEST))
+        digests = {
+            str(agent["image"]).rsplit("@sha256:", 1)[1],
+            str(verifier["image"]).rsplit("@sha256:", 1)[1],
+        }
+        self.assertEqual(digests, PLACEHOLDER_DIGESTS)
         self.assertEqual(agent["argv"], ["/usr/local/bin/rolebench-agent"])
         self.assertEqual(verifier["argv"], ["/usr/local/bin/rolebench-verifier"])
 
@@ -88,16 +91,16 @@ class DockerRunscFixtureTests(unittest.TestCase):
             self.assertEqual(self.read(name).splitlines()[0], "#!/bin/sh")
             self.assertTrue(path.stat().st_mode & stat.S_IXUSR)
 
-    def test_agent_probes_isolation_before_stdout_becomes_the_tar(self) -> None:
+    def test_agent_probes_isolation_before_stdout_becomes_the_payload(self) -> None:
         script = self.read("agent.sh")
         required_probes = (
             "id -u",
             "id -g",
             "root filesystem is writable",
             "/workspace is not writable",
-            'NoNewPrivs:',
-            'CapEff:',
-            "/sys/class/net/*",
+            "NoNewPrivs:",
+            "CapEff:",
+            "/proc/net/dev",
             "/proc/net/route",
             "/proc/net/ipv6_route",
         )
@@ -105,29 +108,19 @@ class DockerRunscFixtureTests(unittest.TestCase):
             with self.subTest(probe=probe):
                 self.assertIn(probe, script)
 
-        payload_write = f"printf '%s' '{PAYLOAD}' > \"$artifact\""
-        tar_command = "exec tar -cf - -C /workspace result.txt"
-        self.assertIn(payload_write, script)
-        self.assertIn("chmod 0600 \"$artifact\"", script)
-        self.assertIn("TZ=UTC0", script)
-        self.assertIn("touch -t 197001010000.00 \"$artifact\"", script)
-        self.assertIn(tar_command, script)
-        self.assertLess(script.index("NoNewPrivs:"), script.index(tar_command))
-        self.assertLess(script.index("/proc/net/ipv6_route"), script.index(tar_command))
+        payload_write = f"printf '%s' '{PAYLOAD}'"
+        self.assertEqual(script.count(payload_write), 1)
+        self.assertLess(script.index("NoNewPrivs:"), script.index(payload_write))
+        self.assertLess(script.index("/proc/net/ipv6_route"), script.index(payload_write))
 
-    def test_verifier_streams_each_member_once_without_writable_storage(self) -> None:
+    def test_verifier_requires_the_exact_raw_payload_without_storage(self) -> None:
         script = self.read("verifier.sh")
-        # --to-command receives each regular member directly on stdin. Requiring one
-        # captured marker, TAR_FILENAME=result.txt, size=33, and the exact payload
-        # makes this deterministic tar protocol verifiable in one archive pass.
-        self.assertEqual(script.count("tar -xf -"), 1)
-        self.assertIn('--to-command "$0"', script)
-        self.assertIn('[ "${TAR_FILENAME:-}" = result.txt ]', script)
-        self.assertIn('[ "${TAR_SIZE:-}" = 33 ]', script)
-        self.assertIn(f"[ \"$payload\" = '{PAYLOAD}' ]", script)
-        self.assertIn('[ "$markers" = result.txt ]', script)
-        self.assertNotIn("tar -tf", script)
-        self.assertNotIn("tar -xOf", script)
+        self.assertIn("dd bs=34 count=1", script)
+        self.assertIn(
+            f"[ \"$payload\" = '{PAYLOAD}' ]",
+            script,
+        )
+        self.assertNotIn("tar ", script)
         self.assertNotIn("mktemp", script)
         self.assertNotIn("/tmp", script)
         self.assertIn("'{\"outcome\":\"accepted\",\"reward\":1}'", script)

@@ -653,6 +653,9 @@ def _attempt_observation_semantics(
                 "an HTTP status requires a started provider request",
             )
 
+    issues = observation.get("issues")
+    issue_set = set(issues) if isinstance(issues, list) else set()
+
     termination = observation.get("termination")
     if isinstance(termination, dict):
         kind = termination.get("kind")
@@ -681,10 +684,12 @@ def _attempt_observation_semantics(
                 "$.verifier.outcome",
                 "a decisive verifier outcome requires completed termination",
             )
-        if (
-            kind == "model-deadline"
-            or (kind == "resource-limit" and oom_scope == "attempt")
-        ) and (
+        is_model_limit = kind == "model-deadline" or (
+            kind == "resource-limit"
+            and oom_scope == "attempt"
+            and "runner-failure" not in issue_set
+        )
+        if is_model_limit and (
             not isinstance(provider, dict)
             or provider.get("request_started") is not True
         ):
@@ -708,8 +713,6 @@ def _attempt_observation_semantics(
             "verified integrity requires a trajectory digest",
         )
 
-    issues = observation.get("issues")
-    issue_set = set(issues) if isinstance(issues, list) else set()
     if (
         "artifact-tampering" in issue_set
         and isinstance(integrity, dict)
@@ -976,15 +979,21 @@ def _worker_run_manifest_semantics(
     verifier = manifest.get("verifier")
     agent_image = agent.get("image") if isinstance(agent, dict) else None
     verifier_image = verifier.get("image") if isinstance(verifier, dict) else None
-    if (
-        isinstance(agent_image, str)
-        and isinstance(verifier_image, str)
-        and agent_image == verifier_image
-    ):
+    agent_digest = (
+        agent_image.rsplit("@sha256:", 1)[1]
+        if isinstance(agent_image, str) and "@sha256:" in agent_image
+        else None
+    )
+    verifier_digest = (
+        verifier_image.rsplit("@sha256:", 1)[1]
+        if isinstance(verifier_image, str) and "@sha256:" in verifier_image
+        else None
+    )
+    if agent_digest is not None and agent_digest == verifier_digest:
         yield Diagnostic(
             relative.as_posix(),
             "$.verifier.image",
-            "must differ from agent image",
+            "must use a different image digest from the agent",
         )
 
     for container_name, container in (("agent", agent), ("verifier", verifier)):
@@ -1167,6 +1176,36 @@ def validate_artifact(
 
     diagnostics.extend(_instance_diagnostics(artifact, schema, display_path))
     diagnostics.extend(_artifact_semantics(resolved, schema_name, artifact, display_path))
+    return ValidationResult(tuple(sorted(set(diagnostics))))
+
+def validate_value(
+    root: Path | None,
+    schema_name: str,
+    artifact: JSONObject,
+    display_path: Path,
+) -> ValidationResult:
+    """Validate one already-captured JSON object without reopening its source path."""
+
+    resolved = resolve_root(root)
+    names = _schema_names(resolved)
+    if schema_name not in names:
+        raise ContractError(
+            f"unknown schema {schema_name!r}; expected one of {list(names)!r}"
+        )
+    schema_relative = _SCHEMA_DIRECTORY / f"{schema_name}.schema.json"
+    diagnostics: list[Diagnostic] = []
+    schema = _safe_schema(resolved, schema_relative, diagnostics)
+    if schema is not None:
+        diagnostics.extend(_schema_diagnostics(schema, schema_relative))
+        diagnostics.extend(_instance_diagnostics(artifact, schema, display_path))
+        diagnostics.extend(
+            _artifact_semantics(
+                resolved,
+                schema_name,
+                artifact,
+                display_path,
+            )
+        )
     return ValidationResult(tuple(sorted(set(diagnostics))))
 
 

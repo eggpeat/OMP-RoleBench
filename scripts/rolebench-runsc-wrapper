@@ -1,0 +1,255 @@
+#!/usr/bin/python3
+"""Run Docker-invoked rootless gVisor sandboxes in delegated cgroup v2 scopes."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import re
+import stat
+import subprocess
+import sys
+import time
+from typing import Any
+
+_SCHEMA_VERSION = "omp.runsc-wrapper-doctor/v1"
+_COMMANDS = {
+    "create",
+    "delete",
+    "exec",
+    "kill",
+    "list",
+    "pause",
+    "ps",
+    "resume",
+    "run",
+    "spec",
+    "start",
+    "state",
+}
+_CONTAINER_ID = re.compile(r"^[0-9a-f]{64}$")
+_REQUIRED_CONTROLLERS = frozenset({"cpu", "memory", "pids"})
+
+def _runsc_path() -> Path:
+    runsc = Path(__file__).resolve().with_name("runsc")
+    if not runsc.is_file():
+        raise RuntimeError(f"adjacent runsc executable was not found: {runsc}")
+    return runsc
+
+
+def _host_uid() -> int:
+    current = os.getuid()
+    if current != 0:
+        return current
+    with Path("/proc/self/uid_map").open(encoding="ascii") as handle:
+        for line in handle:
+            inside, outside, size = (int(value) for value in line.split())
+            if inside == 0 and size > 0:
+                return outside
+    raise RuntimeError("rootless host uid could not be resolved")
+
+
+def _cgroup_parent(uid: int) -> Path:
+    return Path(
+        f"/sys/fs/cgroup/user.slice/user-{uid}.slice/"
+        f"user@{uid}.service/user.slice"
+    )
+
+
+def _write(path: Path, value: str) -> None:
+    path.write_text(value, encoding="ascii")
+
+
+def _read(path: Path) -> str:
+    return path.read_text(encoding="ascii").strip()
+
+
+def _enable_controllers(parent: Path) -> None:
+    available = frozenset(_read(parent / "cgroup.controllers").split())
+    missing = sorted(_REQUIRED_CONTROLLERS - available)
+    if missing:
+        raise RuntimeError(f"delegated cgroup controllers are missing: {missing!r}")
+    _write(parent / "cgroup.subtree_control", "+cpu +memory +pids")
+    enabled = frozenset(_read(parent / "cgroup.subtree_control").split())
+    missing = sorted(_REQUIRED_CONTROLLERS - enabled)
+    if missing:
+        raise RuntimeError(f"delegated cgroup controllers were not enabled: {missing!r}")
+
+
+def _resource_values(spec: dict[str, Any]) -> dict[str, str]:
+    resources = spec.get("linux", {}).get("resources", {})
+    if not isinstance(resources, dict):
+        raise RuntimeError("OCI Linux resources are missing")
+    memory = resources.get("memory")
+    pids = resources.get("pids")
+    cpu = resources.get("cpu")
+    if not isinstance(memory, dict) or not isinstance(pids, dict) or not isinstance(cpu, dict):
+        raise RuntimeError("OCI cpu, memory, and pids limits are required")
+    limit = memory.get("limit")
+    combined = memory.get("swap")
+    pids_limit = pids.get("limit")
+    quota = cpu.get("quota")
+    period = cpu.get("period")
+    values = (limit, combined, pids_limit, quota, period)
+    if not all(isinstance(value, int) and value > 0 for value in values):
+        raise RuntimeError("OCI cpu, memory, swap, and pids limits must be positive integers")
+    if combined < limit:
+        raise RuntimeError("OCI combined memory and swap limit is below memory limit")
+    return {
+        "memory.max": str(limit),
+        "memory.swap.max": str(combined - limit),
+        "pids.max": str(pids_limit),
+        "cpu.max": f"{quota} {period}",
+    }
+
+
+def _scope_path(parent: Path, container_id: str) -> Path:
+    if _CONTAINER_ID.fullmatch(container_id) is None:
+        raise RuntimeError("Docker container ID is not a 64-character lowercase hex digest")
+    return parent / f"rolebench-runsc-{container_id[:48]}.scope"
+
+
+def _create_scope(parent: Path, container_id: str, resources: dict[str, str]) -> Path:
+    _enable_controllers(parent)
+    scope = _scope_path(parent, container_id)
+    scope.mkdir(mode=0o755)
+    try:
+        for filename, value in resources.items():
+            _write(scope / filename, value)
+            if _read(scope / filename) != value:
+                raise RuntimeError(f"kernel rejected {filename}={value}")
+        _write(scope / "cgroup.procs", str(os.getpid()))
+        return scope
+    except BaseException:
+        _cleanup_scope(parent, container_id)
+        raise
+
+
+def _cleanup_scope(parent: Path, container_id: str) -> None:
+    scope = _scope_path(parent, container_id)
+    deadline = time.monotonic() + 5
+    last_error: OSError | None = None
+    while True:
+        try:
+            scope.rmdir()
+            return
+        except FileNotFoundError:
+            return
+        except OSError as error:
+            last_error = error
+        try:
+            _write(scope / "cgroup.kill", "1")
+        except OSError:
+            pass
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f"delegated cgroup cleanup failed: {last_error}")
+        time.sleep(0.05)
+
+
+def _runsc_argv(runsc: Path, raw: list[str]) -> list[str]:
+    filtered = [argument for argument in raw if argument not in {"--systemd-cgroup", "--ignore-cgroups"}]
+    return [
+        str(runsc),
+        "--ignore-cgroups",
+        "--gvisor-marker-file",
+        "--sidecar-release-enforcement-policy=ALWAYS",
+        *filtered,
+    ]
+
+
+def _doctor() -> int:
+    diagnostics: list[str] = []
+    try:
+        runsc = _runsc_path()
+    except RuntimeError as error:
+        runsc = Path("runsc")
+        diagnostics.append(str(error))
+    if not runsc.is_file() or not os.access(runsc, os.X_OK):
+        diagnostics.append("runsc is not an executable regular file")
+    else:
+        mode = runsc.stat().st_mode
+        if mode & (stat.S_IWGRP | stat.S_IWOTH):
+            diagnostics.append("runsc must not be group- or world-writable")
+        try:
+            version = subprocess.run(
+                [str(runsc), "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=10,
+                check=False,
+                text=True,
+            )
+            if version.returncode != 0 or "runsc version" not in version.stdout:
+                diagnostics.append("runsc version probe failed")
+        except (OSError, subprocess.SubprocessError):
+            diagnostics.append("runsc version probe failed")
+    parent: Path | None = None
+    try:
+        parent = _cgroup_parent(_host_uid())
+        _enable_controllers(parent)
+        probe = parent / f"rolebench-runsc-doctor-{os.getpid()}.scope"
+        probe.mkdir(mode=0o755)
+        try:
+            expected = {
+                "memory.max": "16777216",
+                "memory.swap.max": "0",
+                "pids.max": "64",
+                "cpu.max": "100000 100000",
+            }
+            for filename, value in expected.items():
+                _write(probe / filename, value)
+                if _read(probe / filename) != value:
+                    raise RuntimeError(f"delegated {filename} is not writable")
+        finally:
+            probe.rmdir()
+    except (OSError, RuntimeError, ValueError) as error:
+        diagnostics.append(f"delegated cgroup probe failed: {error}")
+    report = {
+        "schema_version": _SCHEMA_VERSION,
+        "ready": not diagnostics,
+        "runsc_path": str(runsc),
+        "cgroup_parent": str(parent) if parent is not None else None,
+        "controllers": sorted(_REQUIRED_CONTROLLERS),
+        "diagnostics": diagnostics,
+    }
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+    return 0 if report["ready"] else 1
+
+
+def main() -> int:
+    raw = sys.argv[1:]
+    if raw == ["--rolebench-doctor"]:
+        return _doctor()
+    runsc = _runsc_path()
+    command = next((argument for argument in raw if argument in _COMMANDS), None)
+    container_id = raw[-1] if raw else ""
+    parent = _cgroup_parent(_host_uid())
+    argv = _runsc_argv(runsc, raw)
+    if command == "delete":
+        result = subprocess.run(argv, check=False)
+        _cleanup_scope(parent, container_id)
+        return result.returncode
+    if command == "create":
+        if "--bundle" not in raw:
+            raise RuntimeError("runsc create is missing --bundle")
+        bundle = Path(raw[raw.index("--bundle") + 1]).resolve()
+        with (bundle / "config.json").open(encoding="utf-8") as handle:
+            spec = json.load(handle)
+        if not isinstance(spec, dict):
+            raise RuntimeError("OCI config must be an object")
+        _create_scope(parent, container_id, _resource_values(spec))
+        result = subprocess.run(argv, check=False)
+        if result.returncode != 0:
+            _cleanup_scope(parent, container_id)
+        return result.returncode
+    os.execv(runsc, argv)
+    return 127
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
+        print(f"rolebench-runsc-wrapper: {error}", file=sys.stderr)
+        raise SystemExit(125)

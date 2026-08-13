@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -21,6 +23,11 @@ ARTIFACT = b"deterministic\x00artifact\n"
 
 def _result(code: int = 0, stdout: bytes = b"", stderr: bytes = b"") -> worker._CommandResult:
     return worker._CommandResult(code, stdout, stderr)
+DOCKER_PREFIX = [
+    "docker-fixture",
+    "--host",
+    f"unix:///run/user/{os.getuid()}/docker.sock",
+]
 
 
 class FakeDocker:
@@ -47,8 +54,11 @@ class FakeDocker:
         self.verifier_stream = worker._StreamResult(
             0, b'{"outcome":"accepted","reward":1}', b"private verifier log"
         )
+        self.ownership: str | None = None
         self.inspect_mutator = None
         self.verifier_input: bytes | None = None
+        self.reconcile_after_create_error: str | None = None
+        self.inspect_failure: str | None = None
         self.events: list[str] = []
         self.oom_agent = False
         self.agent_state_exit = 0
@@ -56,30 +66,47 @@ class FakeDocker:
         self.remove_failure: str | None = None
 
     def run(
-        self, argv: list[str], *, timeout: float | None = None, input_bytes: bytes | None = None
+        self,
+        argv: list[str],
+        *,
+        timeout: float | None = None,
+        input_source: bytes | object | None = None,
     ) -> worker._CommandResult:
         self.commands.append(list(argv))
-        if argv[1:4] == ["info", "--format", "{{json .}}"]:
+        if argv[len(DOCKER_PREFIX):len(DOCKER_PREFIX) + 3] == ["info", "--format", "{{json .}}"]:
             return _result(stdout=json.dumps(self.info).encode())
         if argv == ["/fixture/rolebench-runsc-wrapper", "--rolebench-doctor"]:
             return _result(stdout=json.dumps(self.wrapper_report).encode())
-        if argv[1] == "create":
+        command = argv[len(DOCKER_PREFIX)] if argv[:len(DOCKER_PREFIX)] == DOCKER_PREFIX else None
+        if command == "create":
             name = argv[argv.index("--name") + 1]
             container = "verifier-id" if "verifier" in name else "agent-id"
             self.created[container] = True
             self.finished[container] = False
+            self.ownership = argv[argv.index("--label") + 1].split("=", 1)[1]
+            if self.reconcile_after_create_error == container:
+                raise subprocess.TimeoutExpired(argv, 1)
             return _result(stdout=(container + "\n").encode())
-        if argv[1] == "inspect":
-            container = argv[2]
+        if command == "inspect":
+            container = argv[-1]
+            if self.inspect_failure == container:
+                return _result(code=1, stderr=b"daemon unavailable")
+            if container in {
+                "rolebench-agent-fixture-1",
+                "rolebench-verifier-fixture-1",
+            }:
+                container = "verifier-id" if "verifier" in container else "agent-id"
+            if container not in self.created:
+                return _result(code=1, stderr=b"Error: No such container")
             self.events.append(f"inspect:{container}:{self.finished.get(container, False)}")
             value = self._inspect_value(container)
             if self.inspect_mutator is not None:
                 self.inspect_mutator(container, value)
             return _result(stdout=json.dumps([value]).encode())
-        if argv[1] == "kill":
-            self.finished[argv[2]] = True
+        if command == "kill":
+            self.finished[argv[-1]] = True
             return _result()
-        if argv[1] == "rm":
+        if command == "rm":
             container = argv[-1]
             return _result(code=1 if container == self.remove_failure else 0)
         raise AssertionError(f"unexpected command: {argv!r}")
@@ -88,17 +115,31 @@ class FakeDocker:
         self,
         argv: list[str],
         *,
-        input_bytes: bytes | None,
+        input_source: bytes | object | None,
         timeout: float,
         output_limit: int,
+        output_sink: object | None = None,
     ) -> worker._StreamResult:
-        self.stream_calls.append((list(argv), input_bytes, output_limit))
+        payload = input_source if isinstance(input_source, bytes) else None
+        self.stream_calls.append((list(argv), payload, output_limit))
         container = argv[-1]
         self.events.append(f"stream:{container}")
         self.finished[container] = True
         if container == "agent-id":
+            if output_sink is not None:
+                output_sink.write(self.agent_stream.stdout)
+                return worker._StreamResult(
+                    self.agent_stream.returncode,
+                    b"",
+                    self.agent_stream.stderr,
+                    self.agent_stream.timed_out,
+                    self.agent_stream.overflowed,
+                )
             return self.agent_stream
-        self.verifier_input = input_bytes
+        if input_source is not None and not isinstance(input_source, bytes):
+            input_source.seek(0)
+            payload = input_source.read()
+        self.verifier_input = payload
         return self.verifier_stream
 
     def _inspect_value(self, container: str) -> dict[str, object]:
@@ -115,7 +156,13 @@ class FakeDocker:
             }
         exit_code = self.verifier_state_exit if verifier else self.agent_state_exit
         return {
-            "Config": {"User": f"{uid}:{gid}", "OpenStdin": verifier},
+            "Id": container,
+            "Config": {
+                "User": f"{uid}:{gid}",
+                "OpenStdin": verifier,
+                "Image": VERIFIER_IMAGE if verifier else AGENT_IMAGE,
+                "Labels": {"org.omp.rolebench.owner": self.ownership},
+            },
             "HostConfig": {
                 "Runtime": "runsc",
                 "Privileged": False,
@@ -125,6 +172,7 @@ class FakeDocker:
                 "SecurityOpt": ["no-new-privileges=true"],
                 "NetworkMode": "none",
                 "PidMode": "",
+                "LogConfig": {"Type": "none", "Config": {}},
                 "IpcMode": "private",
                 "UTSMode": "",
                 "UsernsMode": "",
@@ -190,7 +238,8 @@ class ManifestRuntimeGuardTests(WorkerRuntimeFixture):
         self._write_manifest()
 
         with self.assertRaisesRegex(
-            worker.WorkerError, "agent and verifier image digests must differ"
+            worker.WorkerError,
+            "must use a different image digest from the agent",
         ):
             self.run_worker()
         self.assertEqual(self.fake.commands, [])
@@ -204,7 +253,7 @@ class DoctorTests(WorkerRuntimeFixture):
         self.assertTrue(report["ready"])
         self.assertEqual(
             self.fake.commands[0],
-            ["docker-fixture", "info", "--format", "{{json .}}"],
+            [*DOCKER_PREFIX, "info", "--format", "{{json .}}"],
         )
         self.assertEqual(
             self.fake.commands[1],
@@ -213,7 +262,7 @@ class DoctorTests(WorkerRuntimeFixture):
         self.assertTrue(report["resource_enforcement"])
 
         mutations = {
-            "rootless": lambda value: value.update(SecurityOptions=[]),
+            "rootless": lambda value: value.update(SecurityOptions=["name=notrootless"]),
             "runsc": lambda value: value.update(Runtimes={"runc": {}}),
             "cgroup-v2": lambda value: value.update(CgroupVersion="1"),
             "delegation": lambda value: value.update(CgroupDriver="cgroupfs"),
@@ -233,10 +282,34 @@ class DoctorTests(WorkerRuntimeFixture):
                 }
                 mutate(self.fake.info)
                 report = worker.doctor_worker(
-                    self.root, Path("contracts/scored-worker-policy.json"), docker="docker-fixture"
+                    self.root,
+                    Path("contracts/scored-worker-policy.json"),
+                    docker="docker-fixture",
                 )
                 self.assertFalse(report["ready"])
                 self.assertIn(f"requirement-failed:{label}", report["diagnostics"])
+
+        for near_match in (
+            ["description=rootless daemon"],
+            [{"name": "notrootless"}],
+            [{"description": "name=rootless"}],
+        ):
+            with self.subTest(near_match=near_match):
+                self.fake.info["SecurityOptions"] = near_match
+                report = worker.doctor_worker(
+                    self.root,
+                    Path("contracts/scored-worker-policy.json"),
+                    docker="docker-fixture",
+                )
+                self.assertFalse(report["rootless"])
+                self.assertFalse(report["ready"])
+        self.fake.info["SecurityOptions"] = [{"name": "rootless"}]
+        report = worker.doctor_worker(
+            self.root,
+            Path("contracts/scored-worker-policy.json"),
+            docker="docker-fixture",
+        )
+        self.assertTrue(report["rootless"])
 
         self.fake.info = {
             "ServerVersion": "fixture",
@@ -264,14 +337,26 @@ class DoctorTests(WorkerRuntimeFixture):
 class SuccessfulRuntimeTests(WorkerRuntimeFixture):
     def test_exact_fail_closed_commands_and_immutable_distinct_handoff(self) -> None:
         report = self.run_worker()
-        creates = [command for command in self.fake.commands if command[1] == "create"]
+        creates = [
+            command
+            for command in self.fake.commands
+            if command[:len(DOCKER_PREFIX)] == DOCKER_PREFIX
+            and command[len(DOCKER_PREFIX)] == "create"
+        ]
         self.assertEqual(len(creates), 2)
         agent, verifier = creates
-        self.assertEqual(agent[:4], ["docker-fixture", "create", "--name", "rolebench-agent-fixture-1"])
+        self.assertEqual(
+            agent[:len(DOCKER_PREFIX) + 3],
+            [*DOCKER_PREFIX, "create", "--name", "rolebench-agent-fixture-1"],
+        )
         for command in creates:
             self.assertIn(["--runtime", "runsc"], [command[index:index + 2] for index in range(len(command) - 1)])
             self.assertIn(["--network", "none"], [command[index:index + 2] for index in range(len(command) - 1)])
             self.assertIn(["--cap-drop", "ALL"], [command[index:index + 2] for index in range(len(command) - 1)])
+            self.assertIn(
+                ["--log-driver", "none"],
+                [command[index:index + 2] for index in range(len(command) - 1)],
+            )
             self.assertIn("--read-only", command)
             self.assertNotIn("--mount", command)
             self.assertNotIn("--volume", command)
@@ -279,23 +364,22 @@ class SuccessfulRuntimeTests(WorkerRuntimeFixture):
         self.assertIn("--tmpfs", agent)
         self.assertNotIn("--tmpfs", verifier)
         self.assertNotIn("--interactive", agent)
-        self.assertIn("--interactive", verifier)
-        self.assertEqual(agent[-3:], [AGENT_IMAGE, "/agent.sh", "--fixture"])
-        self.assertEqual(verifier[-2:], [VERIFIER_IMAGE, "/verifier.sh"])
+        self.assertEqual(agent[-4:], ["--", AGENT_IMAGE, "/agent.sh", "--fixture"])
+        self.assertEqual(verifier[-3:], ["--", VERIFIER_IMAGE, "/verifier.sh"])
         self.assertEqual(
             self.fake.stream_calls[0][0],
-            ["docker-fixture", "start", "--attach", "agent-id"],
+            [*DOCKER_PREFIX, "start", "--attach", "agent-id"],
         )
         self.assertEqual(
             self.fake.stream_calls[1][0],
-            ["docker-fixture", "start", "--attach", "-i", "verifier-id"],
+            [*DOCKER_PREFIX, "start", "--attach", "-i", "verifier-id"],
         )
         self.assertIn(
-            ["docker-fixture", "rm", "--force", "--volumes", "agent-id"],
+            [*DOCKER_PREFIX, "rm", "--force", "--volumes", "agent-id"],
             self.fake.commands,
         )
         self.assertIn(
-            ["docker-fixture", "rm", "--force", "--volumes", "verifier-id"],
+            [*DOCKER_PREFIX, "rm", "--force", "--volumes", "verifier-id"],
             self.fake.commands,
         )
         self.assertEqual(self.fake.verifier_input, ARTIFACT)
@@ -339,13 +423,41 @@ class IsolationAndFailureTests(WorkerRuntimeFixture):
         self.assertFalse(any(call[0][-1] == "agent-id" for call in self.fake.stream_calls))
         self.assertEqual(report["outcome"]["disposition"], "quarantined")
 
+    def test_effective_image_mismatch_rejects_before_agent_start(self) -> None:
+        def mutate(container: str, value: dict[str, object]) -> None:
+            if container == "agent-id":
+                value["Config"]["Image"] = "mutable.invalid/agent:latest"
+
+        self.fake.inspect_mutator = mutate
+        report = self.run_worker()
+        self.assertFalse(report["passed"])
+        self.assertIn("sandbox-violation", report["observation"]["issues"])
+        self.assertFalse(any(call[0][-1] == "agent-id" for call in self.fake.stream_calls))
+
+    def test_agent_stream_nonzero_never_freezes_partial_artifact(self) -> None:
+        self.fake.agent_stream = worker._StreamResult(1, ARTIFACT, b"attach failed")
+        self.fake.agent_state_exit = 0
+        report = self.run_worker()
+        self.assertFalse(report["passed"])
+        self.assertIn("runner-failure", report["observation"]["issues"])
+        self.assertFalse(report["observation"]["lifecycle"]["artifact_frozen"])
+        self.assertIsNone(report["artifact_digest_sha256"])
+        self.assertEqual(report["outcome"]["reason_code"], "runner-failure")
+
+
     def test_artifact_overflow_kills_before_freeze_and_maps_collection(self) -> None:
         self.fake.agent_stream = worker._StreamResult(137, b"x", b"secret", overflowed=True)
         report = self.run_worker()
         self.assertIn("artifact-collection", report["observation"]["issues"])
         self.assertIsNone(report["artifact_digest_sha256"])
         self.assertFalse(report["observation"]["lifecycle"]["artifact_frozen"])
-        self.assertTrue(any(command[1:3] == ["kill", "agent-id"] for command in self.fake.commands))
+        self.assertTrue(
+            any(
+                command[:len(DOCKER_PREFIX) + 2]
+                == [*DOCKER_PREFIX, "kill", "agent-id"]
+                for command in self.fake.commands
+            )
+        )
 
     def test_agent_timeout_maps_orchestrator_timeout_not_model_deadline(self) -> None:
         self.fake.agent_stream = worker._StreamResult(-9, b"", b"secret", timed_out=True)
@@ -384,6 +496,29 @@ class IsolationAndFailureTests(WorkerRuntimeFixture):
         self.assertEqual(report["outcome"]["failure_domain"], "verifier")
         self.assertFalse(report["passed"])
 
+    def test_verifier_overflow_remains_malformed_not_crash(self) -> None:
+        self.fake.verifier_stream = worker._StreamResult(
+            137,
+            b"{",
+            b"",
+            overflowed=True,
+        )
+        report = self.run_worker()
+        self.assertEqual(
+            report["outcome"]["reason_code"],
+            "verifier-result-malformed",
+        )
+        self.assertNotIn("verifier-crash", report["observation"]["issues"])
+
+    def test_create_timeout_reconciles_only_owned_container(self) -> None:
+        self.fake.reconcile_after_create_error = "agent-id"
+        report = self.run_worker()
+        self.assertFalse(report["passed"])
+        self.assertIn(
+            [*DOCKER_PREFIX, "rm", "--force", "--volumes", "agent-id"],
+            self.fake.commands,
+        )
+
     def test_cleanup_failure_fails_the_pipeline_closed(self) -> None:
         self.fake.remove_failure = "verifier-id"
         report = self.run_worker()
@@ -391,6 +526,14 @@ class IsolationAndFailureTests(WorkerRuntimeFixture):
         self.assertIn("runner-failure", report["observation"]["issues"])
         self.assertIn("verifier-container-cleanup-failed", report["diagnostics"])
         self.assertEqual(report["outcome"]["reason_code"], "runner-failure")
+
+    def test_ambiguous_reconciliation_failure_is_not_absence(self) -> None:
+        self.fake.reconcile_after_create_error = "agent-id"
+        self.fake.inspect_failure = "rolebench-agent-fixture-1"
+        report = self.run_worker()
+        self.assertFalse(report["passed"])
+        self.assertIn("agent-container-cleanup-failed", report["diagnostics"])
+        self.assertIn("runner-failure", report["observation"]["issues"])
 
     def test_agent_cleanup_failure_skips_verifier_and_fails_closed(self) -> None:
         self.fake.remove_failure = "agent-id"
@@ -400,7 +543,8 @@ class IsolationAndFailureTests(WorkerRuntimeFixture):
         self.assertIn("agent-container-cleanup-failed", report["diagnostics"])
         self.assertFalse(
             any(
-                command[1] == "create"
+                command[:len(DOCKER_PREFIX)] == DOCKER_PREFIX
+                and command[len(DOCKER_PREFIX)] == "create"
                 and "rolebench-verifier-fixture-1" in command
                 for command in self.fake.commands
             )

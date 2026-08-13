@@ -21,12 +21,15 @@ def doctor_report(*, ready: bool = True) -> JSONObject:
     return {
         "schema_version": "omp.worker-doctor-report/v1",
         "ready": ready,
+        "policy_valid": True,
+        "local_socket": True,
         "docker_executable": True,
         "docker_server": True,
         "rootless": ready,
         "runsc": ready,
         "cgroup_v2": True,
         "delegation": ready,
+        "resource_enforcement": ready,
         "diagnostics": (
             []
             if ready
@@ -135,12 +138,15 @@ class WorkerRunCliTests(unittest.TestCase):
             output.getvalue(),
             "Worker doctor: NOT READY\n"
             "Required checks:\n"
+            "  Worker policy: PASS\n"
+            "  Local rootless Docker socket: PASS\n"
             "  Docker executable: PASS\n"
             "  Docker server: PASS\n"
             "  Rootless Docker: FAIL\n"
             "  runsc runtime: FAIL\n"
             "  cgroup v2: PASS\n"
             "  cgroup delegation: FAIL\n"
+            "  runsc resource enforcement: FAIL\n"
             "Diagnostics:\n"
             "  - Docker server is not rootless\n"
             "  - runsc runtime is unavailable\n",

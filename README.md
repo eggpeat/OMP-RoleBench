@@ -2,7 +2,7 @@
 
 OMP RoleBench is the contract and tooling project for the evidence and policy-generation side of benchmark-informed model routing for [Oh My Pi](https://github.com/can1357/oh-my-pi). It is designed to evaluate exact model routes against OMP role contracts, estimate capability and operational uncertainty, and generate immutable allocation policies that OMP can execute deterministically.
 
-> **Status:** contract foundation. Role contracts, artifact validation, fair attempt accounting, a strict scored-worker policy, and a no-model fault conformance gate are implemented. The container worker, diagnostic task packs, capability estimates, capacity-aware optimization, policy generation, and OMP runtime integration are not implemented yet.
+> **Status:** contract foundation plus the first provider-disabled runtime worker. Role contracts, artifact validation, fair attempt accounting, the scored-worker policy, the no-model fault gate, and a rootless Docker/`runsc` agent-to-verifier path are implemented. Provider-proxy networking, real model task packs, capability estimates, capacity-aware optimization, policy generation, and OMP runtime integration remain unimplemented.
 
 ## Why this exists
 
@@ -40,9 +40,9 @@ This prevents infrastructure trouble from looking like poor model quality withou
 
 ### Worker status
 
-[`contracts/scored-worker-policy.json`](contracts/scored-worker-policy.json) defines the required Docker/runsc isolation, provider-proxy boundary, resource limits, immutable handoff, networkless verifier, and fail-closed accounting behavior for a future scored worker. `rolebench worker fault-check` validates that policy and sends 28 deterministic synthetic conditions through artifact validation and attempt accounting without launching Docker, using the network, or calling a model.
+[`contracts/scored-worker-policy.json`](contracts/scored-worker-policy.json) defines the required Docker/`runsc` isolation, provider-proxy boundary, resource limits, immutable handoff, networkless verifier, and fail-closed accounting behavior. `rolebench worker fault-check` validates that policy and sends 28 deterministic synthetic conditions through artifact validation and attempt accounting without launching Docker, using the network, or calling a model.
 
-This is a pre-install conformance gate, not runtime enforcement. The Docker/gVisor worker is still planned; before it handles scored benchmarks, it must prove that its observed failures map to the same accounting outcomes and pass speed and compatibility checks on representative tasks.
+`rolebench worker doctor` now checks an installed rootless Docker daemon, the registered RoleBench `runsc` wrapper, cgroup v2 delegation, and effective CPU/memory/PID enforcement. `rolebench worker run` executes exact digest-pinned, provider-disabled manifests: separate non-root agent and verifier images, read-only roots, bounded tmpfs scratch, no network, no capabilities or host resources, one-pass immutable artifact streaming, and observed failure accounting. This slice deliberately cannot run a scored provider request; provider-proxy integration and representative compatibility benchmarks remain gates before live scored benchmarks.
 
 ## Design principles
 
@@ -88,7 +88,6 @@ python -m unittest discover -s tests -v
 
 The package exposes these implemented commands:
 
-```text
 rolebench [--root PATH] contracts validate [--json]
 rolebench [--root PATH] contracts digest [--json]
 rolebench [--root PATH] contracts show ROLE
@@ -96,7 +95,8 @@ rolebench [--root PATH] artifacts validate SCHEMA PATH [--json]
 rolebench [--root PATH] accounting classify OBSERVATION
 rolebench [--root PATH] accounting summarize OUTCOME... [--json]
 rolebench [--root PATH] worker fault-check POLICY [--json]
-```
+rolebench [--root PATH] worker doctor POLICY [--docker PATH] [--json]
+rolebench [--root PATH] worker run MANIFEST [--docker PATH] [--json]
 
 Examples:
 
@@ -107,9 +107,57 @@ rolebench artifacts validate route-policy path/to/policy.json --json
 rolebench accounting classify path/to/observation.json
 rolebench accounting summarize path/to/outcome-*.json
 rolebench worker fault-check contracts/scored-worker-policy.json --json
+rolebench worker doctor contracts/scored-worker-policy.json --json
+rolebench worker run path/to/worker-run-manifest.json --json
 ```
 
 Artifact schema names are the filenames in [`contracts/schemas`](contracts/schemas) without `.schema.json`. Attempt accounting uses `attempt-observation` for facts collected from a run and `attempt-outcome` for the decision about whether that run counts. `scored-worker-policy` defines the fail-closed execution boundary used by the no-model conformance gate. Other schemas include `route`, `evidence-row`, `capability-snapshot`, `capacity-snapshot`, `demand-snapshot`, `route-policy`, and `routing-decision`.
+
+## Rootless Docker/`runsc` worker setup
+
+The runtime worker is optional. Contract validation and the synthetic fault gate do not require Docker. A worker host requires:
+
+- Linux with cgroup v2 and a running `systemd --user` manager that delegates the `cpu`, `memory`, and `pids` controllers;
+- a recent rootless Docker daemon using the `systemd` cgroup driver;
+- RootlessKit, `newuidmap`/`newgidmap`, and subordinate UID/GID ranges for the worker user;
+- an official gVisor `runsc` release, including its sibling binaries, installed outside the repository; and
+- Python 3.12 or newer for the RoleBench wrapper and CLI.
+
+The first tested host used Docker 29.1.3, RootlessKit 2.3.5, and gVisor `runsc` release `20260810.0`. Newer versions are not assumed compatible until the doctor and smoke path pass.
+
+Install the complete gVisor release directory and the repository wrapper beside `runsc`. The wrapper requires that exact adjacent executable and does not consult `PATH` or environment overrides.
+
+```bash
+install -d "$HOME/.local/lib/gvisor"
+# Extract the official gVisor release archive into $HOME/.local/lib/gvisor.
+install -m 0755 scripts/rolebench-runsc-wrapper \
+  "$HOME/.local/lib/gvisor/rolebench-runsc-wrapper"
+```
+
+Register the wrapper, not the raw `runsc` binary, in the rootless daemon's `$HOME/.config/docker/daemon.json`. JSON paths must be absolute; merge this key with existing daemon settings rather than overwriting them.
+
+```json
+{
+  "runtimes": {
+    "runsc": {
+      "path": "/home/WORKER/.local/lib/gvisor/rolebench-runsc-wrapper"
+    }
+  }
+}
+```
+
+Restart the user daemon and run the fail-closed doctor:
+
+```bash
+systemctl --user restart docker.service
+rolebench worker doctor contracts/scored-worker-policy.json --json
+```
+
+`ready: true` requires every policy, local user-owned Unix-socket daemon, runtime, delegation, and resource-enforcement check to pass. The worker always supplies `--host unix:///run/user/$(id -u)/docker.sock`; Docker contexts and conflicting `DOCKER_HOST` values cannot redirect execution. Do not run a benchmark after a failed doctor. The wrapper creates one transient delegated cgroup scope per container, copies the OCI CPU/memory/PID limits into cgroup v2 controls, attaches `runsc`, and removes the scope after `runsc delete`.
+
+Build the example agent and verifier from [`fixtures/docker-runsc`](fixtures/docker-runsc), publish them to a registry available to the rootless daemon, and copy the returned immutable repository digests into a private copy of `worker-run-manifest.json`. The committed manifest intentionally contains distinct sentinel digests; tags and sentinels are rejected before Docker is called. The worker streams the bounded agent artifact into a sealed private memory file, then streams the immutable bytes once to verifier stdin. Docker logging is disabled, and worker stdout contains no container stderr.
+
+The example manifest is provider-disabled and must report `external_provider_calls: 0`. Local manifests, raw artifacts, wrapper logs, and benchmark outputs are runtime data and must not be committed.
 
 ## Repository layout
 
@@ -122,17 +170,34 @@ contracts/
   schemas/               Draft 2020-12 artifact schemas
 docs/
   OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md
+                        Architecture and benchmark methodology
+fixtures/docker-runsc/
+  Dockerfile.agent      Provider-disabled isolation probe image
+  Dockerfile.verifier   Distinct networkless verifier image
+  worker-run-manifest.json
+                        Digest-placeholder example worker manifest
+  agent.sh              In-sandbox isolation probe and artifact producer
+  verifier.sh           One-pass stdin artifact verifier
+scripts/
+  rolebench-runsc-wrapper
+                        Delegated cgroup v2 wrapper around the real runsc
 src/rolebench/
   cli.py                 Command-line interface
   accounting_rules.py    Shared reason and scoring invariants
   accounting.py          Fair attempt classification and quality summaries
   fault_harness.py       Deterministic no-model accounting conformance gate
   contracts.py           Loading, canonicalization, validation, and semantics
+  worker.py              Fail-closed Docker/runsc orchestration and accounting
 tests/
   test_accounting.py     Attempt fault, scoring, and CLI behavior tests
   test_fault_harness.py  Exact accounting reason-code fault matrix
+  test_runsc_wrapper.py  OCI limit and delegated-scope wrapper tests
   test_worker_cli.py     Scored-worker conformance CLI behavior
+  test_worker_fixtures.py
+                        Image, manifest, and handoff contract tests
   test_worker_policy.py  Isolation policy schema and semantic invariants
+  test_worker_run_cli.py Worker doctor/run CLI behavior
+  test_worker_runtime.py Docker adapter, isolation, and failure-path tests
   test_contracts.py      Contract, artifact, CLI, and failure-path tests
 ```
 
@@ -148,7 +213,7 @@ The canonical contract digest covers the registry, all ten role manifests in reg
 
 1. Freeze all ten v1 role contracts and cross-repository artifact contracts.
 2. Build OMP-native objective diagnostics for every role and pin applicable Terminal-Bench anchors.
-3. Implement the Docker/runsc scored worker against the canonical policy, then prove runtime isolation, compatibility, and observed-fault parity with the existing no-model gate.
+3. Extend the provider-disabled Docker/`runsc` worker with the credentialless provider-proxy boundary, then prove representative model-task compatibility and observed-fault parity with the no-model gate.
 4. Estimate calibrated `role x route` capability, reliability, cost, latency, and quota consumption.
 5. Add capacity and demand snapshots plus the constrained allocation optimizer.
 6. Validate allocation regret on held-out tasks and posterior draws.

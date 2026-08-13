@@ -19,7 +19,7 @@
     ]
   },
   "verifier": {
-    "image": "rolebench/docker-runsc-verifier@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "image": "rolebench/docker-runsc-verifier@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     "argv": [
       "/usr/local/bin/rolebench-verifier"
     ]
