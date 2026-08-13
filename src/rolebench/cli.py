@@ -24,6 +24,7 @@ from .contracts import (
     validate_repository,
 )
 from .fault_harness import FaultHarnessError, run_fault_check
+from .worker import WorkerError, doctor_worker, run_worker
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -79,6 +80,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fault_check.add_argument("policy", type=Path)
     fault_check.add_argument("--json", action="store_true", dest="as_json")
+
+    doctor = worker_commands.add_parser(
+        "doctor",
+        help="check whether the Docker/runsc worker is ready",
+    )
+    doctor.add_argument("policy", type=Path)
+    doctor.add_argument("--docker", default="docker", metavar="PATH")
+    doctor.add_argument("--json", action="store_true", dest="as_json")
+
+    worker_run = worker_commands.add_parser(
+        "run",
+        help="run a provider-disabled scored-worker manifest",
+    )
+    worker_run.add_argument("manifest", type=Path)
+    worker_run.add_argument("--docker", default="docker", metavar="PATH")
+    worker_run.add_argument("--json", action="store_true", dest="as_json")
 
 
     return parser
@@ -217,6 +234,81 @@ def _print_fault_check_report(report: JSONObject, stdout: TextIO) -> None:
     _print_accounting_summary(quality_summary, stdout)
 
 
+_WORKER_DOCTOR_CHECKS = (
+    ("docker_executable", "Docker executable"),
+    ("docker_server", "Docker server"),
+    ("rootless", "Rootless Docker"),
+    ("runsc", "runsc runtime"),
+    ("cgroup_v2", "cgroup v2"),
+    ("delegation", "cgroup delegation"),
+)
+
+
+def _format_report_value(value: JSONValue) -> str:
+    if isinstance(value, str):
+        return value
+    return canonical_json(value)
+
+
+def _print_report_diagnostics(report: JSONObject, stdout: TextIO) -> None:
+    diagnostics = report.get("diagnostics")
+    if not isinstance(diagnostics, list):
+        raise WorkerError("report diagnostics must be an array")
+    print("Diagnostics:", file=stdout)
+    if not diagnostics:
+        print("  none", file=stdout)
+        return
+    for diagnostic in diagnostics:
+        print(f"  - {_format_report_value(diagnostic)}", file=stdout)
+
+
+def _print_worker_doctor_report(report: JSONObject, stdout: TextIO) -> None:
+    ready = report.get("ready") is True
+    print(f"Worker doctor: {'READY' if ready else 'NOT READY'}", file=stdout)
+    print("Required checks:", file=stdout)
+    for key, label in _WORKER_DOCTOR_CHECKS:
+        result = "PASS" if report.get(key) is True else "FAIL"
+        print(f"  {label}: {result}", file=stdout)
+    _print_report_diagnostics(report, stdout)
+
+
+def _print_worker_run_report(report: JSONObject, stdout: TextIO) -> None:
+    passed = report.get("passed") is True
+    print(f"Worker run: {'PASS' if passed else 'FAIL'}", file=stdout)
+    print(
+        f"External provider calls: {report.get('external_provider_calls')}",
+        file=stdout,
+    )
+    print(f"Policy SHA-256: {report.get('policy_digest_sha256')}", file=stdout)
+    artifact_digest = report.get("artifact_digest_sha256")
+    artifact_text = (
+        artifact_digest if isinstance(artifact_digest, str) else "unavailable"
+    )
+    print(f"Artifact SHA-256: {artifact_text}", file=stdout)
+
+    outcome = report.get("outcome")
+    if not isinstance(outcome, dict):
+        raise WorkerError("run report outcome must be an object")
+    print(
+        "Outcome: "
+        f"disposition={outcome.get('disposition')!r}, "
+        f"reason={outcome.get('reason_code')!r}, "
+        f"domain={outcome.get('failure_domain')!r}",
+        file=stdout,
+    )
+
+    isolation = report.get("isolation")
+    if not isinstance(isolation, dict):
+        raise WorkerError("run report isolation must be an object")
+    print("Isolation:", file=stdout)
+    if not isolation:
+        print("  none", file=stdout)
+    else:
+        for key in sorted(isolation):
+            print(f"  {key}: {_format_report_value(isolation[key])}", file=stdout)
+    _print_report_diagnostics(report, stdout)
+
+
 
 
 def run(
@@ -286,6 +378,30 @@ def run(
             else:
                 _print_accounting_summary(summary, stdout)
             return 0
+        if arguments.group == "worker" and arguments.command == "doctor":
+            report = doctor_worker(
+                root,
+                arguments.policy,
+                docker=arguments.docker,
+            )
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_worker_doctor_report(report, stdout)
+            return 0 if report.get("ready") is True else 1
+
+        if arguments.group == "worker" and arguments.command == "run":
+            report = run_worker(
+                root,
+                arguments.manifest,
+                docker=arguments.docker,
+            )
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_worker_run_report(report, stdout)
+            return 0 if report.get("passed") is True else 1
+
         if arguments.group == "worker" and arguments.command == "fault-check":
             result = validate_artifact(
                 root,
@@ -335,7 +451,7 @@ def run(
             return 0
 
         raise ContractError(f"unknown command: {arguments.command}")
-    except (AccountingError, ContractError, FaultHarnessError) as error:
+    except (AccountingError, ContractError, FaultHarnessError, WorkerError) as error:
         print(f"error: {error}", file=stderr)
         return 2
 
