@@ -30,9 +30,16 @@ class FakeDocker:
         self.info: dict[str, object] = {
             "ServerVersion": "fixture",
             "SecurityOptions": ["name=rootless"],
-            "Runtimes": {"runsc": {"path": "runsc"}},
+            "Runtimes": {
+                "runsc": {"path": "/fixture/rolebench-runsc-wrapper"}
+            },
             "CgroupVersion": "2",
             "CgroupDriver": "systemd",
+        }
+        self.wrapper_report: dict[str, object] = {
+            "schema_version": "omp.runsc-wrapper-doctor/v1",
+            "ready": True,
+            "controllers": ["cpu", "memory", "pids"],
         }
         self.created: dict[str, bool] = {}
         self.finished: dict[str, bool] = {}
@@ -46,6 +53,7 @@ class FakeDocker:
         self.oom_agent = False
         self.agent_state_exit = 0
         self.verifier_state_exit = 0
+        self.remove_failure: str | None = None
 
     def run(
         self, argv: list[str], *, timeout: float | None = None, input_bytes: bytes | None = None
@@ -53,6 +61,8 @@ class FakeDocker:
         self.commands.append(list(argv))
         if argv[1:4] == ["info", "--format", "{{json .}}"]:
             return _result(stdout=json.dumps(self.info).encode())
+        if argv == ["/fixture/rolebench-runsc-wrapper", "--rolebench-doctor"]:
+            return _result(stdout=json.dumps(self.wrapper_report).encode())
         if argv[1] == "create":
             name = argv[argv.index("--name") + 1]
             container = "verifier-id" if "verifier" in name else "agent-id"
@@ -66,10 +76,12 @@ class FakeDocker:
             if self.inspect_mutator is not None:
                 self.inspect_mutator(container, value)
             return _result(stdout=json.dumps([value]).encode())
-        if argv[1] in {"kill", "rm"}:
-            if argv[1] == "kill":
-                self.finished[argv[2]] = True
+        if argv[1] == "kill":
+            self.finished[argv[2]] = True
             return _result()
+        if argv[1] == "rm":
+            container = argv[-1]
+            return _result(code=1 if container == self.remove_failure else 0)
         raise AssertionError(f"unexpected command: {argv!r}")
 
     def stream(
@@ -103,14 +115,20 @@ class FakeDocker:
             }
         exit_code = self.verifier_state_exit if verifier else self.agent_state_exit
         return {
-            "Config": {"User": f"{uid}:{gid}"},
+            "Config": {"User": f"{uid}:{gid}", "OpenStdin": verifier},
             "HostConfig": {
                 "Runtime": "runsc",
+                "Privileged": False,
                 "ReadonlyRootfs": True,
                 "CapDrop": ["ALL"],
                 "CapAdd": None,
                 "SecurityOpt": ["no-new-privileges=true"],
                 "NetworkMode": "none",
+                "PidMode": "",
+                "IpcMode": "private",
+                "UTSMode": "",
+                "UsernsMode": "",
+                "CgroupnsMode": "private",
                 "Devices": [],
                 "Tmpfs": tmpfs,
                 "NanoCpus": 4_000_000_000,
@@ -164,6 +182,20 @@ class WorkerRuntimeFixture(unittest.TestCase):
         return worker.run_worker(self.root, Path("worker.json"), docker="docker-fixture")
 
 
+class ManifestRuntimeGuardTests(WorkerRuntimeFixture):
+    def test_distinct_repositories_with_same_image_digest_are_rejected(self) -> None:
+        self.manifest["verifier"]["image"] = (
+            "another.invalid/verifier@sha256:" + "1" * 64
+        )
+        self._write_manifest()
+
+        with self.assertRaisesRegex(
+            worker.WorkerError, "agent and verifier image digests must differ"
+        ):
+            self.run_worker()
+        self.assertEqual(self.fake.commands, [])
+
+
 class DoctorTests(WorkerRuntimeFixture):
     def test_doctor_uses_exact_info_argv_and_requires_every_prerequisite(self) -> None:
         report = worker.doctor_worker(
@@ -174,6 +206,11 @@ class DoctorTests(WorkerRuntimeFixture):
             self.fake.commands[0],
             ["docker-fixture", "info", "--format", "{{json .}}"],
         )
+        self.assertEqual(
+            self.fake.commands[1],
+            ["/fixture/rolebench-runsc-wrapper", "--rolebench-doctor"],
+        )
+        self.assertTrue(report["resource_enforcement"])
 
         mutations = {
             "rootless": lambda value: value.update(SecurityOptions=[]),
@@ -186,7 +223,11 @@ class DoctorTests(WorkerRuntimeFixture):
                 self.fake.info = {
                     "ServerVersion": "fixture",
                     "SecurityOptions": ["name=rootless"],
-                    "Runtimes": {"runsc": {}},
+                    "Runtimes": {
+                        "runsc": {
+                            "path": "/fixture/rolebench-runsc-wrapper"
+                        }
+                    },
                     "CgroupVersion": "2",
                     "CgroupDriver": "systemd",
                 }
@@ -196,6 +237,28 @@ class DoctorTests(WorkerRuntimeFixture):
                 )
                 self.assertFalse(report["ready"])
                 self.assertIn(f"requirement-failed:{label}", report["diagnostics"])
+
+        self.fake.info = {
+            "ServerVersion": "fixture",
+            "SecurityOptions": ["name=rootless"],
+            "Runtimes": {
+                "runsc": {"path": "/fixture/rolebench-runsc-wrapper"}
+            },
+            "CgroupVersion": "2",
+            "CgroupDriver": "systemd",
+        }
+        self.fake.wrapper_report["ready"] = False
+        report = worker.doctor_worker(
+            self.root,
+            Path("contracts/scored-worker-policy.json"),
+            docker="docker-fixture",
+        )
+        self.assertFalse(report["ready"])
+        self.assertFalse(report["resource_enforcement"])
+        self.assertIn(
+            "requirement-failed:resource-enforcement",
+            report["diagnostics"],
+        )
 
 
 class SuccessfulRuntimeTests(WorkerRuntimeFixture):
@@ -215,6 +278,8 @@ class SuccessfulRuntimeTests(WorkerRuntimeFixture):
             self.assertNotIn("--device", command)
         self.assertIn("--tmpfs", agent)
         self.assertNotIn("--tmpfs", verifier)
+        self.assertNotIn("--interactive", agent)
+        self.assertIn("--interactive", verifier)
         self.assertEqual(agent[-3:], [AGENT_IMAGE, "/agent.sh", "--fixture"])
         self.assertEqual(verifier[-2:], [VERIFIER_IMAGE, "/verifier.sh"])
         self.assertEqual(
@@ -224,6 +289,14 @@ class SuccessfulRuntimeTests(WorkerRuntimeFixture):
         self.assertEqual(
             self.fake.stream_calls[1][0],
             ["docker-fixture", "start", "--attach", "-i", "verifier-id"],
+        )
+        self.assertIn(
+            ["docker-fixture", "rm", "--force", "--volumes", "agent-id"],
+            self.fake.commands,
+        )
+        self.assertIn(
+            ["docker-fixture", "rm", "--force", "--volumes", "verifier-id"],
+            self.fake.commands,
         )
         self.assertEqual(self.fake.verifier_input, ARTIFACT)
         self.assertEqual(report["artifact_digest_sha256"], hashlib.sha256(ARTIFACT).hexdigest())
@@ -286,8 +359,53 @@ class IsolationAndFailureTests(WorkerRuntimeFixture):
         self.fake.agent_state_exit = 137
         report = self.run_worker()
         self.assertIn("runner-failure", report["observation"]["issues"])
+        self.assertEqual(
+            report["observation"]["termination"]["kind"],
+            "resource-limit",
+        )
+        self.assertEqual(
+            report["observation"]["termination"]["oom_scope"],
+            "attempt",
+        )
         self.assertFalse(report["observation"]["provider"]["request_started"])
         self.assertNotEqual(report["outcome"]["disposition"], "scored")
+        self.assertEqual(report["outcome"]["reason_code"], "runner-failure")
+
+    def test_verifier_timeout_remains_a_verifier_failure(self) -> None:
+        self.fake.verifier_stream = worker._StreamResult(
+            -9,
+            b"",
+            b"private timeout",
+            timed_out=True,
+        )
+        report = self.run_worker()
+        self.assertEqual(report["observation"]["termination"]["kind"], "completed")
+        self.assertEqual(report["outcome"]["reason_code"], "verifier-crash")
+        self.assertEqual(report["outcome"]["failure_domain"], "verifier")
+        self.assertFalse(report["passed"])
+
+    def test_cleanup_failure_fails_the_pipeline_closed(self) -> None:
+        self.fake.remove_failure = "verifier-id"
+        report = self.run_worker()
+        self.assertFalse(report["passed"])
+        self.assertIn("runner-failure", report["observation"]["issues"])
+        self.assertIn("verifier-container-cleanup-failed", report["diagnostics"])
+        self.assertEqual(report["outcome"]["reason_code"], "runner-failure")
+
+    def test_agent_cleanup_failure_skips_verifier_and_fails_closed(self) -> None:
+        self.fake.remove_failure = "agent-id"
+        report = self.run_worker()
+        self.assertFalse(report["passed"])
+        self.assertIn("runner-failure", report["observation"]["issues"])
+        self.assertIn("agent-container-cleanup-failed", report["diagnostics"])
+        self.assertFalse(
+            any(
+                command[1] == "create"
+                and "rolebench-verifier-fixture-1" in command
+                for command in self.fake.commands
+            )
+        )
+        self.assertEqual(report["outcome"]["reason_code"], "runner-failure")
 
     def test_verifier_nonzero_missing_and_malformed_are_unscored(self) -> None:
         cases = (
