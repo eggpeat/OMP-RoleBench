@@ -1,0 +1,73 @@
+{
+  "schema_version": "omp.scored-worker-policy/v1",
+  "policy_id": "rolebench-scored-worker-v1",
+  "executor": {
+    "engine": "docker",
+    "oci_runtime": "runsc",
+    "rootless": true,
+    "privileged": false,
+    "user": {"uid": 1000, "gid": 1000},
+    "capabilities": {"drop": ["ALL"], "add": []},
+    "namespaces": {
+      "host_network": false,
+      "host_pid": false,
+      "host_ipc": false,
+      "host_user": false,
+      "host_uts": false
+    },
+    "root_filesystem": {"read_only": true},
+    "scratch": {
+      "path": "/workspace",
+      "ephemeral": true,
+      "size_bytes": 8589934592
+    },
+    "devices": [],
+    "mounts": []
+  },
+  "network": {
+    "mode": "provider-proxy-only",
+    "direct_egress": false,
+    "metadata_endpoints": false,
+    "service_account_tokens": false,
+    "raw_provider_credentials": false
+  },
+  "resources": {
+    "cpu_limit": 4,
+    "memory_bytes": 8589934592,
+    "pids_limit": 512,
+    "open_files_limit": 4096,
+    "output_bytes_limit": 67108864,
+    "artifact_bytes_limit": 2147483648
+  },
+  "timeouts": {
+    "setup_seconds": 300,
+    "agent_seconds": 3600,
+    "artifact_seconds": 300,
+    "verifier_seconds": 900,
+    "termination_grace_seconds": 30,
+    "total_seconds": 5400
+  },
+  "handoff": {
+    "mode": "immutable-content-addressed",
+    "digest_algorithm": "sha256",
+    "require_agent_exit": true,
+    "verifier_read_only": true
+  },
+  "verifier": {
+    "isolated": true,
+    "network": "none",
+    "privileged": false,
+    "user": {"uid": 2000, "gid": 2000},
+    "capabilities": {"drop": ["ALL"], "add": []},
+    "root_filesystem": {"read_only": true},
+    "raw_provider_credentials": false,
+    "service_account_tokens": false
+  },
+  "accounting": {
+    "fail_closed": true,
+    "infrastructure_failures_count_toward_quality": false,
+    "verifier_failures_count_toward_quality": false,
+    "require_decisive_verifier": true,
+    "quality_denominator": "valid-scored-attempts-only"
+  }
+}

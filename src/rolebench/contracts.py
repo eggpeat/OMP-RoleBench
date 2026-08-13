@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
 import json
+import math
 from pathlib import Path
 import re
 from typing import Iterable, Iterator, Sequence
@@ -37,6 +38,8 @@ _REGISTRY_FILE = Path("contracts/role-registry.json")
 _ROLE_DIRECTORY = Path("contracts/roles")
 _ROLE_SCHEMA = "role-contract.schema.json"
 _REGISTRY_SCHEMA = "role-registry.schema.json"
+_SCORED_WORKER_POLICY_FILE = Path("contracts/scored-worker-policy.json")
+_SCORED_WORKER_POLICY_SCHEMA = "scored-worker-policy.schema.json"
 _THRESHOLD_VALUES = (
     "quality_floor",
     "reliability_floor",
@@ -88,11 +91,12 @@ class ValidationResult:
 
 @dataclass(frozen=True)
 class Repository:
-    """Loaded registry and manifests in canonical role order."""
+    """Loaded registry, manifests, and canonical scored-worker policy."""
 
     root: Path
     registry: JSONObject
     manifests: tuple[tuple[str, JSONObject], ...]
+    scored_worker_policy: JSONObject
 
 
 @dataclass(frozen=True)
@@ -175,7 +179,7 @@ def _load_object(root: Path, relative: Path) -> JSONObject:
 
 
 def load_repository(root: Path | None = None) -> Repository:
-    """Load the registry and its ten canonical manifests."""
+    """Load the registry, its ten canonical manifests, and worker policy."""
 
     resolved = resolve_root(root)
     registry = _load_object(resolved, _REGISTRY_FILE)
@@ -194,7 +198,8 @@ def load_repository(root: Path | None = None) -> Repository:
             )
         relative = Path(relative_value)
         manifests.append((role, _load_object(resolved, relative)))
-    return Repository(resolved, registry, tuple(manifests))
+    policy = _load_object(resolved, _SCORED_WORKER_POLICY_FILE)
+    return Repository(resolved, registry, tuple(manifests), policy)
 
 
 def canonical_json(value: JSONValue) -> str:
@@ -204,12 +209,13 @@ def canonical_json(value: JSONValue) -> str:
 
 
 def canonical_digest(repository: Repository) -> str:
-    """Hash the canonical registry followed by manifests in built-in role order."""
+    """Hash the canonical registry, manifests, and scored-worker policy."""
 
     digest = sha256()
     documents: tuple[JSONObject, ...] = (
         repository.registry,
         *(manifest for _, manifest in repository.manifests),
+        repository.scored_worker_policy,
     )
     for document in documents:
         encoded = canonical_json(document).encode("utf-8")
@@ -844,6 +850,115 @@ def _attempt_outcome_semantics(
         )
 
 
+def _scored_worker_policy_semantics(
+    policy: JSONObject,
+    relative: Path,
+) -> Iterator[Diagnostic]:
+    executor = policy.get("executor")
+    verifier = policy.get("verifier")
+    resources = policy.get("resources")
+    timeouts = policy.get("timeouts")
+
+    worker_user = executor.get("user") if isinstance(executor, dict) else None
+    verifier_user = verifier.get("user") if isinstance(verifier, dict) else None
+    if isinstance(worker_user, dict) and isinstance(verifier_user, dict):
+        for field in ("uid", "gid"):
+            worker_id = worker_user.get(field)
+            verifier_id = verifier_user.get(field)
+            if (
+                isinstance(worker_id, int)
+                and not isinstance(worker_id, bool)
+                and worker_id == verifier_id
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    f"$.verifier.user.{field}",
+                    f"must differ from executor user {field}",
+                )
+
+    numeric_resources = (
+        "cpu_limit",
+        "memory_bytes",
+        "pids_limit",
+        "open_files_limit",
+        "output_bytes_limit",
+        "artifact_bytes_limit",
+    )
+    if isinstance(resources, dict):
+        for field in numeric_resources:
+            value = resources.get(field)
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and not math.isfinite(value)
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    f"$.resources.{field}",
+                    "must be finite",
+                )
+
+    phase_fields = (
+        "setup_seconds",
+        "agent_seconds",
+        "artifact_seconds",
+        "verifier_seconds",
+    )
+    timeout_fields = (*phase_fields, "termination_grace_seconds", "total_seconds")
+    if isinstance(timeouts, dict):
+        finite_timeouts: dict[str, int | float] = {}
+        for field in timeout_fields:
+            value = timeouts.get(field)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                if math.isfinite(value):
+                    finite_timeouts[field] = value
+                else:
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.timeouts.{field}",
+                        "must be finite",
+                    )
+
+        grace = finite_timeouts.get("termination_grace_seconds")
+        if grace is not None:
+            for field in phase_fields:
+                phase = finite_timeouts.get(field)
+                if phase is not None and grace >= phase:
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        "$.timeouts.termination_grace_seconds",
+                        f"must be shorter than {field}",
+                    )
+
+        if all(field in finite_timeouts for field in timeout_fields):
+            minimum_total = sum(
+                finite_timeouts[field]
+                for field in (*phase_fields, "termination_grace_seconds")
+            )
+            if finite_timeouts["total_seconds"] < minimum_total:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.timeouts.total_seconds",
+                    "must be at least the sum of setup, agent, artifact, verifier, and termination grace timeouts",
+                )
+
+    scratch = executor.get("scratch") if isinstance(executor, dict) else None
+    artifact_limit = resources.get("artifact_bytes_limit") if isinstance(resources, dict) else None
+    scratch_size = scratch.get("size_bytes") if isinstance(scratch, dict) else None
+    if (
+        isinstance(artifact_limit, int)
+        and not isinstance(artifact_limit, bool)
+        and isinstance(scratch_size, int)
+        and not isinstance(scratch_size, bool)
+        and artifact_limit > scratch_size
+    ):
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.resources.artifact_bytes_limit",
+            "must not exceed executor scratch size_bytes",
+        )
+
+
 def _artifact_semantics(
     schema_name: str,
     artifact: JSONObject,
@@ -857,6 +972,8 @@ def _artifact_semantics(
         yield from _route_policy_semantics(artifact, relative)
     elif schema_name == "routing-decision":
         yield from _routing_decision_semantics(artifact, relative)
+    elif schema_name == "scored-worker-policy":
+        yield from _scored_worker_policy_semantics(artifact, relative)
 
 
 def _safe_schema(root: Path, relative: Path, diagnostics: list[Diagnostic]) -> JSONObject | None:
@@ -953,7 +1070,11 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
             if not schema_errors:
                 schemas[schema_path.name] = schema
 
-    for required_schema in (_REGISTRY_SCHEMA, _ROLE_SCHEMA):
+    for required_schema in (
+        _REGISTRY_SCHEMA,
+        _ROLE_SCHEMA,
+        _SCORED_WORKER_POLICY_SCHEMA,
+    ):
         if required_schema not in schemas:
             diagnostics.append(
                 Diagnostic(
@@ -1016,5 +1137,32 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
                 diagnostics.append(
                     Diagnostic(relative.as_posix(), "$", f"registry maps role {role!r} to {mapped!r}")
                 )
+
+    policy = _safe_schema(resolved, _SCORED_WORKER_POLICY_FILE, diagnostics)
+    if policy is None:
+        diagnostics.append(
+            Diagnostic(
+                _SCORED_WORKER_POLICY_FILE.as_posix(),
+                "$",
+                "required canonical policy file is missing or invalid",
+            )
+        )
+    else:
+        policy_schema = schemas.get(_SCORED_WORKER_POLICY_SCHEMA)
+        if policy_schema is not None:
+            diagnostics.extend(
+                _instance_diagnostics(
+                    policy,
+                    policy_schema,
+                    _SCORED_WORKER_POLICY_FILE,
+                )
+            )
+        diagnostics.extend(
+            _artifact_semantics(
+                "scored-worker-policy",
+                policy,
+                _SCORED_WORKER_POLICY_FILE,
+            )
+        )
 
     return ValidationResult(tuple(sorted(set(diagnostics))))
