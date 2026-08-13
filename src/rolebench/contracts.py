@@ -41,6 +41,7 @@ _ROLE_SCHEMA = "role-contract.schema.json"
 _REGISTRY_SCHEMA = "role-registry.schema.json"
 _SCORED_WORKER_POLICY_FILE = Path("contracts/scored-worker-policy.json")
 _SCORED_WORKER_POLICY_SCHEMA = "scored-worker-policy.schema.json"
+_WORKER_RUN_MANIFEST_SCHEMA = "worker-run-manifest"
 _THRESHOLD_VALUES = (
     "quality_floor",
     "reliability_floor",
@@ -958,12 +959,129 @@ def _scored_worker_policy_semantics(
         )
 
 
+def _worker_run_manifest_semantics(
+    root: Path,
+    manifest: JSONObject,
+    relative: Path,
+) -> Iterator[Diagnostic]:
+    role = manifest.get("role")
+    if isinstance(role, str) and role not in BUILTIN_ROLES:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.role",
+            f"must be one of the built-in roles {list(BUILTIN_ROLES)!r}",
+        )
+
+    agent = manifest.get("agent")
+    verifier = manifest.get("verifier")
+    agent_image = agent.get("image") if isinstance(agent, dict) else None
+    verifier_image = verifier.get("image") if isinstance(verifier, dict) else None
+    if (
+        isinstance(agent_image, str)
+        and isinstance(verifier_image, str)
+        and agent_image == verifier_image
+    ):
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.verifier.image",
+            "must differ from agent image",
+        )
+
+    for container_name, container in (("agent", agent), ("verifier", verifier)):
+        if not isinstance(container, dict):
+            continue
+        argv = container.get("argv")
+        if not isinstance(argv, list):
+            continue
+        if not argv:
+            yield Diagnostic(
+                relative.as_posix(),
+                f"$.{container_name}.argv",
+                "must contain at least one argument",
+            )
+            continue
+        if isinstance(argv[0], str) and not argv[0]:
+            yield Diagnostic(
+                relative.as_posix(),
+                f"$.{container_name}.argv[0]",
+                "first argument must be nonempty",
+            )
+        for index, argument in enumerate(argv):
+            if isinstance(argument, str) and "\0" in argument:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    f"$.{container_name}.argv[{index}]",
+                    "must not contain NUL",
+                )
+
+    policy_reference = manifest.get("policy")
+    if not isinstance(policy_reference, dict):
+        return
+    policy_path = policy_reference.get("path")
+    if not isinstance(policy_path, str) or not policy_path:
+        return
+
+    candidate = Path(policy_path)
+    resolved_root = root.resolve()
+    unsafe = candidate.is_absolute()
+    if not unsafe:
+        candidate = (resolved_root / candidate).resolve()
+        try:
+            candidate.relative_to(resolved_root)
+        except ValueError:
+            unsafe = True
+    if unsafe:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.policy.path",
+            "must be a relative path that resolves within the repository",
+        )
+        return
+
+    policy_relative = candidate.relative_to(resolved_root)
+    try:
+        policy = _load_artifact(candidate, policy_relative)
+    except ContractError as error:
+        yield Diagnostic(
+            error.file or policy_relative.as_posix(),
+            error.json_path,
+            error.message,
+        )
+        return
+
+    policy_schema_relative = _SCHEMA_DIRECTORY / _SCORED_WORKER_POLICY_SCHEMA
+    policy_schema_diagnostics: list[Diagnostic] = []
+    policy_schema = _safe_schema(
+        resolved_root,
+        policy_schema_relative,
+        policy_schema_diagnostics,
+    )
+    yield from policy_schema_diagnostics
+    if policy_schema is not None:
+        yield from _schema_diagnostics(policy_schema, policy_schema_relative)
+        yield from _instance_diagnostics(policy, policy_schema, policy_relative)
+        yield from _scored_worker_policy_semantics(policy, policy_relative)
+
+    declared_digest = policy_reference.get("digest_sha256")
+    if isinstance(declared_digest, str):
+        actual_digest = sha256(canonical_json(policy).encode("utf-8")).hexdigest()
+        if declared_digest != actual_digest:
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.policy.digest_sha256",
+                f"must equal canonical policy SHA-256 {actual_digest}",
+            )
+
+
 def _artifact_semantics(
+    root: Path,
     schema_name: str,
     artifact: JSONObject,
     relative: Path,
 ) -> Iterator[Diagnostic]:
-    if schema_name == "attempt-observation":
+    if schema_name == _WORKER_RUN_MANIFEST_SCHEMA:
+        yield from _worker_run_manifest_semantics(root, artifact, relative)
+    elif schema_name == "attempt-observation":
         yield from _attempt_observation_semantics(artifact, relative)
     elif schema_name == "attempt-outcome":
         yield from _attempt_outcome_semantics(artifact, relative)
@@ -1048,7 +1166,7 @@ def validate_artifact(
         return ValidationResult(tuple(sorted(set(diagnostics))))
 
     diagnostics.extend(_instance_diagnostics(artifact, schema, display_path))
-    diagnostics.extend(_artifact_semantics(schema_name, artifact, display_path))
+    diagnostics.extend(_artifact_semantics(resolved, schema_name, artifact, display_path))
     return ValidationResult(tuple(sorted(set(diagnostics))))
 
 
@@ -1158,6 +1276,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
             )
         diagnostics.extend(
             _artifact_semantics(
+                resolved,
                 "scored-worker-policy",
                 policy,
                 _SCORED_WORKER_POLICY_FILE,
