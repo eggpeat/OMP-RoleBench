@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from fractions import Fraction
 from hashlib import sha256
 import json
 import math
@@ -887,11 +888,7 @@ def _scored_worker_policy_semantics(
     if isinstance(resources, dict):
         for field in numeric_resources:
             value = resources.get(field)
-            if (
-                isinstance(value, (int, float))
-                and not isinstance(value, bool)
-                and not math.isfinite(value)
-            ):
+            if isinstance(value, float) and not math.isfinite(value):
                 yield Diagnostic(
                     relative.as_posix(),
                     f"$.resources.{field}",
@@ -909,7 +906,9 @@ def _scored_worker_policy_semantics(
         finite_timeouts: dict[str, int | float] = {}
         for field in timeout_fields:
             value = timeouts.get(field)
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if isinstance(value, int) and not isinstance(value, bool):
+                finite_timeouts[field] = value
+            elif isinstance(value, float):
                 if math.isfinite(value):
                     finite_timeouts[field] = value
                 else:
@@ -932,10 +931,10 @@ def _scored_worker_policy_semantics(
 
         if all(field in finite_timeouts for field in timeout_fields):
             minimum_total = sum(
-                finite_timeouts[field]
+                Fraction(finite_timeouts[field])
                 for field in (*phase_fields, "termination_grace_seconds")
             )
-            if finite_timeouts["total_seconds"] < minimum_total:
+            if Fraction(finite_timeouts["total_seconds"]) < minimum_total:
                 yield Diagnostic(
                     relative.as_posix(),
                     "$.timeouts.total_seconds",

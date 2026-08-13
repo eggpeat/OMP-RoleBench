@@ -226,12 +226,35 @@ class InvalidWorkerPolicyTests(WorkerPolicyFixture):
             self.diagnostics(),
         )
 
+    def test_oversized_integers_fail_closed_without_crashing(self) -> None:
+        policy = self.policy()
+        resources = policy["resources"]
+        timeouts = policy["timeouts"]
+        self.assertIsInstance(resources, dict)
+        self.assertIsInstance(timeouts, dict)
+        resources["memory_bytes"] = 10**400
+        timeouts["setup_seconds"] = 1.5
+        timeouts["agent_seconds"] = 10**400
+        timeouts["total_seconds"] = 10**400
+        self.write_json(POLICY, policy)
+
+        result = validate_artifact(
+            self.root,
+            "scored-worker-policy",
+            Path(POLICY),
+        )
+        self.assertFalse(result.valid)
+        paths = {diagnostic.json_path for diagnostic in result.diagnostics}
+        self.assertIn("$.resources.memory_bytes", paths)
+        self.assertIn("$.timeouts.agent_seconds", paths)
+        self.assertIn("$.timeouts.total_seconds", paths)
+
     def test_invalid_policy_id_reports_exact_schema_diagnostic(self) -> None:
         policy = copy.deepcopy(self.policy())
         policy["policy_id"] = ""
         self.write_json(POLICY, policy)
         self.assertIn(
-            (POLICY, "$.policy_id", "'' should be non-empty"),
+            (POLICY, "$.policy_id", "'' is too short"),
             self.diagnostics(),
         )
 
