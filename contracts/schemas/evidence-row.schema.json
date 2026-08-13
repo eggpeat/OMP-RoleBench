@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:evidence-row:v1",
+  "title": "RoleBench Evidence Row v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evidence_id", "recorded_at", "provenance", "run", "role", "role_contract", "route", "task", "attempt", "verifier", "failure", "timing", "requests", "tokens", "billing", "capacity_consumption", "versions", "trajectory_integrity"],
+  "properties": {
+    "schema_version": {"const": "omp.evidence-row/v1"},
+    "evidence_id": {"type": "string", "minLength": 1},
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "provenance": {"enum": ["benchmark", "live"]},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "routing_decision_id"],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "routing_decision_id": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "role": {"$ref": "#/$defs/role"},
+    "role_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "schema_version", "digest_sha256"],
+      "properties": {
+        "contract_id": {"type": "string", "minLength": 1},
+        "schema_version": {"const": "omp.role-contract/v1"},
+        "digest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "route": {"$ref": "#/$defs/exactRoute"},
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "task_version", "digest_sha256"],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1},
+        "task_version": {"type": "string", "minLength": 1},
+        "digest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "number"],
+      "properties": {
+        "attempt_id": {"type": "string", "minLength": 1},
+        "number": {"type": "integer", "minimum": 1}
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "metrics"],
+      "properties": {
+        "outcome": {"enum": ["accepted", "rejected", "error"]},
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "value", "unit"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "value": {"type": ["number", "boolean", "null"]},
+              "unit": {"type": ["string", "null"], "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    "failure": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["class", "stage", "retryable"],
+          "properties": {
+            "class": {"type": "string", "minLength": 1},
+            "stage": {"type": "string", "minLength": 1},
+            "retryable": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "ended_at", "e2e_latency_ms"],
+      "properties": {
+        "started_at": {"type": "string", "format": "date-time"},
+        "ended_at": {"type": "string", "format": "date-time"},
+        "e2e_latency_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "requests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_count", "retry_count", "fallback_count"],
+      "properties": {
+        "request_count": {"type": "integer", "minimum": 0},
+        "retry_count": {"type": "integer", "minimum": 0},
+        "fallback_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "output", "cache_read", "cache_write"],
+      "properties": {
+        "input": {"type": ["integer", "null"], "minimum": 0},
+        "output": {"type": ["integer", "null"], "minimum": 0},
+        "cache_read": {"type": ["integer", "null"], "minimum": 0},
+        "cache_write": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "billing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["billed_cost", "currency"],
+      "properties": {
+        "billed_cost": {"type": ["number", "null"], "minimum": 0},
+        "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"}
+      },
+      "allOf": [
+        {"if": {"properties": {"billed_cost": {"type": "null"}}, "required": ["billed_cost"]}, "then": {"properties": {"currency": {"type": "null"}}}},
+        {"if": {"properties": {"billed_cost": {"type": "number"}}, "required": ["billed_cost"]}, "then": {"properties": {"currency": {"type": "string", "pattern": "^[A-Z]{3}$"}}}}
+      ]
+    },
+    "capacity_consumption": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capacity_pool", "window", "consumed", "unit"],
+        "properties": {
+          "capacity_pool": {"type": "string", "minLength": 1},
+          "window": {"type": "string", "minLength": 1},
+          "consumed": {"type": ["number", "null"], "minimum": 0},
+          "unit": {"type": ["string", "null"], "minLength": 1}
+        }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["omp", "runner", "verifier"],
+      "properties": {
+        "omp": {"type": "string", "minLength": 1},
+        "runner": {"type": "string", "minLength": 1},
+        "verifier": {"type": "string", "minLength": 1}
+      }
+    },
+    "trajectory_integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "trajectory_digest_sha256"],
+      "properties": {
+        "state": {"enum": ["complete", "truncated", "corrupt", "unknown"]},
+        "trajectory_digest_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+      }
+    }
+  },
+  "$defs": {
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "exactRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "route_id", "provider", "model", "thinking", "transport", "upstream", "capacity_pool", "credential_selection", "omp_version"],
+      "properties": {
+        "schema_version": {"const": "omp.route/v1"},
+        "route_id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/+~-]*$"},
+        "provider": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1},
+        "thinking": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max", "auto"]},
+        "transport": {"type": "string", "minLength": 1},
+        "upstream": {"type": ["string", "null"], "minLength": 1},
+        "capacity_pool": {"type": "string", "minLength": 1},
+        "credential_selection": {"const": "provider-managed"},
+        "omp_version": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

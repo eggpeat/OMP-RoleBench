@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:route-policy:v1",
+  "title": "Immutable Role Route Policy v1",
+  "$comment": "Semantic validation MUST enforce created_at <= valid_from < valid_until; unique route_id values per role; exactly 10000 total positive weight_bps per active role; and unique emergency_fallback route IDs. JSON Schema does not compute cross-item sums or timestamp ordering.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "policy_id", "created_at", "valid_from", "valid_until", "role_registry_snapshot", "evidence_snapshot", "capability_snapshot", "capacity_snapshot", "demand_snapshot", "optimizer_version", "allocation_algorithm", "allocation_seed", "roles", "checksum_sha256"],
+  "properties": {
+    "schema_version": {"const": "omp.route-policy/v1"},
+    "policy_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "valid_until": {"type": "string", "format": "date-time"},
+    "role_registry_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "registry_id", "checksum_sha256"],
+      "properties": {
+        "schema_version": {"const": "omp.role-registry/v1"},
+        "registry_id": {"type": "string", "minLength": 1},
+        "checksum_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidence_snapshot": {"$ref": "#/$defs/evidenceSnapshot"},
+    "capability_snapshot": {"$ref": "#/$defs/capabilitySnapshot"},
+    "capacity_snapshot": {"$ref": "#/$defs/capacitySnapshot"},
+    "demand_snapshot": {"$ref": "#/$defs/demandSnapshot"},
+    "optimizer_version": {"type": "string", "minLength": 1},
+    "allocation_algorithm": {"const": "weighted-rendezvous-v1"},
+    "allocation_seed": {"type": "string", "minLength": 1},
+    "roles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "default": {"$ref": "#/$defs/rolePolicy"},
+        "smol": {"$ref": "#/$defs/rolePolicy"},
+        "slow": {"$ref": "#/$defs/rolePolicy"},
+        "vision": {"$ref": "#/$defs/rolePolicy"},
+        "plan": {"$ref": "#/$defs/rolePolicy"},
+        "designer": {"$ref": "#/$defs/rolePolicy"},
+        "commit": {"$ref": "#/$defs/rolePolicy"},
+        "tiny": {"$ref": "#/$defs/rolePolicy"},
+        "task": {"$ref": "#/$defs/rolePolicy"},
+        "advisor": {"$ref": "#/$defs/rolePolicy"}
+      }
+    },
+    "checksum_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshotReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "snapshot_id", "checksum_sha256"],
+      "properties": {
+        "schema_version": {"type": "string", "minLength": 1},
+        "snapshot_id": {"type": "string", "minLength": 1},
+        "checksum_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidenceSnapshot": {
+      "allOf": [
+        {"$ref": "#/$defs/snapshotReference"},
+        {"properties": {"schema_version": {"const": "omp.evidence-row/v1"}}}
+      ]
+    },
+    "capabilitySnapshot": {
+      "allOf": [
+        {"$ref": "#/$defs/snapshotReference"},
+        {"properties": {"schema_version": {"const": "omp.capability-snapshot/v1"}}}
+      ]
+    },
+    "capacitySnapshot": {
+      "allOf": [
+        {"$ref": "#/$defs/snapshotReference"},
+        {"properties": {"schema_version": {"const": "omp.capacity-snapshot/v1"}}}
+      ]
+    },
+    "demandSnapshot": {
+      "allOf": [
+        {"$ref": "#/$defs/snapshotReference"},
+        {"properties": {"schema_version": {"const": "omp.demand-snapshot/v1"}}}
+      ]
+    },
+    "rolePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quality_floor", "reliability_floor", "confidence", "stickiness_scope", "routes", "emergency_fallback"],
+      "properties": {
+        "quality_floor": {"type": "number", "minimum": 0, "maximum": 1},
+        "reliability_floor": {"type": "number", "minimum": 0, "maximum": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "stickiness_scope": {"enum": ["main-session", "child-session", "operation"]},
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["route_id", "weight_bps"],
+            "properties": {
+              "route_id": {"type": "string", "minLength": 1},
+              "weight_bps": {"type": "integer", "minimum": 1, "maximum": 10000}
+            }
+          }
+        },
+        "emergency_fallback": {
+          "$comment": "Explicit emergency order, independent of weighted allocation.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

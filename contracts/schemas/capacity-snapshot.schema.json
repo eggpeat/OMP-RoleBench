@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:capacity-snapshot:v1",
+  "title": "Capacity Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "snapshot_id", "captured_at", "unknown_capacity_policy", "pools", "checksum_sha256"],
+  "properties": {
+    "schema_version": {"const": "omp.capacity-snapshot/v1"},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "unknown_capacity_policy": {"enum": ["conservative", "fail-open", "fail-closed"]},
+    "pools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capacity_pool", "aggregate_health", "concurrency", "windows"],
+        "properties": {
+          "capacity_pool": {"type": "string", "minLength": 1},
+          "aggregate_health": {"enum": ["healthy", "degraded", "exhausted", "unavailable", "unknown"]},
+          "concurrency": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["in_use", "limit", "remaining"],
+            "properties": {
+              "in_use": {"type": ["integer", "null"], "minimum": 0},
+              "limit": {"type": ["integer", "null"], "minimum": 0},
+              "remaining": {"type": ["integer", "null"], "minimum": 0}
+            }
+          },
+          "windows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["window", "used", "remaining", "limit", "reset_at", "reserve", "unit", "authority"],
+              "properties": {
+                "window": {"type": "string", "minLength": 1},
+                "used": {"type": ["number", "null"], "minimum": 0},
+                "remaining": {"type": ["number", "null"], "minimum": 0},
+                "limit": {"type": ["number", "null"], "minimum": 0},
+                "reset_at": {"type": ["string", "null"], "format": "date-time"},
+                "reserve": {"type": ["number", "null"], "minimum": 0},
+                "unit": {"type": ["string", "null"], "minLength": 1},
+                "authority": {"enum": ["provider", "observed", "derived", "configured", "unknown"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    "checksum_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

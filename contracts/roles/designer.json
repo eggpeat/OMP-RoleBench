@@ -1,0 +1,40 @@
+{
+  "schema_version": "omp.role-contract/v1",
+  "contract_id": "role-contract/designer/v1",
+  "role": "designer",
+  "display_name": "Functional UI and Visual Quality",
+  "diagnostic_contract": "UI and UX judgment plus implementation that preserves functional behavior while producing visually coherent, accessible, responsive interfaces with clear hierarchy and appropriate interaction feedback.",
+  "required_capabilities": [
+    "ui-implementation",
+    "visual-design-judgment",
+    "interaction-design",
+    "responsive-layout",
+    "accessibility-reasoning"
+  ],
+  "primary_metric": "functional-visual-quality",
+  "secondary_metrics": [
+    "interaction-correctness",
+    "visual-coherence",
+    "responsive-behavior",
+    "accessibility-conformance"
+  ],
+  "verifier": {
+    "objective_required": true,
+    "modes": [
+      "browser-interaction-check",
+      "visual-reference-review",
+      "accessibility-tree-review"
+    ],
+    "llm_judge": "supplemental"
+  },
+  "failure_cost": "high",
+  "stickiness_scope": "child-session",
+  "task_mix": "designer-v1",
+  "thresholds": {
+    "status": "calibration-required",
+    "quality_floor": null,
+    "reliability_floor": null,
+    "confidence": null,
+    "latency_slo_seconds": null
+  }
+}

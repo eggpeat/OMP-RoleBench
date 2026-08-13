@@ -1,0 +1,40 @@
+{
+  "schema_version": "omp.role-contract/v1",
+  "contract_id": "role-contract/default/v1",
+  "role": "default",
+  "display_name": "Default Interactive Work",
+  "diagnostic_contract": "Broad interactive terminal and coding work that follows user direction, selects and sequences tools appropriately, edits safely, and reaches a correct result across representative repository tasks.",
+  "required_capabilities": [
+    "terminal-tool-use",
+    "code-editing",
+    "repository-navigation",
+    "instruction-following",
+    "interactive-reasoning"
+  ],
+  "primary_metric": "accepted-solve-rate",
+  "secondary_metrics": [
+    "tool-action-correctness",
+    "instruction-adherence",
+    "regression-avoidance",
+    "interactive-latency"
+  ],
+  "verifier": {
+    "objective_required": true,
+    "modes": [
+      "executable-task-verifier",
+      "artifact-diff-review",
+      "interaction-trace-review"
+    ],
+    "llm_judge": "supplemental"
+  },
+  "failure_cost": "high",
+  "stickiness_scope": "main-session",
+  "task_mix": "default-v1",
+  "thresholds": {
+    "status": "calibration-required",
+    "quality_floor": null,
+    "reliability_floor": null,
+    "confidence": null,
+    "latency_slo_seconds": null
+  }
+}

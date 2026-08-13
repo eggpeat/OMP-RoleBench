@@ -1,0 +1,39 @@
+{
+  "schema_version": "omp.role-contract/v1",
+  "contract_id": "role-contract/commit/v1",
+  "role": "commit",
+  "display_name": "Semantic Commit Message Generation",
+  "diagnostic_contract": "Commit-message generation that accurately summarizes the supplied change, covers its material semantics, follows repository conventions, and introduces no claims unsupported by the diff or context.",
+  "required_capabilities": [
+    "diff-comprehension",
+    "change-summarization",
+    "commit-convention-adherence",
+    "evidence-bounded-generation"
+  ],
+  "primary_metric": "semantic-change-coverage",
+  "secondary_metrics": [
+    "convention-adherence",
+    "unsupported-claim-rate",
+    "material-change-recall",
+    "message-conciseness"
+  ],
+  "verifier": {
+    "objective_required": false,
+    "modes": [
+      "diff-claim-alignment",
+      "commit-convention-check",
+      "semantic-coverage-review"
+    ],
+    "llm_judge": "supplemental"
+  },
+  "failure_cost": "medium",
+  "stickiness_scope": "operation",
+  "task_mix": "commit-v1",
+  "thresholds": {
+    "status": "calibration-required",
+    "quality_floor": null,
+    "reliability_floor": null,
+    "confidence": null,
+    "latency_slo_seconds": null
+  }
+}

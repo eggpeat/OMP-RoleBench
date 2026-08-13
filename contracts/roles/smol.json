@@ -1,0 +1,39 @@
+{
+  "schema_version": "omp.role-contract/v1",
+  "contract_id": "role-contract/smol/v1",
+  "role": "smol",
+  "display_name": "Bounded Fast Work",
+  "diagnostic_contract": "Bounded mechanical or lightweight work completed correctly with minimal tool use and concise output under strict latency and consumption constraints.",
+  "required_capabilities": [
+    "bounded-task-execution",
+    "mechanical-editing",
+    "concise-output",
+    "low-overhead-tool-use"
+  ],
+  "primary_metric": "budgeted-success-rate",
+  "secondary_metrics": [
+    "end-to-end-latency",
+    "token-consumption",
+    "tool-action-count",
+    "scope-adherence"
+  ],
+  "verifier": {
+    "objective_required": true,
+    "modes": [
+      "exact-output-check",
+      "artifact-diff-check",
+      "resource-trace-check"
+    ],
+    "llm_judge": "disallowed"
+  },
+  "failure_cost": "medium",
+  "stickiness_scope": "operation",
+  "task_mix": "smol-v1",
+  "thresholds": {
+    "status": "calibration-required",
+    "quality_floor": null,
+    "reliability_floor": null,
+    "confidence": null,
+    "latency_slo_seconds": null
+  }
+}

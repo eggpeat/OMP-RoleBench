@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:capability-snapshot:v1",
+  "title": "Role Route Capability Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "snapshot_id", "captured_at", "calibration_version", "estimates", "checksum_sha256"],
+  "properties": {
+    "schema_version": {"const": "omp.capability-snapshot/v1"},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "calibration_version": {"type": "string", "minLength": 1},
+    "estimates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "route_id", "status", "posterior_success", "operational_reliability", "latency_ms", "expected_tokens_per_attempt", "expected_cost_per_attempt", "expected_quota_consumption_per_attempt", "cost_per_accepted_solve", "compatibility", "coverage", "evidence_freshness", "calibration_version"],
+        "properties": {
+          "role": {"$ref": "#/$defs/role"},
+          "route_id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["qualified", "unqualified", "uncertain", "incompatible"]},
+          "posterior_success": {"$ref": "#/$defs/probabilityEstimateWithFloor"},
+          "operational_reliability": {"$ref": "#/$defs/probabilityEstimate"},
+          "latency_ms": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["p50", "p90"],
+            "properties": {
+              "p50": {"type": ["number", "null"], "minimum": 0},
+              "p90": {"type": ["number", "null"], "minimum": 0}
+            }
+          },
+          "expected_tokens_per_attempt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["input", "output", "cache_read", "cache_write"],
+            "properties": {
+              "input": {"type": ["number", "null"], "minimum": 0},
+              "output": {"type": ["number", "null"], "minimum": 0},
+              "cache_read": {"type": ["number", "null"], "minimum": 0},
+              "cache_write": {"type": ["number", "null"], "minimum": 0}
+            }
+          },
+          "expected_cost_per_attempt": {"$ref": "#/$defs/money"},
+          "expected_quota_consumption_per_attempt": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/quotaEstimate"}
+          },
+          "cost_per_accepted_solve": {"$ref": "#/$defs/money"},
+          "compatibility": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["compatible", "reason_codes"],
+            "properties": {
+              "compatible": {"type": "boolean"},
+              "reason_codes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+            }
+          },
+          "coverage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sample_count", "task_count"],
+            "properties": {
+              "sample_count": {"type": "integer", "minimum": 0},
+              "task_count": {"type": "integer", "minimum": 0}
+            }
+          },
+          "evidence_freshness": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["latest_evidence_at", "age_seconds"],
+            "properties": {
+              "latest_evidence_at": {"type": ["string", "null"], "format": "date-time"},
+              "age_seconds": {"type": ["integer", "null"], "minimum": 0}
+            }
+          },
+          "calibration_version": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "checksum_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "probabilityEstimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["point", "lower", "upper"],
+      "properties": {
+        "point": {"$ref": "#/$defs/probability"},
+        "lower": {"$ref": "#/$defs/probability"},
+        "upper": {"$ref": "#/$defs/probability"}
+      }
+    },
+    "probabilityEstimateWithFloor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["point", "lower", "upper", "probability_above_floor"],
+      "properties": {
+        "point": {"$ref": "#/$defs/probability"},
+        "lower": {"$ref": "#/$defs/probability"},
+        "upper": {"$ref": "#/$defs/probability"},
+        "probability_above_floor": {"$ref": "#/$defs/probability"}
+      }
+    },
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": {"type": ["number", "null"], "minimum": 0},
+        "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"}
+      }
+    },
+    "quotaEstimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capacity_pool", "window", "amount", "unit"],
+      "properties": {
+        "capacity_pool": {"type": "string", "minLength": 1},
+        "window": {"type": "string", "minLength": 1},
+        "amount": {"type": ["number", "null"], "minimum": 0},
+        "unit": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

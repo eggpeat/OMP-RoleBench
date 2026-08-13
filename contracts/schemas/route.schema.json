@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:route:v1",
+  "title": "Exact OMP Model Route v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "route_id", "provider", "model", "thinking", "transport", "upstream", "capacity_pool", "credential_selection", "omp_version"],
+  "properties": {
+    "schema_version": {"const": "omp.route/v1"},
+    "route_id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/+~-]*$"},
+    "provider": {"type": "string", "minLength": 1},
+    "model": {"type": "string", "minLength": 1},
+    "thinking": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max", "auto"]},
+    "transport": {"type": "string", "minLength": 1},
+    "upstream": {"type": ["string", "null"], "minLength": 1},
+    "capacity_pool": {
+      "$comment": "Opaque aggregate accounting pool. It is not a credential or account selector.",
+      "type": "string",
+      "minLength": 1
+    },
+    "credential_selection": {"const": "provider-managed"},
+    "omp_version": {"type": "string", "minLength": 1}
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": "omp.role-registry/v1",
+  "source": {
+    "repository": "can1357/oh-my-pi",
+    "revision": "a5090f1f81cf0ac072fbd1ec949eebe6bbbc23a9",
+    "path": "packages/coding-agent/src/config/model-roles.ts",
+    "symbol": "MODEL_ROLE_IDS"
+  },
+  "roles": [
+    "default",
+    "smol",
+    "slow",
+    "vision",
+    "plan",
+    "designer",
+    "commit",
+    "tiny",
+    "task",
+    "advisor"
+  ],
+  "contracts": {
+    "default": "contracts/roles/default.json",
+    "smol": "contracts/roles/smol.json",
+    "slow": "contracts/roles/slow.json",
+    "vision": "contracts/roles/vision.json",
+    "plan": "contracts/roles/plan.json",
+    "designer": "contracts/roles/designer.json",
+    "commit": "contracts/roles/commit.json",
+    "tiny": "contracts/roles/tiny.json",
+    "task": "contracts/roles/task.json",
+    "advisor": "contracts/roles/advisor.json"
+  }
+}
