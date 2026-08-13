@@ -11,6 +11,8 @@ from typing import Sequence, TextIO
 from .accounting import AccountingError, classify_attempt, summarize_outcomes
 
 from .contracts import (
+    JSONObject,
+    JSONValue,
     BUILTIN_ROLES,
     ContractError,
     Diagnostic,
@@ -21,6 +23,7 @@ from .contracts import (
     validate_artifact,
     validate_repository,
 )
+from .fault_harness import FaultHarnessError, run_fault_check
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -65,6 +68,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     summarize.add_argument("paths", type=Path, nargs="+")
     summarize.add_argument("--json", action="store_true", dest="as_json")
+    worker = groups.add_parser(
+        "worker",
+        help="check scored-worker policy and accounting conformance",
+    )
+    worker_commands = worker.add_subparsers(dest="command", required=True)
+    fault_check = worker_commands.add_parser(
+        "fault-check",
+        help="run deterministic scored-worker fault accounting checks",
+    )
+    fault_check.add_argument("policy", type=Path)
+    fault_check.add_argument("--json", action="store_true", dest="as_json")
+
 
     return parser
 
@@ -98,7 +113,7 @@ def _print_diagnostics(
         print(f"{diagnostic.file}:{diagnostic.json_path}: {diagnostic.message}", file=stdout)
 
 
-def _read_json_object(root: Path, artifact_path: Path) -> dict[str, object]:
+def _read_json_object(root: Path, artifact_path: Path) -> JSONObject:
     path = artifact_path.expanduser()
     if not path.is_absolute():
         path = root / path
@@ -116,7 +131,7 @@ def _read_json_object(root: Path, artifact_path: Path) -> dict[str, object]:
     return value
 
 
-def _print_accounting_summary(summary: dict[str, object], stdout: TextIO) -> None:
+def _print_accounting_summary(summary: JSONObject, stdout: TextIO) -> None:
     quality_score = summary["quality_score"]
     accepted = summary["accepted"]
     rejected = summary["rejected"]
@@ -139,6 +154,69 @@ def _print_accounting_summary(summary: dict[str, object], stdout: TextIO) -> Non
         f"{not_scored['cancelled']} cancelled",
         file=stdout,
     )
+
+def _format_fault_outcome(outcome: JSONValue) -> str:
+    if not isinstance(outcome, dict):
+        raise FaultHarnessError("scenario outcome must be an object")
+    fields = (
+        "reason_code",
+        "disposition",
+        "failure_domain",
+        "model_outcome",
+        "verifier_outcome",
+        "counts_toward_quality",
+    )
+    return ", ".join(f"{field}={outcome.get(field)!r}" for field in fields)
+
+
+def _print_fault_check_report(report: JSONObject, stdout: TextIO) -> None:
+    passed = report.get("passed") is True
+    print(f"Worker fault check: {'PASS' if passed else 'FAIL'}", file=stdout)
+    print(f"Policy SHA-256: {report['policy_digest_sha256']}", file=stdout)
+    print(
+        "Reason-code coverage: "
+        f"{report['covered_reason_count']}/{report['expected_reason_count']} "
+        f"({report['scenario_count']} scenarios)",
+        file=stdout,
+    )
+    covered_reason_codes = report["covered_reason_codes"]
+    if not isinstance(covered_reason_codes, list):
+        raise FaultHarnessError("covered_reason_codes must be an array")
+    print(
+        "Covered reason codes: " + ", ".join(str(item) for item in covered_reason_codes),
+        file=stdout,
+    )
+    print(f"External calls: {report['external_calls']}", file=stdout)
+    print("Scenarios:", file=stdout)
+    scenarios = report["scenarios"]
+    if not isinstance(scenarios, list):
+        raise FaultHarnessError("scenarios must be an array")
+    for scenario in scenarios:
+        if not isinstance(scenario, dict):
+            raise FaultHarnessError("scenario must be an object")
+        result = "PASS" if scenario.get("passed") is True else "FAIL"
+        print(
+            f"[{result}] {scenario['scenario']}: "
+            f"expected ({_format_fault_outcome(scenario['expected'])}); "
+            f"actual ({_format_fault_outcome(scenario['actual'])}); "
+            f"observation_valid={scenario['observation_valid']!r}; "
+            f"outcome_valid={scenario['outcome_valid']!r}",
+            file=stdout,
+        )
+        diagnostics = scenario["diagnostics"]
+        if diagnostics:
+            print(f"  diagnostics: {canonical_json(diagnostics)}", file=stdout)
+    print(
+        f"Scenarios passed: {report['passed_scenarios']}; "
+        f"failed: {report['failed_scenarios']}",
+        file=stdout,
+    )
+    quality_summary = report["quality_summary"]
+    if not isinstance(quality_summary, dict):
+        raise FaultHarnessError("quality_summary must be an object")
+    _print_accounting_summary(quality_summary, stdout)
+
+
 
 
 def run(
@@ -208,6 +286,27 @@ def run(
             else:
                 _print_accounting_summary(summary, stdout)
             return 0
+        if arguments.group == "worker" and arguments.command == "fault-check":
+            result = validate_artifact(
+                root,
+                "scored-worker-policy",
+                arguments.policy,
+            )
+            if not result.valid:
+                _print_diagnostics(
+                    result.diagnostics,
+                    as_json=arguments.as_json,
+                    stdout=stderr,
+                    success_message="",
+                )
+                return 1
+            report = run_fault_check(root, arguments.policy)
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_fault_check_report(report, stdout)
+            return 0 if report.get("passed") is True else 1
+
 
         if arguments.group == "contracts" and arguments.command == "validate":
             result = validate_repository(root)
@@ -236,7 +335,7 @@ def run(
             return 0
 
         raise ContractError(f"unknown command: {arguments.command}")
-    except (AccountingError, ContractError) as error:
+    except (AccountingError, ContractError, FaultHarnessError) as error:
         print(f"error: {error}", file=stderr)
         return 2
 
