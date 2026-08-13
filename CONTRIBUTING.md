@@ -117,6 +117,18 @@ Preserve these rules:
 
 The classifier in `src/rolebench/accounting.py` is deterministic. New failure signals require a contract update and a focused fixture proving both their classification and whether they count.
 
+### Scored worker policy and fault check
+
+`omp.scored-worker-policy/v1` is the fail-closed contract for the future scored worker. Keep the canonical policy and schema synchronized. Changes must retain rootless Docker with `runsc`, non-root and non-privileged execution, dropped capabilities, no host namespaces/devices/mounts, a read-only root filesystem, ephemeral bounded scratch, provider-proxy-only networking without credentials, immutable artifact handoff, an isolated networkless verifier, and accounting that excludes infrastructure and verifier failures from model quality.
+
+Run the deterministic pre-install gate after changing the worker policy or accounting:
+
+```bash
+rolebench worker fault-check contracts/scored-worker-policy.json
+```
+
+A clean result covers all 28 accounting reason codes with 4 scored controls, 18 retryable system failures, 5 quarantined controls, 1 cancellation, and zero external calls. The gate is synthetic: it validates policy and accounting behavior but does not prove that Docker, `runsc`, provider proxying, resource enforcement, or verifier isolation is installed or effective. Runtime worker changes need separate isolation, compatibility, and observed-fault tests before any scored benchmark.
+
 ## Role contracts
 
 The built-in registry mirrors OMP's canonical role list. A registry update must:

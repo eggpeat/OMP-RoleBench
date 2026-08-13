@@ -2,7 +2,7 @@
 
 OMP RoleBench is the contract and tooling project for the evidence and policy-generation side of benchmark-informed model routing for [Oh My Pi](https://github.com/can1357/oh-my-pi). It is designed to evaluate exact model routes against OMP role contracts, estimate capability and operational uncertainty, and generate immutable allocation policies that OMP can execute deterministically.
 
-> **Status:** contract foundation. Role contracts, artifact validation, and fair attempt accounting are implemented. The benchmark worker, diagnostic task packs, capability estimates, capacity-aware optimization, policy generation, and OMP runtime integration are not implemented yet.
+> **Status:** contract foundation. Role contracts, artifact validation, fair attempt accounting, a strict scored-worker policy, and a no-model fault conformance gate are implemented. The container worker, diagnostic task packs, capability estimates, capacity-aware optimization, policy generation, and OMP runtime integration are not implemented yet.
 
 ## Why this exists
 
@@ -40,7 +40,9 @@ This prevents infrastructure trouble from looking like poor model quality withou
 
 ### Worker status
 
-The isolated Docker/gVisor worker is still planned. Before it is used for scored benchmarks, it must pass fault tests proving that worker failures do not change model quality, plus speed and compatibility checks on representative tasks. Nothing in the current release launches containers or calls a model provider.
+[`contracts/scored-worker-policy.json`](contracts/scored-worker-policy.json) defines the required Docker/runsc isolation, provider-proxy boundary, resource limits, immutable handoff, networkless verifier, and fail-closed accounting behavior for a future scored worker. `rolebench worker fault-check` validates that policy and sends 28 deterministic synthetic conditions through artifact validation and attempt accounting without launching Docker, using the network, or calling a model.
+
+This is a pre-install conformance gate, not runtime enforcement. The Docker/gVisor worker is still planned; before it handles scored benchmarks, it must prove that its observed failures map to the same accounting outcomes and pass speed and compatibility checks on representative tasks.
 
 ## Design principles
 
@@ -93,6 +95,7 @@ rolebench [--root PATH] contracts show ROLE
 rolebench [--root PATH] artifacts validate SCHEMA PATH [--json]
 rolebench [--root PATH] accounting classify OBSERVATION
 rolebench [--root PATH] accounting summarize OUTCOME... [--json]
+rolebench [--root PATH] worker fault-check POLICY [--json]
 ```
 
 Examples:
@@ -103,15 +106,18 @@ rolebench contracts digest --json
 rolebench artifacts validate route-policy path/to/policy.json --json
 rolebench accounting classify path/to/observation.json
 rolebench accounting summarize path/to/outcome-*.json
+rolebench worker fault-check contracts/scored-worker-policy.json --json
 ```
 
-Artifact schema names are the filenames in [`contracts/schemas`](contracts/schemas) without `.schema.json`. Attempt accounting uses `attempt-observation` for facts collected from a run and `attempt-outcome` for the decision about whether that run counts. Other schemas include `route`, `evidence-row`, `capability-snapshot`, `capacity-snapshot`, `demand-snapshot`, `route-policy`, and `routing-decision`.
+Artifact schema names are the filenames in [`contracts/schemas`](contracts/schemas) without `.schema.json`. Attempt accounting uses `attempt-observation` for facts collected from a run and `attempt-outcome` for the decision about whether that run counts. `scored-worker-policy` defines the fail-closed execution boundary used by the no-model conformance gate. Other schemas include `route`, `evidence-row`, `capability-snapshot`, `capacity-snapshot`, `demand-snapshot`, `route-policy`, and `routing-decision`.
 
 ## Repository layout
 
 ```text
 contracts/
   role-registry.json     Canonical built-in role registry and OMP provenance
+  scored-worker-policy.json
+                          Canonical policy for future scored-worker enforcement
   roles/                 Versioned diagnostic contracts for all ten roles
   schemas/               Draft 2020-12 artifact schemas
 docs/
@@ -120,9 +126,13 @@ src/rolebench/
   cli.py                 Command-line interface
   accounting_rules.py    Shared reason and scoring invariants
   accounting.py          Fair attempt classification and quality summaries
+  fault_harness.py       Deterministic no-model accounting conformance gate
   contracts.py           Loading, canonicalization, validation, and semantics
 tests/
   test_accounting.py     Attempt fault, scoring, and CLI behavior tests
+  test_fault_harness.py  Exact accounting reason-code fault matrix
+  test_worker_cli.py     Scored-worker conformance CLI behavior
+  test_worker_policy.py  Isolation policy schema and semantic invariants
   test_contracts.py      Contract, artifact, CLI, and failure-path tests
 ```
 
@@ -132,13 +142,13 @@ Large benchmark outputs do not belong in Git. Keep raw run artifacts in an exter
 
 Committed schemas use JSON Schema Draft 2020-12 and namespaced versions such as `omp.route-policy/v1`. Semantic validation supplements JSON Schema where cross-field rules are required. For example, each active role in a policy must have exactly 10,000 positive integer basis points, unique route IDs, ordered validity timestamps, and an explicit emergency fallback order independent of weighted allocation.
 
-The canonical contract digest covers the registry and all ten role manifests in registry order. It is stable across JSON whitespace and object-key ordering.
+The canonical contract digest covers the registry, all ten role manifests in registry order, and the scored-worker policy. It is stable across JSON whitespace and object-key ordering.
 
 ## Roadmap
 
 1. Freeze all ten v1 role contracts and cross-repository artifact contracts.
 2. Build OMP-native objective diagnostics for every role and pin applicable Terminal-Bench anchors.
-3. Build Harbor/OMP run manifests and feed their normalized observations through the implemented attempt-accounting checks.
+3. Implement the Docker/runsc scored worker against the canonical policy, then prove runtime isolation, compatibility, and observed-fault parity with the existing no-model gate.
 4. Estimate calibrated `role x route` capability, reliability, cost, latency, and quota consumption.
 5. Add capacity and demand snapshots plus the constrained allocation optimizer.
 6. Validate allocation regret on held-out tasks and posterior draws.
