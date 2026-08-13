@@ -102,6 +102,21 @@ Weights are optimizer output, not hand-authored quality scores. A nonzero alloca
 
 Decision artifacts must retain enough information for deterministic explanation and replay without retaining sensitive identity data. Candidate eligibility, reason codes, rank, policy checksum, role, health/capacity epoch, explicit override state, selection, fallback ranking, and recovery outcome belong in the record. Raw routing keys, prompts, account labels, credential IDs, tokens, and error bodies do not.
 
+### Attempt accounting
+
+`omp.attempt-observation/v1` records facts from one run. `omp.attempt-outcome/v1` is generated from those facts and says whether the run affects model quality. Do not infer an outcome directly from a container exit code, a missing reward, or the older `evidence-row` failure text.
+
+Preserve these rules:
+
+- only valid `accepted` and `rejected` outcomes count toward model quality;
+- provider, worker, dependency, runtime, and grader failures remain visible but do not lower quality;
+- a healthy model deadline or per-attempt resource limit is a scored rejection;
+- operator cancellation does not count;
+- missing or malformed grader results do not count; and
+- integrity, sandbox, or suspected cheating concerns are quarantined.
+
+The classifier in `src/rolebench/accounting.py` is deterministic. New failure signals require a contract update and a focused fixture proving both their classification and whether they count.
+
 ## Role contracts
 
 The built-in registry mirrors OMP's canonical role list. A registry update must:

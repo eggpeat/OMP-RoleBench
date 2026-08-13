@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:attempt-observation:v1",
+  "title": "RoleBench Attempt Observation v1",
+  "$comment": "Normalized facts from one benchmark attempt. This artifact records what happened; it does not decide whether the attempt affects model quality.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_id", "observed_at", "attempt", "stage", "lifecycle", "readiness", "issues", "provider", "termination", "verifier", "integrity", "digests"],
+  "properties": {
+    "schema_version": {"const": "omp.attempt-observation/v1"},
+    "observation_id": {"type": "string", "minLength": 1},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "attempt": {"$ref": "#/$defs/attempt"},
+    "stage": {"enum": ["queued", "environment", "agent", "artifact", "verifier", "complete"]},
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment_started", "agent_started", "agent_finished", "artifact_frozen", "verifier_started", "verifier_finished"],
+      "properties": {
+        "environment_started": {"type": "boolean"},
+        "agent_started": {"type": "boolean"},
+        "agent_finished": {"type": "boolean"},
+        "artifact_frozen": {"type": "boolean"},
+        "verifier_started": {"type": "boolean"},
+        "verifier_finished": {"type": "boolean"}
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "runner", "provider"],
+      "properties": {
+        "environment": {"enum": ["ready", "failed", "unknown"]},
+        "runner": {"enum": ["healthy", "failed", "unknown"]},
+        "provider": {"enum": ["available", "failed", "unknown"]}
+      }
+    },
+    "issues": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "environment-startup",
+          "image-pull",
+          "broken-entrypoint",
+          "dependency-setup",
+          "runner-failure",
+          "artifact-collection",
+          "provider-rate-limit",
+          "provider-server-error",
+          "provider-auth-error",
+          "provider-network-error",
+          "runtime-incompatible",
+          "verifier-crash",
+          "verifier-result-missing",
+          "verifier-result-malformed",
+          "artifact-tampering",
+          "sandbox-violation",
+          "suspected-reward-hacking"
+        ]
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_started", "http_status"],
+      "properties": {
+        "request_started": {"type": "boolean"},
+        "http_status": {
+          "oneOf": [
+            {"type": "integer", "minimum": 100, "maximum": 599},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "termination": {"$ref": "#/$defs/termination"},
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "result_valid", "reward"],
+      "properties": {
+        "outcome": {"enum": ["accepted", "rejected", "error", "not-run"]},
+        "result_valid": {"type": "boolean"},
+        "reward": {
+          "oneOf": [
+            {"type": "number", "minimum": 0, "maximum": 1},
+            {"type": "null"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"outcome": {"const": "accepted"}}, "required": ["outcome"]},
+          "then": {"properties": {"result_valid": {"const": true}, "reward": {"const": 1}}}
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "rejected"}}, "required": ["outcome"]},
+          "then": {"properties": {"result_valid": {"const": true}, "reward": {"type": "number", "minimum": 0, "exclusiveMaximum": 1}}}
+        },
+        {
+          "if": {"properties": {"outcome": {"enum": ["error", "not-run"]}}, "required": ["outcome"]},
+          "then": {"properties": {"result_valid": {"const": false}, "reward": {"type": "null"}}}
+        }
+      ]
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {"enum": ["verified", "failed", "unknown"]}
+      }
+    },
+    "digests": {"$ref": "#/$defs/digests"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {
+      "oneOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "number", "previous_attempt_id"],
+      "properties": {
+        "attempt_id": {"type": "string", "minLength": 1},
+        "number": {"type": "integer", "minimum": 1},
+        "previous_attempt_id": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "termination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "exit_code", "signal", "oom_scope"],
+      "properties": {
+        "kind": {"enum": ["completed", "model-deadline", "orchestrator-timeout", "resource-limit", "operator-cancelled", "signal", "unknown"]},
+        "exit_code": {"type": ["integer", "null"]},
+        "signal": {"type": ["integer", "null"], "minimum": 1},
+        "oom_scope": {"enum": ["none", "attempt", "host", "unknown"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "resource-limit"}}, "required": ["kind"]},
+          "then": {"properties": {"oom_scope": {"enum": ["attempt", "host", "unknown"]}}}
+        }
+      ]
+    },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "config", "agent_image", "verifier_image", "runtime_policy", "artifact", "trajectory"],
+      "properties": {
+        "task": {"$ref": "#/$defs/sha256"},
+        "config": {"$ref": "#/$defs/sha256"},
+        "agent_image": {"$ref": "#/$defs/sha256"},
+        "verifier_image": {"$ref": "#/$defs/sha256"},
+        "runtime_policy": {"$ref": "#/$defs/sha256"},
+        "artifact": {"$ref": "#/$defs/nullableSha256"},
+        "trajectory": {"$ref": "#/$defs/nullableSha256"}
+      }
+    }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:attempt-outcome:v1",
+  "title": "RoleBench Attempt Outcome v1",
+  "$comment": "Deterministic accounting decision for one attempt. Only valid, scored accepted or rejected outcomes affect model quality.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_id", "observation_digest_sha256", "attempt", "stage", "model_outcome", "verifier_outcome", "failure_domain", "disposition", "valid_attempt", "counts_toward_quality", "reason_code", "termination", "digests"],
+  "properties": {
+    "schema_version": {"const": "omp.attempt-outcome/v1"},
+    "observation_id": {"type": "string", "minLength": 1},
+    "observation_digest_sha256": {"$ref": "#/$defs/sha256"},
+    "attempt": {"$ref": "#/$defs/attempt"},
+    "stage": {"enum": ["queued", "environment", "agent", "artifact", "verifier", "complete"]},
+    "model_outcome": {"enum": ["accepted", "rejected", "no-valid-attempt"]},
+    "verifier_outcome": {"enum": ["accepted", "rejected", "indeterminate", "error"]},
+    "failure_domain": {
+      "enum": [
+        "none",
+        "model_task",
+        "verifier",
+        "runner_harness",
+        "environment_image",
+        "dependency_download",
+        "provider_api",
+        "timeout_model_deadline",
+        "timeout_orchestrator",
+        "external_cancellation",
+        "policy_sandbox",
+        "integrity",
+        "suspected_reward_hacking"
+      ]
+    },
+    "disposition": {"enum": ["scored", "retryable-invalid", "quarantined", "cancelled"]},
+    "valid_attempt": {"type": "boolean"},
+    "counts_toward_quality": {"type": "boolean"},
+    "reason_code": {
+      "enum": [
+        "verifier-accepted",
+        "verifier-rejected",
+        "model-deadline",
+        "attempt-resource-limit",
+        "operator-cancelled",
+        "suspected-reward-hacking",
+        "sandbox-violation",
+        "artifact-tampering",
+        "integrity-failed",
+        "integrity-unknown",
+        "environment-startup",
+        "image-pull",
+        "broken-entrypoint",
+        "dependency-setup",
+        "runner-failure",
+        "artifact-collection",
+        "provider-rate-limit",
+        "provider-server-error",
+        "provider-auth-error",
+        "provider-network-error",
+        "runtime-incompatible",
+        "host-resource-exhaustion",
+        "orchestrator-timeout",
+        "verifier-crash",
+        "verifier-result-missing",
+        "verifier-result-malformed",
+        "verifier-unhealthy",
+        "incomplete-observation"
+      ]
+    },
+    "termination": {"$ref": "#/$defs/termination"},
+    "digests": {"$ref": "#/$defs/digests"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {
+      "oneOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "number", "previous_attempt_id"],
+      "properties": {
+        "attempt_id": {"type": "string", "minLength": 1},
+        "number": {"type": "integer", "minimum": 1},
+        "previous_attempt_id": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "termination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "exit_code", "signal", "oom_scope"],
+      "properties": {
+        "kind": {"enum": ["completed", "model-deadline", "orchestrator-timeout", "resource-limit", "operator-cancelled", "signal", "unknown"]},
+        "exit_code": {"type": ["integer", "null"]},
+        "signal": {"type": ["integer", "null"], "minimum": 1},
+        "oom_scope": {"enum": ["none", "attempt", "host", "unknown"]}
+      }
+    },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "config", "agent_image", "verifier_image", "runtime_policy", "artifact", "trajectory"],
+      "properties": {
+        "task": {"$ref": "#/$defs/sha256"},
+        "config": {"$ref": "#/$defs/sha256"},
+        "agent_image": {"$ref": "#/$defs/sha256"},
+        "verifier_image": {"$ref": "#/$defs/sha256"},
+        "runtime_policy": {"$ref": "#/$defs/sha256"},
+        "artifact": {"$ref": "#/$defs/nullableSha256"},
+        "trajectory": {"$ref": "#/$defs/nullableSha256"}
+      }
+    }
+  }
+}

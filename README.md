@@ -2,7 +2,7 @@
 
 OMP RoleBench is the contract and tooling project for the evidence and policy-generation side of benchmark-informed model routing for [Oh My Pi](https://github.com/can1357/oh-my-pi). It is designed to evaluate exact model routes against OMP role contracts, estimate capability and operational uncertainty, and generate immutable allocation policies that OMP can execute deterministically.
 
-> **Status:** contract foundation. The role registry, artifact schemas, validators, and tests are implemented. Benchmark orchestration, diagnostic task packs, capability estimation, capacity-aware optimization, policy generation, and OMP runtime integration are not implemented yet.
+> **Status:** contract foundation. Role contracts, artifact validation, and fair attempt accounting are implemented. The benchmark worker, diagnostic task packs, capability estimates, capacity-aware optimization, policy generation, and OMP runtime integration are not implemented yet.
 
 ## Why this exists
 
@@ -20,6 +20,27 @@ OMP role contracts
 ```
 
 The benchmark and optimizer live here. The generic policy loader and runtime router belong upstream in OMP. OMP must not depend on RoleBench, its datasets, Harbor, or statistical tooling to serve a normal request.
+
+## How scoring stays fair
+
+A benchmark can go wrong for different reasons:
+
+1. The model produced the wrong result.
+2. The testing system broke.
+3. The model provider was unavailable.
+
+Only the first case lowers the model's quality score. A broken container, provider outage, missing result, or grader crash is reported as a system problem instead. Suspicious or incomplete runs are set aside for review.
+
+RoleBench therefore reports two different things:
+
+- **Quality:** how often the model succeeded when a test completed normally.
+- **Run reliability:** how often the provider and testing system produced a usable result.
+
+This prevents infrastructure trouble from looking like poor model quality without hiding that the trouble happened.
+
+### Worker status
+
+The isolated Docker/gVisor worker is still planned. Before it is used for scored benchmarks, it must pass fault tests proving that worker failures do not change model quality, plus speed and compatibility checks on representative tasks. Nothing in the current release launches containers or calls a model provider.
 
 ## Design principles
 
@@ -70,6 +91,8 @@ rolebench [--root PATH] contracts validate [--json]
 rolebench [--root PATH] contracts digest [--json]
 rolebench [--root PATH] contracts show ROLE
 rolebench [--root PATH] artifacts validate SCHEMA PATH [--json]
+rolebench [--root PATH] accounting classify OBSERVATION
+rolebench [--root PATH] accounting summarize OUTCOME... [--json]
 ```
 
 Examples:
@@ -78,9 +101,11 @@ Examples:
 rolebench contracts show advisor
 rolebench contracts digest --json
 rolebench artifacts validate route-policy path/to/policy.json --json
+rolebench accounting classify path/to/observation.json
+rolebench accounting summarize path/to/outcome-*.json
 ```
 
-Artifact schema names are the filenames in [`contracts/schemas`](contracts/schemas) without `.schema.json`, including `route`, `evidence-row`, `capability-snapshot`, `capacity-snapshot`, `demand-snapshot`, `route-policy`, and `routing-decision`.
+Artifact schema names are the filenames in [`contracts/schemas`](contracts/schemas) without `.schema.json`. Attempt accounting uses `attempt-observation` for facts collected from a run and `attempt-outcome` for the decision about whether that run counts. Other schemas include `route`, `evidence-row`, `capability-snapshot`, `capacity-snapshot`, `demand-snapshot`, `route-policy`, and `routing-decision`.
 
 ## Repository layout
 
@@ -93,8 +118,11 @@ docs/
   OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md
 src/rolebench/
   cli.py                 Command-line interface
+  accounting_rules.py    Shared reason and scoring invariants
+  accounting.py          Fair attempt classification and quality summaries
   contracts.py           Loading, canonicalization, validation, and semantics
 tests/
+  test_accounting.py     Attempt fault, scoring, and CLI behavior tests
   test_contracts.py      Contract, artifact, CLI, and failure-path tests
 ```
 
@@ -110,7 +138,7 @@ The canonical contract digest covers the registry and all ten role manifests in 
 
 1. Freeze all ten v1 role contracts and cross-repository artifact contracts.
 2. Build OMP-native objective diagnostics for every role and pin applicable Terminal-Bench anchors.
-3. Add Harbor/OMP run manifests and normalized evidence ingestion.
+3. Build Harbor/OMP run manifests and feed their normalized observations through the implemented attempt-accounting checks.
 4. Estimate calibrated `role x route` capability, reliability, cost, latency, and quota consumption.
 5. Add capacity and demand snapshots plus the constrained allocation optimizer.
 6. Validate allocation regret on held-out tasks and posterior draws.

@@ -12,6 +12,8 @@ from typing import Iterable, Iterator, Sequence
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from .accounting_rules import ATTEMPT_OUTCOME_RULES
+
 
 type JSONScalar = None | bool | int | float | str
 type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
@@ -556,12 +558,302 @@ def _routing_decision_semantics(
                 seen[route_id] = index
 
 
+def _attempt_observation_semantics(
+    observation: JSONObject,
+    relative: Path,
+) -> Iterator[Diagnostic]:
+    lifecycle = observation.get("lifecycle")
+    if isinstance(lifecycle, dict):
+        implications = (
+            ("agent_started", "environment_started"),
+            ("agent_finished", "agent_started"),
+            ("artifact_frozen", "agent_finished"),
+            ("verifier_started", "artifact_frozen"),
+            ("verifier_finished", "verifier_started"),
+        )
+        for later, earlier in implications:
+            if lifecycle.get(later) is True and lifecycle.get(earlier) is not True:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    _json_path(("lifecycle", later)),
+                    f"{later} requires {earlier}",
+                )
+
+        verifier = observation.get("verifier")
+        if isinstance(verifier, dict):
+            verifier_outcome = verifier.get("outcome")
+            if verifier_outcome in {"accepted", "rejected"} and lifecycle.get(
+                "verifier_finished"
+            ) is not True:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.verifier.outcome",
+                    "a decisive verifier outcome requires a finished verifier",
+                )
+            if verifier_outcome == "not-run" and (
+                lifecycle.get("verifier_started") is True
+                or lifecycle.get("verifier_finished") is True
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.verifier.outcome",
+                    "not-run requires verifier_started and verifier_finished to be false",
+                )
+
+        digests = observation.get("digests")
+        if isinstance(digests, dict):
+            if lifecycle.get("artifact_frozen") is True and not isinstance(
+                digests.get("artifact"), str
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.digests.artifact",
+                    "a frozen artifact requires its digest",
+                )
+
+    readiness = observation.get("readiness")
+    if (
+        isinstance(readiness, dict)
+        and readiness.get("environment") == "ready"
+        and isinstance(lifecycle, dict)
+        and lifecycle.get("environment_started") is not True
+    ):
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.readiness.environment",
+            "a ready environment must have started",
+        )
+
+    provider = observation.get("provider")
+    if isinstance(provider, dict):
+        request_started = provider.get("request_started")
+        http_status = provider.get("http_status")
+        if (
+            request_started is True
+            and isinstance(lifecycle, dict)
+            and lifecycle.get("agent_started") is not True
+        ):
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.provider.request_started",
+                "a provider request requires a started agent",
+            )
+        if isinstance(http_status, int) and request_started is not True:
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.provider.http_status",
+                "an HTTP status requires a started provider request",
+            )
+
+    termination = observation.get("termination")
+    if isinstance(termination, dict):
+        kind = termination.get("kind")
+        oom_scope = termination.get("oom_scope")
+        if kind == "resource-limit":
+            if oom_scope not in {"attempt", "host", "unknown"}:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.termination.oom_scope",
+                    "resource-limit termination requires attempt, host, or unknown scope",
+                )
+        elif oom_scope != "none":
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.termination.oom_scope",
+                "only resource-limit termination may have a non-none OOM scope",
+            )
+        verifier = observation.get("verifier")
+        if (
+            kind != "completed"
+            and isinstance(verifier, dict)
+            and verifier.get("outcome") in {"accepted", "rejected"}
+        ):
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.verifier.outcome",
+                "a decisive verifier outcome requires completed termination",
+            )
+        if (
+            kind == "model-deadline"
+            or (kind == "resource-limit" and oom_scope == "attempt")
+        ) and (
+            not isinstance(provider, dict)
+            or provider.get("request_started") is not True
+        ):
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.provider.request_started",
+                "a scored model limit requires a started provider request",
+            )
+
+    integrity = observation.get("integrity")
+    digests = observation.get("digests")
+    if (
+        isinstance(integrity, dict)
+        and integrity.get("state") == "verified"
+        and isinstance(digests, dict)
+        and not isinstance(digests.get("trajectory"), str)
+    ):
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.digests.trajectory",
+            "verified integrity requires a trajectory digest",
+        )
+
+    issues = observation.get("issues")
+    issue_set = set(issues) if isinstance(issues, list) else set()
+    if (
+        "artifact-tampering" in issue_set
+        and isinstance(integrity, dict)
+        and integrity.get("state") != "failed"
+    ):
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.integrity.state",
+            "artifact-tampering requires failed integrity",
+        )
+    if isinstance(provider, dict):
+        http_status = provider.get("http_status")
+        expected_statuses: tuple[tuple[str, object], ...] = (
+            ("provider-rate-limit", 429),
+            ("provider-auth-error", {401, 403}),
+        )
+        for issue, expected in expected_statuses:
+            if issue not in issue_set:
+                continue
+            matches = (
+                http_status in expected
+                if isinstance(expected, set)
+                else http_status == expected
+            )
+            if not matches:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.provider.http_status",
+                    f"{issue} has an inconsistent HTTP status",
+                )
+        if "provider-server-error" in issue_set and (
+            not isinstance(http_status, int) or not 500 <= http_status <= 599
+        ):
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.provider.http_status",
+                "provider-server-error requires a 5xx HTTP status",
+            )
+
+
+def _attempt_outcome_semantics(
+    outcome: JSONObject,
+    relative: Path,
+) -> Iterator[Diagnostic]:
+    reason_code = outcome.get("reason_code")
+    if not isinstance(reason_code, str) or reason_code not in ATTEMPT_OUTCOME_RULES:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.reason_code",
+            "reason_code has no accounting rule",
+        )
+        return
+
+    (
+        expected_disposition,
+        allowed_domains,
+        expected_model_outcome,
+        expected_verifier_outcome,
+        allowed_terminations,
+        allowed_oom_scopes,
+    ) = ATTEMPT_OUTCOME_RULES[reason_code]
+    expected_fields: tuple[tuple[str, JSONValue, object, str], ...] = (
+        (
+            "disposition",
+            outcome.get("disposition"),
+            expected_disposition,
+            f"must be {expected_disposition!r} for reason_code {reason_code!r}",
+        ),
+        (
+            "model_outcome",
+            outcome.get("model_outcome"),
+            expected_model_outcome,
+            f"must be {expected_model_outcome!r} for reason_code {reason_code!r}",
+        ),
+        (
+            "verifier_outcome",
+            outcome.get("verifier_outcome"),
+            expected_verifier_outcome,
+            f"must be {expected_verifier_outcome!r} for reason_code {reason_code!r}",
+        ),
+    )
+    for field, actual, expected, message in expected_fields:
+        if actual != expected:
+            yield Diagnostic(
+                relative.as_posix(),
+                _json_path((field,)),
+                message,
+            )
+
+    failure_domain = outcome.get("failure_domain")
+    if failure_domain not in allowed_domains:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.failure_domain",
+            f"is incompatible with reason_code {reason_code!r}",
+        )
+
+    termination = outcome.get("termination")
+    if isinstance(termination, dict):
+        kind = termination.get("kind")
+        oom_scope = termination.get("oom_scope")
+        if kind not in allowed_terminations:
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.termination.kind",
+                f"is incompatible with reason_code {reason_code!r}",
+            )
+        if oom_scope not in allowed_oom_scopes:
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.termination.oom_scope",
+                f"is incompatible with reason_code {reason_code!r}",
+            )
+        if kind == "resource-limit":
+            if oom_scope not in {"attempt", "host", "unknown"}:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.termination.oom_scope",
+                    "resource-limit requires attempt, host, or unknown scope",
+                )
+        elif oom_scope != "none":
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.termination.oom_scope",
+                "only resource-limit may have a non-none OOM scope",
+            )
+
+    scored = expected_disposition == "scored"
+    if outcome.get("valid_attempt") is not scored:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.valid_attempt",
+            f"must be {scored!r} for reason_code {reason_code!r}",
+        )
+    if outcome.get("counts_toward_quality") is not scored:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.counts_toward_quality",
+            f"must be {scored!r} for reason_code {reason_code!r}",
+        )
+
+
 def _artifact_semantics(
     schema_name: str,
     artifact: JSONObject,
     relative: Path,
 ) -> Iterator[Diagnostic]:
-    if schema_name == "route-policy":
+    if schema_name == "attempt-observation":
+        yield from _attempt_observation_semantics(artifact, relative)
+    elif schema_name == "attempt-outcome":
+        yield from _attempt_outcome_semantics(artifact, relative)
+    elif schema_name == "route-policy":
         yield from _route_policy_semantics(artifact, relative)
     elif schema_name == "routing-decision":
         yield from _routing_decision_semantics(artifact, relative)
