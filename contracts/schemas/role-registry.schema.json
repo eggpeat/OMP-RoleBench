@@ -4,7 +4,7 @@
   "title": "OMP Role Registry v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "source", "roles", "contracts"],
+  "required": ["schema_version", "source", "roles", "contracts", "task_packs"],
   "properties": {
     "schema_version": {"const": "omp.role-registry/v1"},
     "source": {
@@ -43,6 +43,16 @@
         "tiny": {"const": "contracts/roles/tiny.json"},
         "task": {"const": "contracts/roles/task.json"},
         "advisor": {"const": "contracts/roles/advisor.json"}
+      }
+    },
+    "task_packs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "smol", "slow"],
+      "properties": {
+        "task": {"const": "contracts/task-packs/task-v1.json"},
+        "smol": {"const": "contracts/task-packs/smol-v1.json"},
+        "slow": {"const": "contracts/task-packs/slow-v1.json"}
       }
     }
   }

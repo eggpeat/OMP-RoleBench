@@ -26,6 +26,23 @@ from .contracts import (
     validate_value,
 )
 
+_TASK_LABEL_PREFIX = "org.omp.rolebench.task."
+_TASK_ROLE_LABEL = f"{_TASK_LABEL_PREFIX}role"
+_PUBLIC_TREE_LABEL = f"{_TASK_LABEL_PREFIX}public-tree-sha256"
+_VERIFIER_PRIVATE_TREE_LABEL = (
+    f"{_TASK_LABEL_PREFIX}verifier-private-tree-sha256"
+)
+_SINGLE_PLATFORM_MANIFEST_MEDIA_TYPES = frozenset(
+    {
+        "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.v2+json",
+    }
+)
+
+
+class _TaskBindingError(RuntimeError):
+    """An effective task image differs from its prepared binding."""
+
 
 class WorkerError(ValueError):
     """A worker manifest, policy, or internal accounting record is invalid."""
@@ -181,6 +198,22 @@ class _SubprocessAdapter:
 _ADAPTER_FACTORY: Callable[[], _Adapter] = _SubprocessAdapter
 
 
+def capture_command(
+    argv: list[str],
+    *,
+    timeout: float,
+    output_limit: int,
+) -> _StreamResult:
+    """Run one argv-only command with bounded captured output."""
+
+    return _SubprocessAdapter().stream(
+        argv,
+        input_source=None,
+        timeout=timeout,
+        output_limit=output_limit,
+    )
+
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -214,7 +247,7 @@ def _capture_object(
     path: Path,
     *,
     label: str,
-) -> tuple[JSONObject, Path, tuple[int, int, int], str]:
+) -> tuple[JSONObject, Path, tuple[int, int, int, int, int], str]:
     selected = _safe_relative(root, str(path), label=f"{label} path")
     relative = selected.relative_to(root)
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
@@ -228,9 +261,23 @@ def _capture_object(
         while chunk := os.read(descriptor, 64 * 1024):
             chunks.append(chunk)
         after = os.fstat(descriptor)
-        identity = (before.st_dev, before.st_ino, before.st_mtime_ns)
-        if identity != (after.st_dev, after.st_ino, after.st_mtime_ns) or before.st_size != after.st_size:
-            raise WorkerError(f"{label} changed while being read")
+        identity = (
+            before.st_dev,
+            before.st_ino,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        )
+        if identity != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        ):
+            raise WorkerError(
+                f"{label} changed while being read"
+            )
         data = b"".join(chunks)
     except OSError as exc:
         raise WorkerError(f"cannot capture {label}: {exc}") from exc
@@ -249,7 +296,7 @@ def _capture_object(
 def _verify_capture_stable(
     root: Path,
     relative: Path,
-    identity: tuple[int, int, int],
+    identity: tuple[int, int, int, int, int],
     *,
     label: str,
 ) -> None:
@@ -261,7 +308,9 @@ def _verify_capture_stable(
     if not stat.S_ISREG(current.st_mode) or (
         current.st_dev,
         current.st_ino,
+        current.st_size,
         current.st_mtime_ns,
+        current.st_ctime_ns,
     ) != identity:
         raise WorkerError(f"{label} changed after capture")
 
@@ -277,14 +326,18 @@ def _local_socket() -> Path:
     return socket
 
 
-def _docker_argv(docker: str, *arguments: str) -> list[str]:
+def local_docker_argv(docker: str, *arguments: str) -> list[str]:
     return [docker, "--host", f"unix://{_local_socket()}", *arguments]
 
 
 def _validated_policy(
     root: Path,
     path: Path,
-) -> tuple[JSONObject, str, tuple[Path, tuple[int, int, int]]]:
+) -> tuple[
+    JSONObject,
+    str,
+    tuple[Path, tuple[int, int, int, int, int]],
+]:
     policy, relative, identity, canonical = _capture_object(
         root,
         path,
@@ -299,7 +352,7 @@ def _validated_policy(
 def _docker_info(adapter: _Adapter, docker: str) -> tuple[_CommandResult | None, JSONObject | None, str | None]:
     try:
         result = adapter.run(
-            _docker_argv(docker, "info", "--format", "{{json .}}"),
+            local_docker_argv(docker, "info", "--format", "{{json .}}"),
             timeout=30,
         )
     except (OSError, subprocess.SubprocessError, WorkerError) as exc:
@@ -435,6 +488,154 @@ def _require_object(value: JSONValue | None, label: str) -> JSONObject:
     return value
 
 
+def _manifest_task_binding(manifest: JSONObject) -> JSONObject | None:
+    task = _require_object(manifest.get("task"), "task")
+    agent = _require_object(manifest.get("agent"), "agent")
+    verifier = _require_object(manifest.get("verifier"), "verifier")
+    tree_fields = (
+        "public_tree_digest_sha256",
+        "verifier_private_tree_digest_sha256",
+    )
+    task_present = [
+        field in task
+        for field in (
+            *tree_fields,
+            "qualification_digest_sha256",
+            "evidence_use",
+        )
+    ]
+    container_present = [
+        field in container
+        for container in (agent, verifier)
+        for field in ("config_digest_sha256", "platform")
+    ]
+    if not any(task_present) and not any(container_present):
+        return None
+    if (
+        not all(field in task for field in tree_fields)
+        or not all(container_present)
+        or task.get("evidence_use")
+        not in {"admission-only", "calibration-only"}
+    ):
+        raise WorkerError("task image binding is incomplete")
+    evidence_use = task["evidence_use"]
+    qualification_present = (
+        "qualification_digest_sha256" in task
+    )
+    if (
+        evidence_use == "admission-only"
+        and qualification_present
+    ) or (
+        evidence_use == "calibration-only"
+        and not qualification_present
+    ):
+        raise WorkerError(
+            "task qualification binding conflicts with evidence_use"
+        )
+    digests = [
+        task["digest_sha256"],
+        *(task[field] for field in tree_fields),
+        agent["config_digest_sha256"],
+        verifier["config_digest_sha256"],
+    ]
+    qualification_digest = task.get("qualification_digest_sha256")
+    if isinstance(qualification_digest, str):
+        digests.append(qualification_digest)
+    if any(digest in {"0" * 64, "f" * 64} for digest in digests):
+        raise WorkerError("task image binding contains a placeholder digest")
+    if task["public_tree_digest_sha256"] == task["verifier_private_tree_digest_sha256"]:
+        raise WorkerError("public and verifier-private task trees must differ")
+    if agent["config_digest_sha256"] == verifier["config_digest_sha256"]:
+        raise WorkerError("agent and verifier image config digests must differ")
+    return {"task": task, "agent": agent, "verifier": verifier}
+
+
+def _expected_task_labels(
+    manifest: JSONObject,
+    *,
+    verifier: bool,
+) -> dict[str, str]:
+    task = _require_object(manifest.get("task"), "task")
+    labels = {
+        _TASK_ROLE_LABEL: str(manifest["role"]),
+    }
+    if verifier:
+        labels[_VERIFIER_PRIVATE_TREE_LABEL] = str(
+            task["verifier_private_tree_digest_sha256"]
+        )
+    else:
+        labels[_PUBLIC_TREE_LABEL] = str(task["public_tree_digest_sha256"])
+    return labels
+
+
+def _inspect_image(
+    adapter: _Adapter,
+    docker: str,
+    image: str,
+    *,
+    timeout: float,
+) -> JSONObject:
+    result = _run(
+        adapter,
+        local_docker_argv(docker,
+        "image",
+        "inspect",
+        image,
+        "--format",
+        "{{json .}}",),
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        raise _TaskBindingError("task-image-inspect-failed")
+    try:
+        value = json.loads(result.stdout)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise _TaskBindingError("task-image-inspect-malformed") from exc
+    if not isinstance(value, dict):
+        raise _TaskBindingError("task-image-inspect-malformed")
+    return value
+
+
+def _image_binding_facts(
+    inspect: JSONObject,
+    manifest: JSONObject,
+    container: JSONObject,
+    *,
+    verifier: bool,
+) -> JSONObject:
+    descriptor = inspect.get("Descriptor")
+    config = inspect.get("Config")
+    repo_digests = inspect.get("RepoDigests")
+    labels = config.get("Labels") if isinstance(config, dict) else None
+    expected_labels = _expected_task_labels(manifest, verifier=verifier)
+    observed_task_labels = (
+        {
+            str(key): str(value)
+            for key, value in labels.items()
+            if str(key).startswith(_TASK_LABEL_PREFIX)
+        }
+        if isinstance(labels, dict)
+        else {}
+    )
+    platform = _require_object(container.get("platform"), "container platform")
+    image = str(container["image"])
+    manifest_digest = f"sha256:{_image_digest(image)}"
+    config_digest = f"sha256:{container['config_digest_sha256']}"
+    return {
+        "reference_exact": isinstance(repo_digests, list)
+        and image in repo_digests,
+        "single_platform_manifest": isinstance(descriptor, dict)
+        and descriptor.get("mediaType") in _SINGLE_PLATFORM_MANIFEST_MEDIA_TYPES,
+        "manifest_digest_exact": isinstance(descriptor, dict)
+        and descriptor.get("digest") == manifest_digest,
+        "config_digest_exact": inspect.get("Id") == config_digest,
+        "platform_exact": inspect.get("Os") == platform["os"]
+        and inspect.get("Architecture") == platform["architecture"]
+        and inspect.get("Variant") == platform["variant"],
+        "task_labels_exact": observed_task_labels == expected_labels,
+    }
+
+
 def _load_manifest(
     root: Path,
     manifest_path: Path,
@@ -443,8 +644,8 @@ def _load_manifest(
     Path,
     JSONObject,
     str,
-    tuple[Path, tuple[int, int, int]],
-    tuple[Path, tuple[int, int, int]],
+    tuple[Path, tuple[int, int, int, int, int]],
+    tuple[Path, tuple[int, int, int, int, int]],
 ]:
     manifest, relative, identity, _ = _capture_object(
         root,
@@ -475,6 +676,7 @@ def _load_manifest(
     for digest in (agent_digest, verifier_digest):
         if digest in {"0" * 64, "f" * 64}:
             raise WorkerError("placeholder image digests must be replaced before execution")
+    _manifest_task_binding(manifest)
     return (
         manifest,
         policy_path,
@@ -519,27 +721,25 @@ def _create_args(
     uid, gid = principal.get("uid"), principal.get("gid")
     if not isinstance(uid, int) or not isinstance(gid, int):
         raise WorkerError("container uid and gid must be numeric")
-    args = _docker_argv(
-        docker,
-        "create",
-        "--name",
-        name,
-        "--label",
-        f"org.omp.rolebench.owner={ownership}",
-        "--runtime",
-        "runsc",
-        "--user",
-        f"{uid}:{gid}",
-        "--read-only",
-        "--log-driver",
-        "none",
-        "--cap-drop",
-        "ALL",
-        "--security-opt",
-        "no-new-privileges=true",
-        "--network",
-        "none",
-    )
+    args = local_docker_argv(docker,
+    "create",
+    "--name",
+    name,
+    "--label",
+    f"org.omp.rolebench.owner={ownership}",
+    "--runtime",
+    "runsc",
+    "--user",
+    f"{uid}:{gid}",
+    "--read-only",
+    "--log-driver",
+    "none",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges=true",
+    "--network",
+    "none",)
     if verifier:
         args.append("--interactive")
     else:
@@ -571,7 +771,7 @@ def _create_args(
 def _inspect(adapter: _Adapter, docker: str, container: str, timeout: float) -> JSONObject:
     result = _run(
         adapter,
-        _docker_argv(docker, "inspect", container),
+        local_docker_argv(docker, "inspect", container),
         timeout=timeout,
     )
     if result.returncode != 0:
@@ -592,6 +792,8 @@ def _isolation_facts(
     verifier: bool,
     expected_image: str,
     ownership: str,
+    expected_config_digest: str | None = None,
+    expected_task_labels: dict[str, str] | None = None,
 ) -> JSONObject:
     host = inspect.get("HostConfig")
     config = inspect.get("Config")
@@ -660,6 +862,23 @@ def _isolation_facts(
         "pids_limit": host.get("PidsLimit") == resources.get("pids_limit"),
         "nofile_limit": nofile_ok,
     }
+    if expected_config_digest is not None:
+        facts["image_config_exact"] = (
+            inspect.get("Image") == f"sha256:{expected_config_digest}"
+        )
+    if expected_task_labels is not None:
+        observed_task_labels = (
+            {
+                str(key): str(value)
+                for key, value in labels.items()
+                if str(key).startswith(_TASK_LABEL_PREFIX)
+            }
+            if isinstance(labels, dict)
+            else {}
+        )
+        facts["task_labels_preserved"] = (
+            observed_task_labels == expected_task_labels
+        )
     if verifier:
         facts["tmpfs_empty"] = tmpfs in (None, {})
     else:
@@ -700,7 +919,7 @@ def _remove_container(
     try:
         result = _run(
             adapter,
-            _docker_argv(docker, "rm", "--force", "--volumes", container),
+            local_docker_argv(docker, "rm", "--force", "--volumes", container),
             timeout=timeout,
         )
     except (OSError, subprocess.SubprocessError):
@@ -719,7 +938,7 @@ def _owned_container(
     try:
         result = _run(
             adapter,
-            _docker_argv(docker, "inspect", name),
+            local_docker_argv(docker, "inspect", name),
             timeout=timeout,
         )
     except (OSError, subprocess.SubprocessError):
@@ -834,7 +1053,30 @@ def _observation(
     task = _require_object(manifest.get("task"), "task")
     config_digest = _sha256(canonical_json(manifest).encode("utf-8"))
     trajectory = _sha256(canonical_json(trajectory_facts).encode("utf-8"))
-    return {
+    digests: JSONObject = {
+        "task": task["digest_sha256"],
+        "config": config_digest,
+        "agent_image": _image_digest(str(agent["image"])),
+        "verifier_image": _image_digest(str(verifier["image"])),
+        "runtime_policy": policy_digest,
+        "artifact": artifact_digest,
+        "trajectory": trajectory,
+    }
+    if _manifest_task_binding(manifest) is not None:
+        digests.update(
+            {
+                "task_public_tree": task["public_tree_digest_sha256"],
+                "verifier_private_tree": task[
+                    "verifier_private_tree_digest_sha256"
+                ],
+                "agent_image_config": agent["config_digest_sha256"],
+                "verifier_image_config": verifier["config_digest_sha256"],
+            }
+        )
+        qualification_digest = task.get("qualification_digest_sha256")
+        if isinstance(qualification_digest, str):
+            digests["qualification"] = qualification_digest
+    observation: JSONObject = {
         "schema_version": "omp.attempt-observation/v1",
         "observation_id": f"{run_id}-observation",
         "observed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -847,16 +1089,11 @@ def _observation(
         "termination": {"kind": termination_kind, "exit_code": exit_code, "signal": None, "oom_scope": oom_scope},
         "verifier": {"outcome": verifier_outcome, "result_valid": verifier_valid, "reward": reward},
         "integrity": {"state": integrity},
-        "digests": {
-            "task": task["digest_sha256"],
-            "config": config_digest,
-            "agent_image": _image_digest(str(agent["image"])),
-            "verifier_image": _image_digest(str(verifier["image"])),
-            "runtime_policy": policy_digest,
-            "artifact": artifact_digest,
-            "trajectory": trajectory,
-        },
+        "digests": digests,
     }
+    if _manifest_task_binding(manifest) is not None:
+        observation["evidence_use"] = task["evidence_use"]
+    return observation
 
 
 def _validate_accounting(root: Path, observation: JSONObject, outcome: JSONObject) -> None:
@@ -895,6 +1132,7 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
     ) = _load_manifest(root, Path(manifest_path))
     doctor = doctor_worker(root, policy_path, docker=docker)
     adapter = _ADAPTER_FACTORY()
+    task_binding = _manifest_task_binding(manifest)
     resources = _require_object(policy.get("resources"), "policy.resources")
     timeouts = _require_object(policy.get("timeouts"), "policy.timeouts")
     output_limit = int(resources["output_bytes_limit"])
@@ -923,6 +1161,13 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
         "artifact_frozen_after_agent_exit": False,
         "immutable_handoff": False,
     }
+    isolation["task_image_binding"] = {
+        "required": task_binding is not None,
+        "agent": {},
+        "verifier": {},
+        "distinct_config_ids": task_binding is None,
+    }
+    isolation["task_image_binding_verified"] = task_binding is None
     diagnostics: list[JSONValue] = []
     issues: list[JSONValue] = []
     stage = "environment"
@@ -971,6 +1216,52 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                     execution_deadline,
                     float(timeouts["setup_seconds"]),
                 )
+                if task_binding is not None:
+                    agent_image_facts = _image_binding_facts(
+                        _inspect_image(
+                            adapter,
+                            docker,
+                            agent_image,
+                            timeout=_remaining(
+                                execution_deadline,
+                                setup_timeout,
+                            ),
+                        ),
+                        manifest,
+                        agent,
+                        verifier=False,
+                    )
+                    verifier_image_facts = _image_binding_facts(
+                        _inspect_image(
+                            adapter,
+                            docker,
+                            verifier_image,
+                            timeout=_remaining(
+                                execution_deadline,
+                                setup_timeout,
+                            ),
+                        ),
+                        manifest,
+                        verifier,
+                        verifier=True,
+                    )
+                    binding_report = _require_object(
+                        isolation["task_image_binding"],
+                        "task image binding",
+                    )
+                    binding_report["agent"] = agent_image_facts
+                    binding_report["verifier"] = verifier_image_facts
+                    binding_report["distinct_config_ids"] = (
+                        agent["config_digest_sha256"]
+                        != verifier["config_digest_sha256"]
+                    )
+                    if (
+                        not _all_true(agent_image_facts)
+                        or not _all_true(verifier_image_facts)
+                        or binding_report["distinct_config_ids"] is not True
+                    ):
+                        raise _TaskBindingError("task-image-binding-mismatch")
+                    isolation["task_image_binding_verified"] = True
                 try:
                     created = _run(
                         adapter,
@@ -1015,6 +1306,19 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                             verifier=False,
                             expected_image=agent_image,
                             ownership=ownership,
+                            expected_config_digest=(
+                                str(agent["config_digest_sha256"])
+                                if task_binding is not None
+                                else None
+                            ),
+                            expected_task_labels=(
+                                _expected_task_labels(
+                                    manifest,
+                                    verifier=False,
+                                )
+                                if task_binding is not None
+                                else None
+                            ),
                         )
                         isolation["agent"] = agent_facts
                         if not _all_true(agent_facts):
@@ -1032,12 +1336,10 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                             )
                             artifact = _artifact_file()
                             streamed = adapter.stream(
-                                _docker_argv(
-                                    docker,
-                                    "start",
-                                    "--attach",
-                                    agent_id,
-                                ),
+                                local_docker_argv(docker,
+                                "start",
+                                "--attach",
+                                agent_id,),
                                 input_source=None,
                                 timeout=_remaining(
                                     execution_deadline,
@@ -1049,7 +1351,7 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                             if streamed.timed_out:
                                 _best_effort(
                                     adapter,
-                                    _docker_argv(docker, "kill", agent_id),
+                                    local_docker_argv(docker, "kill", agent_id),
                                     timeout=cleanup_limit,
                                 )
                                 fail("runner-failure", "agent-timeout")
@@ -1057,7 +1359,7 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                             elif streamed.overflowed:
                                 _best_effort(
                                     adapter,
-                                    _docker_argv(docker, "kill", agent_id),
+                                    local_docker_argv(docker, "kill", agent_id),
                                     timeout=cleanup_limit,
                                 )
                                 fail(
@@ -1122,6 +1424,12 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                                     "artifact_frozen_after_agent_exit"
                                 ] = lifecycle["agent_finished"] is True
                                 stage = "artifact"
+            except _TaskBindingError:
+                fail(
+                    "sandbox-violation",
+                    "task-image-binding-mismatch",
+                )
+                runner = "failed"
             except subprocess.TimeoutExpired:
                 agent_create_uncertain = agent_id is None
                 fail("runner-failure", "setup-timeout")
@@ -1220,6 +1528,19 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                                 verifier=True,
                                 expected_image=verifier_image,
                                 ownership=ownership,
+                                expected_config_digest=(
+                                    str(verifier["config_digest_sha256"])
+                                    if task_binding is not None
+                                    else None
+                                ),
+                                expected_task_labels=(
+                                    _expected_task_labels(
+                                        manifest,
+                                        verifier=True,
+                                    )
+                                    if task_binding is not None
+                                    else None
+                                ),
                             )
                             isolation["verifier"] = verifier_facts
                             if not _all_true(verifier_facts):
@@ -1237,13 +1558,11 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                                 )
                                 artifact.seek(0)
                                 streamed = adapter.stream(
-                                    _docker_argv(
-                                        docker,
-                                        "start",
-                                        "--attach",
-                                        "-i",
-                                        verifier_id,
-                                    ),
+                                    local_docker_argv(docker,
+                                    "start",
+                                    "--attach",
+                                    "-i",
+                                    verifier_id,),
                                     input_source=artifact,
                                     timeout=_remaining(
                                         execution_deadline,
@@ -1254,22 +1573,18 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
                                 if streamed.timed_out:
                                     _best_effort(
                                         adapter,
-                                        _docker_argv(
-                                            docker,
-                                            "kill",
-                                            verifier_id,
-                                        ),
+                                        local_docker_argv(docker,
+                                        "kill",
+                                        verifier_id,),
                                         timeout=cleanup_limit,
                                     )
                                     fail("verifier-crash", "verifier-timeout")
                                 elif streamed.overflowed:
                                     _best_effort(
                                         adapter,
-                                        _docker_argv(
-                                            docker,
-                                            "kill",
-                                            verifier_id,
-                                        ),
+                                        local_docker_argv(docker,
+                                        "kill",
+                                        verifier_id,),
                                         timeout=cleanup_limit,
                                     )
                                     fail(
@@ -1435,6 +1750,7 @@ def run_worker(root: Path, manifest_path: Path, *, docker: str = "docker") -> JS
             )
             and isolation["distinct_images"] is True
             and isolation["resource_enforcement"] is True
+            and isolation["task_image_binding_verified"] is True
             and isolation["artifact_frozen_after_agent_exit"] is True
             and isolation["immutable_handoff"] is True,
             "external_provider_calls": 0,

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:task-candidate:v1",
+  "title": "RoleBench Private Task Candidate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "origin", "capability_hints", "review", "entry_count", "signals"],
+  "properties": {
+    "schema_version": {"const": "omp.task-candidate/v1"},
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "source_version"],
+      "properties": {
+        "kind": {"enum": ["omp-session", "omp-gym"]},
+        "source_version": {"type": "string", "minLength": 1, "maxLength": 128},
+        "candidate_ref": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+        "digest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "role_hint": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "capability_hints": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/tag"}},
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["privacy", "license", "publication"],
+      "properties": {
+        "privacy": {"const": "required"},
+        "license": {"const": "required"},
+        "publication": {"const": "prohibited"},
+        "license_expression": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "entry_count": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "signals": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ordinal", "kind"],
+        "properties": {
+          "ordinal": {"type": "integer", "minimum": 1, "maximum": 1000000},
+          "kind": {"enum": ["versioned-correction", "late-test-failure"]}
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "prompt": {"allOf": [{"$ref": "#/$defs/asset"}, {"properties": {"kind": {"const": "file"}}}]},
+        "workspace": {"$ref": "#/$defs/asset"}
+      }
+    },
+    "legacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test_command", "tools", "max_time_seconds", "fidelity"],
+      "properties": {
+        "test_command": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^[^\\u0000]+$"}
+        },
+        "tools": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\u0000]+$"},
+        "max_time_seconds": {"type": "integer", "minimum": 1, "maximum": 86400},
+        "fidelity": {"type": ["string", "number", "boolean", "null"]}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"origin": {"properties": {"kind": {"const": "omp-session"}}, "required": ["kind"]}}, "required": ["origin"]},
+      "then": {
+        "properties": {
+          "origin": {"required": ["candidate_ref"], "not": {"required": ["digest_sha256"]}},
+          "review": {"not": {"required": ["license_expression"]}}
+        },
+        "not": {"required": ["legacy"]}
+      }
+    },
+    {
+      "if": {"properties": {"origin": {"properties": {"kind": {"const": "omp-gym"}}, "required": ["kind"]}}, "required": ["origin"]},
+      "then": {
+        "properties": {
+          "origin": {"required": ["digest_sha256"], "not": {"required": ["candidate_ref"]}},
+          "review": {"required": ["license_expression"]}
+        },
+        "required": ["assets", "legacy"]
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tag": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "path": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:^|/)\\.(?:/|$))[^\\u0000]+$"},
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind", "digest_sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "kind": {"enum": ["file", "tree"]},
+        "digest_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

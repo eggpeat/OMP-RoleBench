@@ -630,9 +630,50 @@ class ScoreSummaryTests(AccountingFixture):
                     "retryable_invalid": 1,
                     "quarantined": 1,
                     "cancelled": 1,
+                    "excluded": 0,
                 },
             },
         )
+
+    def test_admission_and_calibration_evidence_is_never_scored(
+        self,
+    ) -> None:
+        for evidence_use in (
+            "admission-only",
+            "calibration-only",
+        ):
+            observation = self.observation()
+            observation["evidence_use"] = evidence_use
+            digests = observation["digests"]
+            self.assertIsInstance(digests, dict)
+            digests.update(
+                {
+                    "task_public_tree": SHA,
+                    "verifier_private_tree": SHA,
+                    "agent_image_config": SHA,
+                    "verifier_image_config": SHA,
+                }
+            )
+            if evidence_use == "calibration-only":
+                digests["qualification"] = SHA
+
+            outcome = classify_attempt(observation)
+
+            self.assertEqual(
+                outcome["reason_code"],
+                "non-scored-evidence",
+            )
+            self.assertEqual(outcome["disposition"], "excluded")
+            self.assertIs(
+                outcome["counts_toward_quality"],
+                False,
+            )
+            self.assertEqual(
+                summarize_outcomes([outcome])["not_scored"][
+                    "excluded"
+                ],
+                1,
+            )
 
     def test_no_decisive_result_has_no_quality_score(self) -> None:
         outcome = classify_attempt(
@@ -686,6 +727,7 @@ class ScoreSummaryTests(AccountingFixture):
                     "retryable_invalid": 0,
                     "quarantined": 0,
                     "cancelled": 0,
+                    "excluded": 0,
                 },
             },
         )

@@ -1,0 +1,22 @@
+{
+  "schema_version": "omp.task-pack/v1",
+  "pack_id": "slow-v1",
+  "role": "slow",
+  "task_mix": "slow-v1",
+  "role_contract": {
+    "contract_id": "role-contract/slow/v1",
+    "digest_sha256": "9cad9586cbba11d2a0d07507995cbd098faeab621bcf65516f589b17a722c822"
+  },
+  "partition": "anchor",
+  "status": "authoring",
+  "routing_eligible": false,
+  "selection_method": "fixed-anchor",
+  "required_capabilities": [
+    "root-cause-analysis",
+    "long-horizon-reasoning",
+    "hypothesis-testing",
+    "debugging-tool-use",
+    "failure-recovery"
+  ],
+  "entries": []
+}

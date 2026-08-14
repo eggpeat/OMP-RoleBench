@@ -41,15 +41,15 @@ def fault_report(*, passed: bool = True) -> JSONObject:
         "passed": passed,
         "external_calls": 0,
         "policy_digest_sha256": SHA,
-        "scenario_count": 28,
-        "expected_reason_count": 28,
-        "covered_reason_count": 28,
-        "passed_scenarios": 28 if passed else 27,
+        "scenario_count": 29,
+        "expected_reason_count": 29,
+        "covered_reason_count": 29,
+        "passed_scenarios": 29 if passed else 28,
         "failed_scenarios": 0 if passed else 1,
         "covered_reason_codes": ["verifier-accepted", "verifier-rejected"],
         "scenarios": [scenario],
         "quality_summary": {
-            "total_attempts": 28,
+            "total_attempts": 29,
             "scored_attempts": 4,
             "accepted": 1,
             "rejected": 3,
@@ -58,6 +58,7 @@ def fault_report(*, passed: bool = True) -> JSONObject:
                 "retryable_invalid": 18,
                 "quarantined": 5,
                 "cancelled": 1,
+                "excluded": 1,
             },
         },
     }
@@ -118,14 +119,14 @@ class WorkerFaultCheckCliTests(unittest.TestCase):
         text = output.getvalue()
         self.assertIn("Worker fault check: PASS\n", text)
         self.assertIn(f"Policy SHA-256: {SHA}\n", text)
-        self.assertIn("Reason-code coverage: 28/28 (28 scenarios)\n", text)
+        self.assertIn("Reason-code coverage: 29/29 (29 scenarios)\n", text)
         self.assertIn("Covered reason codes: verifier-accepted, verifier-rejected\n", text)
         self.assertIn("External calls: 0\n", text)
         self.assertIn("[PASS] verifier-accepted:", text)
-        self.assertIn("Scenarios passed: 28; failed: 0\n", text)
+        self.assertIn("Scenarios passed: 29; failed: 0\n", text)
         self.assertIn("Quality score: 25.0% (1 accepted, 3 rejected)\n", text)
         self.assertIn(
-            "Not scored: 18 system failures, 5 quarantined, 1 cancelled\n",
+            "Not scored: 18 system failures, 5 quarantined, 1 cancelled, 1 excluded evidence\n",
             text,
         )
 
@@ -175,7 +176,7 @@ class WorkerFaultCheckCliTests(unittest.TestCase):
         self.assertIn("Worker fault check: FAIL\n", output.getvalue())
         self.assertIn("[FAIL] verifier-accepted:", output.getvalue())
         self.assertIn('diagnostics: ["unexpected outcome"]', output.getvalue())
-        self.assertIn("Scenarios passed: 27; failed: 1\n", output.getvalue())
+        self.assertIn("Scenarios passed: 28; failed: 1\n", output.getvalue())
 
     @patch("rolebench.cli.run_fault_check")
     def test_fault_harness_error_is_user_facing_status_two(self, harness: object) -> None:

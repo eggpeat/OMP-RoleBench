@@ -21,7 +21,17 @@
       "additionalProperties": false,
       "required": ["digest_sha256"],
       "properties": {
-        "digest_sha256": {"$ref": "#/$defs/sha256"}
+        "digest_sha256": {"$ref": "#/$defs/sha256"},
+        "qualification_digest_sha256": {"$ref": "#/$defs/sha256"},
+        "public_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
+        "verifier_private_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_use": {"enum": ["admission-only", "calibration-only"]}
+      },
+      "dependentRequired": {
+        "qualification_digest_sha256": ["public_tree_digest_sha256", "verifier_private_tree_digest_sha256", "evidence_use"],
+        "public_tree_digest_sha256": ["verifier_private_tree_digest_sha256", "evidence_use"],
+        "verifier_private_tree_digest_sha256": ["public_tree_digest_sha256", "evidence_use"],
+        "evidence_use": ["public_tree_digest_sha256", "verifier_private_tree_digest_sha256"]
       }
     },
     "policy": {
@@ -44,6 +54,48 @@
     "agent": {"$ref": "#/$defs/container"},
     "verifier": {"$ref": "#/$defs/container"}
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "task": {
+            "properties": {
+              "evidence_use": {"const": "admission-only"}
+            },
+            "required": ["evidence_use"]
+          }
+        },
+        "required": ["task"]
+      },
+      "then": {
+        "properties": {
+          "task": {
+            "not": {"required": ["qualification_digest_sha256"]}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": {
+            "properties": {
+              "evidence_use": {"const": "calibration-only"}
+            },
+            "required": ["evidence_use"]
+          }
+        },
+        "required": ["task"]
+      },
+      "then": {
+        "properties": {
+          "task": {
+            "required": ["qualification_digest_sha256"]
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": {
       "type": "string",
@@ -70,7 +122,22 @@
             {"allOf": [{"$ref": "#/$defs/argument"}, {"minLength": 1}]}
           ],
           "items": {"$ref": "#/$defs/argument"}
+        },
+        "config_digest_sha256": {"$ref": "#/$defs/sha256"},
+        "platform": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["os", "architecture", "variant"],
+          "properties": {
+            "os": {"const": "linux"},
+            "architecture": {"enum": ["amd64", "arm64"]},
+            "variant": {"type": ["string", "null"], "minLength": 1}
+          }
         }
+      },
+      "dependentRequired": {
+        "config_digest_sha256": ["platform"],
+        "platform": ["config_digest_sha256"]
       }
     }
   }

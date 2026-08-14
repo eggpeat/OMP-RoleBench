@@ -112,8 +112,53 @@
         "state": {"enum": ["verified", "failed", "unknown"]}
       }
     },
+    "evidence_use": {"enum": ["admission-only", "calibration-only"]},
     "digests": {"$ref": "#/$defs/digests"}
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "evidence_use": {"const": "admission-only"}
+        },
+        "required": ["evidence_use"]
+      },
+      "then": {
+        "properties": {
+          "digests": {
+            "required": [
+              "task_public_tree",
+              "verifier_private_tree",
+              "agent_image_config",
+              "verifier_image_config"
+            ],
+            "not": {"required": ["qualification"]}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_use": {"const": "calibration-only"}
+        },
+        "required": ["evidence_use"]
+      },
+      "then": {
+        "properties": {
+          "digests": {
+            "required": [
+              "qualification",
+              "task_public_tree",
+              "verifier_private_tree",
+              "agent_image_config",
+              "verifier_image_config"
+            ]
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "nullableSha256": {
@@ -160,7 +205,12 @@
         "verifier_image": {"$ref": "#/$defs/sha256"},
         "runtime_policy": {"$ref": "#/$defs/sha256"},
         "artifact": {"$ref": "#/$defs/nullableSha256"},
-        "trajectory": {"$ref": "#/$defs/nullableSha256"}
+        "trajectory": {"$ref": "#/$defs/nullableSha256"},
+        "qualification": {"$ref": "#/$defs/sha256"},
+        "task_public_tree": {"$ref": "#/$defs/sha256"},
+        "verifier_private_tree": {"$ref": "#/$defs/sha256"},
+        "agent_image_config": {"$ref": "#/$defs/sha256"},
+        "verifier_image_config": {"$ref": "#/$defs/sha256"}
       }
     }
   }

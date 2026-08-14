@@ -355,6 +355,21 @@ The raw prompt, credentials, and sensitive account identifiers are not required.
 
 Do not copy or relabel an official Terminal-Bench dataset in a way that implies an official score. Record the exact dataset release and task digest. Report results as RoleBench estimates.
 
+### Diagnostic-task admission and execution
+
+The task pipeline separates discovery, authoring, admission, calibration, and evidence use:
+
+1. `scan-session` reads one caller-selected OMP JSONL session and emits a fresh opaque candidate plus entry ordinals and signal kinds only. Raw text, paths, IDs, model/provider/account fields, and stable session fingerprints are prohibited.
+2. `import-omp-gym` parses only the public `task.toml` and `workspace/` format into a private candidate directory. It does not import OMP Gym code, follow links, infer licensing, or grant admission.
+3. An operator authors `omp.diagnostic-task/v1` with a canonical role binding, public/private asset digests, exact single-platform agent/admission/verifier image identities, objective criteria, and independent privacy, license, verifier, and split approvals.
+4. `prepare-admission-run` independently re-inspects the image manifest, config ID, platform, fixed role/content labels, and in-image asset trees. The agent image must expose the exact public tree and no verifier-private tree; the verifier image must expose the exact private tree and no public tree.
+5. At least two healthy runs for each distinct baseline, reference, and tamper image establish deterministic failure, success, and tamper rejection. `qualify` reparses each worker report, recomputes accounting, requires exact run/envelope/isolation/task/policy/probe-image mappings, and requires identical artifact/reward results across repeats.
+6. V1 qualifications are `calibration-required`, not proof of cross-model discrimination. V1 cannot claim `admitted` or freeze a routing-eligible pack until a later version defines independently reviewed discrimination evidence. `prepare-run` therefore permits only non-holdout `calibration-only` execution and preserves the observed task/image/policy bindings in `omp.worker-run-manifest/v1`.
+7. The normal rootless Docker/`runsc` worker executes both admission and calibration manifests, freezes the bounded artifact after agent exit, streams it once to the distinct networkless verifier, and emits observation/outcome records with explicit `evidence_use`. Accounting classifies otherwise-scoreable admission/calibration attempts as excluded evidence, never normal model-quality evidence.
+8. The append-only experiment ledger may journal immutable artifacts and worker reports locally, but it has no admission, calibration, or routing authority. Every consumer revalidates source artifacts and recomputes worker outcomes.
+
+Public pilot packs remain empty and routing-ineligible. Public repository validation rejects holdout content; confidential holdouts require an author-independent split outside the public tree. The `synthetic-fixture` source kind exists only for provider-disabled smoke tests and is mechanically excluded from all task packs. Runtime tasks, qualifications, reports, journals, image archives, and imported candidates stay under ignored `.rolebench/` or an external private artifact store.
+
 ### Verifier philosophy by role
 
 - `default`, `task`, `slow`: executable repository/task verifiers.
@@ -756,6 +771,9 @@ These workstreams can proceed in parallel once the v1 data contracts and role se
 ## Security and integrity
 
 - Never place API keys, OAuth tokens, credential IDs, raw account identifiers, or private prompts in policies or public evidence.
+- Treat session-derived candidates and OMP Gym imports as private authoring inputs until independent privacy and redistribution reviews approve a versioned task.
+- Keep public task assets and verifier-private assets in distinct content-addressed trees and prove that neither image contains the other's tree before every prepared run.
+- Keep local manifests, qualifications, worker reports, journals, private verifier material, and holdout content out of the public repository.
 - Execute untrusted benchmark tasks in isolated environments.
 - Keep credentials host-side when using Harbor containers.
 - Pin task images, datasets, OMP versions, verifier code, and policy checksums.

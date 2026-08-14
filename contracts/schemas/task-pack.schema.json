@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:task-pack:v1",
+  "title": "RoleBench Task Pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "pack_id", "role", "task_mix", "role_contract", "partition", "status", "routing_eligible", "selection_method", "required_capabilities", "entries"],
+  "properties": {
+    "schema_version": {"const": "omp.task-pack/v1"},
+    "pack_id": {"$ref": "#/$defs/id"},
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "task_mix": {"$ref": "#/$defs/id"},
+    "role_contract": {
+      "type": "object", "additionalProperties": false, "required": ["contract_id", "digest_sha256"],
+      "properties": {"contract_id": {"$ref": "#/$defs/id"}, "digest_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "partition": {"enum": ["anchor", "adaptive", "holdout"]},
+    "status": {"enum": ["authoring", "calibration", "frozen"]},
+    "routing_eligible": {"type": "boolean"},
+    "selection_method": {"enum": ["fixed-anchor", "adaptive-calibration", "sealed-holdout"]},
+    "required_capabilities": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/tag"}},
+    "split_review": {
+      "type": "object", "additionalProperties": false, "required": ["reviewer_id", "independent", "review_digest_sha256"],
+      "properties": {"reviewer_id": {"$ref": "#/$defs/id"}, "independent": {"const": true}, "review_digest_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "entries": {
+      "type": "array", "maxItems": 10000,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["task", "qualification"],
+        "properties": {"task": {"$ref": "#/$defs/reference"}, "qualification": {"$ref": "#/$defs/reference"}}
+      }
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"partition": {"const": "anchor"}}, "required": ["partition"]}, "then": {"properties": {"selection_method": {"const": "fixed-anchor"}}}},
+    {"if": {"properties": {"partition": {"const": "adaptive"}}, "required": ["partition"]}, "then": {"properties": {"selection_method": {"const": "adaptive-calibration"}}}},
+    {"if": {"properties": {"partition": {"const": "holdout"}}, "required": ["partition"]}, "then": {"properties": {"selection_method": {"const": "sealed-holdout"}}}},
+    {"if": {"properties": {"status": {"enum": ["authoring", "calibration"]}}, "required": ["status"]}, "then": {"properties": {"routing_eligible": {"const": false}}}},
+    {"if": {"properties": {"status": {"const": "calibration"}}, "required": ["status"]}, "then": {"properties": {"entries": {"minItems": 1}}}},
+    {"if": {"properties": {"status": {"const": "frozen"}}, "required": ["status"]}, "then": {"required": ["split_review"], "properties": {"entries": {"minItems": 1}, "routing_eligible": {"const": true}}}}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"},
+    "tag": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "path": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:^|/)\\.(?:/|$))[^\\u0000]+$"},
+    "reference": {"type": "object", "additionalProperties": false, "required": ["path", "digest_sha256"], "properties": {"path": {"$ref": "#/$defs/path"}, "digest_sha256": {"$ref": "#/$defs/sha256"}}}
+  }
+}

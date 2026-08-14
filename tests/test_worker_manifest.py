@@ -72,6 +72,68 @@ class WorkerManifestTests(unittest.TestCase):
         result = self.validate()
         self.assertTrue(result.valid, self.rendered(result))
 
+    def test_evidence_use_requires_exact_qualification_binding(
+        self,
+    ) -> None:
+        base = self.manifest()
+        task = base["task"]
+        agent = base["agent"]
+        verifier = base["verifier"]
+        self.assertIsInstance(task, dict)
+        self.assertIsInstance(agent, dict)
+        self.assertIsInstance(verifier, dict)
+        task.update(
+            {
+                "public_tree_digest_sha256": "c" * 64,
+                "verifier_private_tree_digest_sha256": "d" * 64,
+                "evidence_use": "admission-only",
+            }
+        )
+        for container, digest in (
+            (agent, "e" * 64),
+            (verifier, "f" * 64),
+        ):
+            container["config_digest_sha256"] = digest
+            container["platform"] = {
+                "os": "linux",
+                "architecture": "amd64",
+                "variant": None,
+            }
+        self.assertTrue(
+            self.validate(base).valid,
+            self.rendered(self.validate(base)),
+        )
+
+        admission_with_qualification = json.loads(
+            json.dumps(base)
+        )
+        admission_with_qualification["task"][
+            "qualification_digest_sha256"
+        ] = "9" * 64
+        self.assertFalse(
+            self.validate(admission_with_qualification).valid
+        )
+
+        calibration_without_qualification = json.loads(
+            json.dumps(base)
+        )
+        calibration_without_qualification["task"][
+            "evidence_use"
+        ] = "calibration-only"
+        self.assertFalse(
+            self.validate(calibration_without_qualification).valid
+        )
+
+        calibration_without_qualification["task"][
+            "qualification_digest_sha256"
+        ] = "9" * 64
+        self.assertTrue(
+            self.validate(calibration_without_qualification).valid,
+            self.rendered(
+                self.validate(calibration_without_qualification)
+            ),
+        )
+
     def test_repository_validation_does_not_require_a_run_manifest(self) -> None:
         result = validate_repository(self.root)
         self.assertTrue(result.valid, result.diagnostics)
