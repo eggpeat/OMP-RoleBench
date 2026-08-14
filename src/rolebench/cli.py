@@ -448,6 +448,11 @@ def _print_fault_check_report(report: JSONObject, stdout: TextIO) -> None:
         file=stdout,
     )
     print(f"External calls: {report['external_calls']}", file=stdout)
+    diagnostics = report.get("diagnostics", [])
+    if not isinstance(diagnostics, list):
+        raise FaultHarnessError("diagnostics must be an array")
+    if diagnostics:
+        print(f"Gate diagnostics: {canonical_json(diagnostics)}", file=stdout)
     print("Scenarios:", file=stdout)
     scenarios = report["scenarios"]
     if not isinstance(scenarios, list):

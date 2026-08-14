@@ -1276,8 +1276,28 @@ def _creation_issue(stderr: bytes) -> str:
 def run_worker(
     root: Path, manifest_path: Path, *, docker: str = "docker"
 ) -> JSONObject:
-    """Execute one provider-disabled worker manifest using local rootless Docker/runsc."""
+    """Execute one supported provider-disabled worker manifest."""
     root = Path(root).resolve()
+    manifest_path = Path(manifest_path)
+    manifest_probe, _, _, _ = _capture_object(
+        root,
+        manifest_path,
+        label="worker run manifest",
+    )
+    if manifest_probe.get("schema_version") == "omp.worker-run-manifest/v1":
+        from . import worker_v1
+
+        adapter_factory = (
+            _ADAPTER_FACTORY
+            if _ADAPTER_FACTORY is not _SubprocessAdapter
+            else None
+        )
+        return worker_v1.run_worker_v1(
+            root,
+            manifest_path,
+            docker=docker,
+            adapter_factory=adapter_factory,
+        )
     (
         manifest,
         policy_path,
@@ -1285,7 +1305,7 @@ def run_worker(
         policy_digest,
         manifest_identity,
         policy_identity,
-    ) = _load_manifest(root, Path(manifest_path))
+    ) = _load_manifest(root, manifest_path)
     doctor = doctor_worker(root, policy_path, docker=docker)
     adapter = _ADAPTER_FACTORY()
     task_binding = _manifest_task_binding(manifest)

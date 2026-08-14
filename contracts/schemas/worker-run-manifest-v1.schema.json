@@ -52,7 +52,6 @@
       }
     },
     "agent": {"$ref": "#/$defs/container"},
-    "runner": {"$ref": "#/$defs/container"},
     "verifier": {"$ref": "#/$defs/container"}
   },
   "allOf": [

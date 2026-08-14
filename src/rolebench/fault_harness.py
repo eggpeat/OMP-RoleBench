@@ -700,16 +700,31 @@ def run_fault_check(root: Path, policy_path: Path) -> JSONObject:
                 }
             )
 
-    summary = summarize_outcomes(outcomes) if outcomes else _EXPECTED_SUMMARY
+    summary = summarize_outcomes(outcomes)
+    summary_matches_expected = summary == _EXPECTED_SUMMARY
     expected_reasons = set(ATTEMPT_OUTCOME_RULES)
     covered_reasons = set(_EXPECTED_OUTCOMES)
     covered = sorted(covered_reasons)
     missing_reason_codes = sorted(expected_reasons - covered_reasons)
     unexpected_reason_codes = sorted(covered_reasons - expected_reasons)
     coverage_complete = not missing_reason_codes and not unexpected_reason_codes
+    diagnostics = (
+        []
+        if summary_matches_expected
+        else [
+            "quality summary mismatch: "
+            f"expected {canonical_json(_EXPECTED_SUMMARY)}, "
+            f"actual {canonical_json(summary)}"
+        ]
+    )
+
     return {
         "schema_version": "omp.fault-harness-report/v1",
-        "passed": failed_scenarios == 0 and coverage_complete,
+        "passed": (
+            failed_scenarios == 0
+            and coverage_complete
+            and summary_matches_expected
+        ),
         "external_calls": 0,
         "policy_digest_sha256": policy_digest,
         "scenario_count": len(_EXPECTED_OUTCOMES),
@@ -721,5 +736,6 @@ def run_fault_check(root: Path, policy_path: Path) -> JSONObject:
         "missing_reason_codes": missing_reason_codes,
         "unexpected_reason_codes": unexpected_reason_codes,
         "quality_summary": summary,
+        "diagnostics": diagnostics,
         "scenarios": scenarios,
     }

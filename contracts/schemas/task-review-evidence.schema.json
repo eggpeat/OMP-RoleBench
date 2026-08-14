@@ -33,7 +33,7 @@
     "rationale": {"type": "string", "minLength": 1, "maxLength": 8192},
     "pack_condition": {"type": "object"},
     "pack_coverage": {"type": "object"},
-    "report_digests_sha256": {"type": "array", "minItems": 6, "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/sha256"}}
+    "report_digests_sha256": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"$ref": "#/$defs/sha256"}}
   },
   "allOf": [
     {
@@ -83,15 +83,14 @@
           "scope": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["public_tree_digest_sha256", "runner_image", "runner_config_digest_sha256", "verifier_image", "verifier_config_digest_sha256", "verifier_private_tree_digest_sha256", "smoke_binding_digest_sha256"],
+            "required": ["public_tree_digest_sha256", "runner_image", "runner_config_digest_sha256", "verifier_image", "verifier_config_digest_sha256", "verifier_private_tree_digest_sha256"],
             "properties": {
               "public_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
               "runner_image": {"$ref": "#/$defs/image"},
               "runner_config_digest_sha256": {"$ref": "#/$defs/sha256"},
               "verifier_image": {"$ref": "#/$defs/image"},
               "verifier_config_digest_sha256": {"$ref": "#/$defs/sha256"},
-              "verifier_private_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
-              "smoke_binding_digest_sha256": {"$ref": "#/$defs/sha256"}
+              "verifier_private_tree_digest_sha256": {"$ref": "#/$defs/sha256"}
             }
           }
         }

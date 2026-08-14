@@ -13,6 +13,7 @@ import pytest
 from rolebench.contracts import (
     canonical_sha256,
     file_sha256,
+    task_execution_sha256,
     tree_sha256,
     validate_value,
 )
@@ -283,7 +284,7 @@ def _admission_report(
         "integrity": {"state": "verified"},
         "evidence_use": "admission-only",
         "digests": {
-            "task": canonical_sha256(task),
+            "task": task_execution_sha256(task),
             "config": "2" * 64,
             "agent_image": str(task["admission_agents"][probe]["image"]).rpartition("@sha256:")[2],
             "runner_image": str(task["runner"]["image"]).rpartition("@sha256:")[2],
@@ -329,10 +330,33 @@ def _admission_report(
     _write_json(path, report)
     return path
 
+def _bind_verifier_review_reports(
+    root: Path,
+    task: dict[str, object],
+    report_paths: list[Path],
+) -> None:
+    evidence_path = root / "reviews/verifier.json"
+    _write_json(
+        evidence_path,
+        {
+            "report_digests_sha256": [
+                file_sha256(path)
+                for path in report_paths
+            ]
+        },
+    )
+    verifier_review = task["reviews"]["verifier"]  # type: ignore[index]
+    verifier_review["evidence_path"] = "reviews/verifier.json"  # type: ignore[index]
+    verifier_review["evidence_digest_sha256"] = file_sha256(  # type: ignore[index]
+        evidence_path
+    )
+    _write_json(root / "tasks/task.json", task)
+
 
 def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict[str, object]]:
     task_path = root / "tasks/task.json"
     task = {
+        "schema_version": "omp.diagnostic-task/v2",
         "task_id": "fixture", "task_version": "1", "content_digest_sha256": "1" * 64,
         "role": "task", "partition": "anchor", "routing_eligible": False,
         "authorship": {"author": "author"},
@@ -344,6 +368,7 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
                 "reviewer": "reviewer",
                 "reviewed_at": "2026-01-01T00:00:00Z",
                 "evidence_digest_sha256": "e" * 64,
+                "evidence_path": "reviews/verifier.json",
                 "runner_image": "runner.example/task@sha256:" + "f" * 64,
                 "runner_config_digest_sha256": "d" * 64,
                 "runner_platform": {"os": "linux", "architecture": "amd64", "variant": None},
@@ -467,6 +492,18 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
         command_digest="e" * 64,
         artifact_digest="9" * 64,
     )
+    _bind_verifier_review_reports(
+        root,
+        task,
+        [
+            baseline,
+            baseline_repeat,
+            reference,
+            reference_repeat,
+            tamper,
+            tamper_repeat,
+        ],
+    )
     qualification_path = root / "qualifications/task.json"
     qualification = {
         "task_id": "fixture", "task_version": "1", "content_digest_sha256": "1" * 64,
@@ -480,10 +517,10 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
             "verifier_image": task["verifier"]["image"],
             "verifier_config_digest_sha256": task["verifier"]["config_digest_sha256"],
             "verifier_platform": task["verifier"]["platform"],
-            "review_digest_sha256": "e" * 64,
+            "review_digest_sha256": task["reviews"]["verifier"]["evidence_digest_sha256"],
         },
         "observed_mapping": {
-            "task_digest_sha256": canonical_sha256(task),
+            "task_digest_sha256": task_execution_sha256(task),
             "public_tree_digest_sha256": "3" * 64,
             "verifier_private_tree_digest_sha256": "4" * 64,
             "agent_config_digest_sha256": "6" * 64,
@@ -705,6 +742,53 @@ def test_generate_qualification_uses_repeated_distinct_bound_reports(
         )
 
 
+def test_generate_qualification_rejects_extra_attested_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+    extra = tmp_path / "evidence/baseline-3.json"
+    extra_report = json.loads(reports["baseline"][1].read_text())
+    extra_report["run_id"] = "baseline-run-3"
+    _write_json(extra, extra_report)
+    reports["baseline"].append(extra)
+    _bind_verifier_review_reports(
+        tmp_path,
+        task,
+        [
+            *reports["baseline"],
+            *reports["reference"],
+            *reports["tamper"],
+        ],
+    )
+
+    with pytest.raises(
+        TaskAdmissionError,
+        match="each qualification probe requires exactly two runs",
+    ):
+        generate_task_qualification(
+            tmp_path,
+            task_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/extra-report.json",
+            reviewer="reviewer",
+        )
+
+
 def test_generate_qualification_rejects_nondeterministic_probe_artifacts(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -779,7 +863,7 @@ def test_generate_qualification_executable_task_is_rejected(
         "runner_output_trust": "untrusted",
     }
     _write_json(task_path, task)
-    new_task_digest = canonical_sha256(task)
+    new_task_digest = task_execution_sha256(task)
     monkeypatch.setattr(
         task_workflow,
         "validate_value",
@@ -798,6 +882,15 @@ def test_generate_qualification_executable_task_is_rejected(
             rep["observation"]["digests"]["task"] = new_task_digest
             rep["outcome"] = classify_attempt(rep["observation"])
             _write_json(rpath, rep)
+    _bind_verifier_review_reports(
+        tmp_path,
+        task,
+        [
+            *reports["baseline"],
+            *reports["reference"],
+            *reports["tamper"],
+        ],
+    )
     output = tmp_path / "qualifications/executable_rejected.json"
     qualification = generate_task_qualification(
         tmp_path,
@@ -1096,7 +1189,7 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
         admission_output,
     )
     assert admission_manifest["task"] == {
-        "digest_sha256": canonical_sha256(task),
+        "digest_sha256": task_execution_sha256(task),
         "public_tree_digest_sha256": "3" * 64,
         "verifier_private_tree_digest_sha256": "4" * 64,
         "evidence_use": "admission-only",
@@ -1111,7 +1204,7 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
     assert manifest == {
         "schema_version": "omp.worker-run-manifest/v2", "run_id": "run-1", "role": "task",
         "task": {
-            "digest_sha256": canonical_sha256(task),
+            "digest_sha256": task_execution_sha256(task),
             "qualification_digest_sha256": canonical_sha256(qualification),
             "public_tree_digest_sha256": "3" * 64,
             "verifier_private_tree_digest_sha256": "4" * 64,
@@ -1128,7 +1221,7 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
     task["partition"] = "holdout"
     _write_json(task_path, task)
     qualification["source_task"]["digest_sha256"] = canonical_sha256(task)
-    qualification["observed_mapping"]["task_digest_sha256"] = canonical_sha256(task)
+    qualification["observed_mapping"]["task_digest_sha256"] = task_execution_sha256(task)
     _write_json(qualification_path, qualification)
     with pytest.raises(TaskAdmissionError):
         prepare_worker_manifest(tmp_path, task_path, qualification_path, "run-2", tmp_path / ".rolebench/runs/holdout.json")

@@ -117,6 +117,16 @@ class WorkerManifestTests(unittest.TestCase):
         result = self.validate(manifest)
         self.assertTrue(result.valid, self.rendered(result))
 
+        manifest["runner"] = self.manifest()["runner"]
+        result = self.validate(manifest)
+        self.assertFalse(result.valid)
+        self.assertTrue(
+            any(
+                item.json_path == "$" and "runner" in item.message
+                for item in result.diagnostics
+            )
+        )
+
     def test_missing_runner_is_rejected(self) -> None:
         manifest = self.manifest()
         del manifest["runner"]

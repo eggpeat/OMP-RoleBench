@@ -18,6 +18,7 @@ from rolebench.contracts import (
     file_sha256,
     load_repository,
     task_content_sha256,
+    task_execution_sha256,
     tree_sha256,
     validate_repository,
     validate_value,
@@ -316,10 +317,14 @@ class TaskContractFixture(unittest.TestCase):
                     "verifier_image": IMAGE_B,
                     "verifier_config_digest_sha256": SHA_B,
                     "verifier_private_tree_digest_sha256": private_digest,
-                    "smoke_binding_digest_sha256": canonical_sha256(task),
                 },
                 "report_digests_sha256": [
-                    character * 64 for character in "123456"
+                    file_sha256(baseline),
+                    file_sha256(baseline_repeat),
+                    file_sha256(reference),
+                    file_sha256(reference_repeat),
+                    file_sha256(tamper),
+                    file_sha256(tamper_repeat),
                 ],
             },
             "split": {
@@ -340,7 +345,7 @@ class TaskContractFixture(unittest.TestCase):
         for review_name, evidence in review_evidence.items():
             self.bind_review_evidence(task, review_name, evidence)
         self.write_json("contracts/tasks/example/task.json", task)
-        task_digest = canonical_sha256(task)
+        task_digest = task_execution_sha256(task)
         qualification: dict[str, object] = {
             "schema_version": "omp.task-qualification/v2",
             "task_id": task["task_id"],
@@ -603,7 +608,7 @@ class ArtifactSemanticTests(TaskContractFixture):
         task["capability_tags"] = ["terminal-tool-use"]
         task_digest = canonical_sha256(task)
         qualification["source_task"]["digest_sha256"] = task_digest  # type: ignore[index]
-        qualification["observed_mapping"]["task_digest_sha256"] = task_digest  # type: ignore[index]
+        qualification["observed_mapping"]["task_digest_sha256"] = task_execution_sha256(task)  # type: ignore[index]
         self.write_json("contracts/tasks/example/task.json", task)
         self.write_json("contracts/tasks/example/qualification.json", qualification)
         contract = json.loads(
@@ -676,7 +681,7 @@ class ArtifactSemanticTests(TaskContractFixture):
         task["source"]["kind"] = "synthetic-fixture"  # type: ignore[index]
         task_digest = canonical_sha256(task)
         qualification["source_task"]["digest_sha256"] = task_digest  # type: ignore[index]
-        qualification["observed_mapping"]["task_digest_sha256"] = task_digest  # type: ignore[index]
+        qualification["observed_mapping"]["task_digest_sha256"] = task_execution_sha256(task)  # type: ignore[index]
         self.write_json("contracts/tasks/example/task.json", task)
         self.write_json(
             "contracts/tasks/example/qualification.json",
@@ -789,7 +794,7 @@ class ArtifactSemanticTests(TaskContractFixture):
         task["objective"]["observation"]["authority"] = "source-separated-service"  # type: ignore[index]
         task_digest = canonical_sha256(task)
         qualification["source_task"]["digest_sha256"] = task_digest  # type: ignore[index]
-        qualification["observed_mapping"]["task_digest_sha256"] = task_digest  # type: ignore[index]
+        qualification["observed_mapping"]["task_digest_sha256"] = task_execution_sha256(task)  # type: ignore[index]
         self.write_json("contracts/tasks/example/task.json", task)
         self.write_json("contracts/tasks/example/qualification.json", qualification)
 
@@ -835,6 +840,78 @@ class ArtifactSemanticTests(TaskContractFixture):
         self.assertIn("evidence file SHA-256", messages)
         self.assertIn("human review attestations", messages)
 
+    def test_task_execution_digest_excludes_review_attestations(self) -> None:
+        task, _ = self.make_task_and_qualification()
+        changed = deepcopy(task)
+        changed["reviews"]["verifier"]["evidence_digest_sha256"] = SHA_C  # type: ignore[index]
+
+        self.assertNotEqual(canonical_sha256(task), canonical_sha256(changed))
+        self.assertEqual(
+            task_execution_sha256(task),
+            task_execution_sha256(changed),
+        )
+
+    def test_task_execution_digest_excludes_split_review_binding(self) -> None:
+        task, _ = self.make_task_and_qualification()
+        changed = deepcopy(task)
+        changed["reviews"]["split"]["reviewer"] = "reviewer-2"  # type: ignore[index]
+        changed["reviews"]["split"]["evidence_digest_sha256"] = SHA_B  # type: ignore[index]
+        changed["split"]["reviewer_id"] = "reviewer-2"  # type: ignore[index]
+        changed["split"]["provenance_digest_sha256"] = SHA_B  # type: ignore[index]
+
+        self.assertNotEqual(canonical_sha256(task), canonical_sha256(changed))
+        self.assertEqual(
+            task_execution_sha256(task),
+            task_execution_sha256(changed),
+        )
+
+    def test_qualification_reports_must_match_verifier_review(self) -> None:
+        _, qualification = self.make_task_and_qualification()
+        report_path = (
+            self.root
+            / "contracts/tasks/example/evidence/baseline-1.json"
+        )
+        report_path.write_text(
+            report_path.read_text(encoding="utf-8") + "\n",
+            encoding="utf-8",
+        )
+        qualification["checks"]["baseline_fails"]["evidence"][0][  # type: ignore[index]
+            "digest_sha256"
+        ] = file_sha256(report_path)
+
+        result = validate_value(
+            self.root,
+            "task-qualification",
+            qualification,
+            Path("contracts/tasks/example/qualification.json"),
+        )
+
+        self.assertFalse(result.valid)
+        self.assertIn(
+            "must exactly match the qualification report file digests",
+            self.messages(result),
+        )
+
+    def test_verifier_review_requires_exactly_six_report_digests(self) -> None:
+        task, _ = self.make_task_and_qualification()
+        review_relative = Path(
+            task["reviews"]["verifier"]["evidence_path"]  # type: ignore[index]
+        )
+        review = json.loads(
+            (self.root / review_relative).read_text(encoding="utf-8")
+        )
+        review["report_digests_sha256"].append(SHA_A)
+
+        result = validate_value(
+            self.root,
+            "task-review-evidence",
+            review,
+            review_relative,
+        )
+
+        self.assertFalse(result.valid)
+        self.assertIn("is too long", self.messages(result))
+
     def test_qualification_evaluation_provenance_must_match_task_runner_and_verifier(self) -> None:
         _, qualification = self.make_task_and_qualification()
         bad_runner = deepcopy(qualification)
@@ -861,7 +938,7 @@ class ArtifactSemanticTests(TaskContractFixture):
         task["license"] = {"expression": "NOASSERTION", "redistribution": "prohibited"}
         self.write_json("contracts/tasks/example/task.json", task)
         qualification["source_task"]["digest_sha256"] = canonical_sha256(task)  # type: ignore[index]
-        qualification["observed_mapping"]["task_digest_sha256"] = canonical_sha256(task)  # type: ignore[index]
+        qualification["observed_mapping"]["task_digest_sha256"] = task_execution_sha256(task)  # type: ignore[index]
         result = validate_value(self.root, "task-qualification", qualification, Path("qualification.json"))
         self.assertIn("without approved redistribution", self.messages(result))
 

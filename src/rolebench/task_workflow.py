@@ -28,6 +28,7 @@ from .contracts import (
     JSONValue,
     canonical_sha256,
     file_sha256,
+    task_execution_sha256,
     tree_sha256,
     validate_value,
 )
@@ -1034,7 +1035,7 @@ def _check_task_qualification_values(
         public = assets.get("public")
         private = assets.get("verifier_private")
         expected_mapping = {
-            "task_digest_sha256": canonical_sha256(task),
+            "task_digest_sha256": task_execution_sha256(task),
             "public_tree_digest_sha256": (
                 public.get("digest_sha256")
                 if isinstance(public, dict)
@@ -1645,7 +1646,7 @@ def _qualification_report(
     public = assets.get("public")
     private = assets.get("verifier_private")
     expected = {
-        "task": canonical_sha256(task),
+        "task": task_execution_sha256(task),
         "task_public_tree": (
             public.get("digest_sha256")
             if isinstance(public, dict)
@@ -1691,10 +1692,10 @@ def _qualification_group(
 ) -> tuple[list[JSONObject], str, list[JSONObject]]:
     if (
         isinstance(paths, (str, bytes, Path))
-        or not 2 <= len(paths) <= 8
+        or len(paths) != 2
     ):
         raise TaskAdmissionError(
-            "each qualification probe requires two to eight runs"
+            "each qualification probe requires exactly two runs"
         )
     reports: list[JSONObject] = []
     commands: list[str] = []
@@ -1871,6 +1872,25 @@ def generate_task_qualification(
         raise TaskAdmissionError(
             "qualification reports must be content-distinct"
         )
+    report_digests = [
+        str(item["digest_sha256"])
+        for item in evidence
+    ]
+    verifier_evidence_path = verifier_review.get("evidence_path")
+    if not isinstance(verifier_evidence_path, str):
+        raise TaskAdmissionError(
+            "verifier review evidence path is missing"
+        )
+    verifier_evidence = _object(
+        _artifact(resolved_root, Path(verifier_evidence_path))
+    )
+    if (
+        verifier_evidence.get("report_digests_sha256")
+        != report_digests
+    ):
+        raise TaskAdmissionError(
+            "verifier review does not attest the exact qualification reports"
+        )
     reports = (*baseline, *reference, *tamper)
     run_ids = {report.get("run_id") for report in reports}
     if None in run_ids or len(run_ids) != len(reports):
@@ -1947,7 +1967,7 @@ def generate_task_qualification(
             ],
         },
         "observed_mapping": {
-            "task_digest_sha256": canonical_sha256(task),
+            "task_digest_sha256": task_execution_sha256(task),
             "public_tree_digest_sha256": assets["public"][
                 "digest_sha256"
             ],
@@ -2075,7 +2095,7 @@ def _prepare_bound_manifest(
         raise TaskAdmissionError(
             "manifest container config digests must be pairwise distinct"
         )
-    task_digest = canonical_sha256(task)
+    task_digest = task_execution_sha256(task)
     agent_manifest = _inspect_image(
         docker,
         agent,

@@ -270,6 +270,21 @@ def canonical_sha256(value: JSONValue) -> str:
 
     return sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
+def task_execution_sha256(task: JSONObject) -> str:
+    """Hash executable task semantics without mutable review attestations."""
+
+    if task.get("schema_version") != "omp.diagnostic-task/v2":
+        return canonical_sha256(task)
+    execution_task = dict(task)
+    execution_task.pop("reviews", None)
+    split = execution_task.get("split")
+    if isinstance(split, dict):
+        execution_split = dict(split)
+        execution_split.pop("reviewer_id", None)
+        execution_split.pop("provenance_digest_sha256", None)
+        execution_task["split"] = execution_split
+    return canonical_sha256(execution_task)
+
 
 def task_content_sha256(
     public_tree_digest_sha256: str,
@@ -2274,12 +2289,12 @@ def _task_qualification_semantics(root: Path, qualification: JSONObject, relativ
             yield Diagnostic(relative.as_posix(), f"$.{name}", "must match the source diagnostic task")
     observed = qualification.get("observed_mapping")
     if isinstance(observed, dict):
-        expected_task_digest = canonical_sha256(task)
+        expected_task_digest = task_execution_sha256(task)
         if observed.get("task_digest_sha256") != expected_task_digest:
             yield Diagnostic(
                 relative.as_posix(),
                 "$.observed_mapping.task_digest_sha256",
-                "must recapture the canonical source task digest",
+                "must recapture the canonical task execution digest",
             )
         assets = task.get("assets")
         public = assets.get("public") if isinstance(assets, dict) else None
@@ -2339,11 +2354,76 @@ def _task_qualification_semantics(root: Path, qualification: JSONObject, relativ
     qualification_reviews = qualification.get("reviews")
     if qualification_reviews != task_reviews:
         yield Diagnostic(relative.as_posix(), "$.reviews", "must exactly recapture all source task human review attestations")
+    checks = qualification.get("checks")
+    verifier_review = (
+        task_reviews.get("verifier")
+        if isinstance(task_reviews, dict)
+        else None
+    )
+    verifier_evidence_path = (
+        verifier_review.get("evidence_path")
+        if isinstance(verifier_review, dict)
+        else None
+    )
+    verifier_evidence_file = _repository_path(
+        root,
+        verifier_evidence_path,
+    )
+    qualification_report_digests: list[str] = []
+    complete_report_set = isinstance(checks, dict)
+    if isinstance(checks, dict):
+        for name in (
+            "baseline_fails",
+            "reference_passes",
+            "tamper_resistance",
+        ):
+            check = checks.get(name)
+            references = (
+                check.get("evidence")
+                if isinstance(check, dict)
+                else None
+            )
+            if not isinstance(references, list):
+                complete_report_set = False
+                continue
+            for reference in references:
+                digest = (
+                    reference.get("digest_sha256")
+                    if isinstance(reference, dict)
+                    else None
+                )
+                if not isinstance(digest, str):
+                    complete_report_set = False
+                    continue
+                qualification_report_digests.append(digest)
+    if (
+        complete_report_set
+        and verifier_evidence_file is not None
+    ):
+        verifier_evidence_relative = (
+            verifier_evidence_file.relative_to(root)
+        )
+        try:
+            verifier_evidence = _load_object(
+                root,
+                verifier_evidence_relative,
+            )
+        except ContractError:
+            pass
+        else:
+            if (
+                verifier_evidence.get("report_digests_sha256")
+                != qualification_report_digests
+            ):
+                yield Diagnostic(
+                    verifier_evidence_relative.as_posix(),
+                    "$.report_digests_sha256",
+                    "must exactly match the qualification report file digests",
+                )
     license_value = task.get("license")
     if qualification.get("decision") != "rejected" and isinstance(license_value, dict):
         if license_value.get("expression") == "NOASSERTION" or license_value.get("redistribution") != "permitted":
             yield Diagnostic(relative.as_posix(), "$.decision", "cannot admit or calibrate a task without approved redistribution")
-    checks = qualification.get("checks")
     if isinstance(checks, dict):
         for name in (
             "baseline_fails",

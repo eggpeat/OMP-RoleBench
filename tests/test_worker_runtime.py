@@ -571,6 +571,60 @@ class DoctorTests(WorkerRuntimeFixture):
         self.assertTrue(report["resource_enforcement"])
 
 
+class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
+    def test_v1_manifest_executes_without_a_runner_container(self) -> None:
+        policy_path = self.root / "contracts/scored-worker-policy-v1.json"
+        policy = json.loads(
+            (self.root / "contracts/scored-worker-policy.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        policy["schema_version"] = "omp.scored-worker-policy/v1"
+        policy["policy_id"] = "rolebench-scored-worker-v1"
+        del policy["timeouts"]["runner_seconds"]
+        policy["handoff"] = {
+            "mode": "immutable-content-addressed",
+            "digest_algorithm": "sha256",
+            "require_agent_exit": True,
+            "verifier_read_only": True,
+        }
+        policy_path.write_text(
+            json.dumps(policy, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        self.manifest["schema_version"] = "omp.worker-run-manifest/v1"
+        self.manifest.pop("runner")
+        for container_name in ("agent", "verifier"):
+            self.manifest[container_name].pop("config_digest_sha256")
+            self.manifest[container_name].pop("platform")
+        self.manifest["policy"] = {
+            "path": "contracts/scored-worker-policy-v1.json",
+            "digest_sha256": hashlib.sha256(
+                canonical_json(policy).encode("utf-8")
+            ).hexdigest(),
+        }
+        self.fake.verifier_stream = worker._StreamResult(
+            0,
+            b'{"outcome":"accepted","reward":1}',
+            b"private verifier log",
+        )
+        self._write_manifest()
+
+        report = self.run_worker()
+
+        self.assertTrue(report["passed"], report["diagnostics"])
+        self.assertEqual(len(self.fake.stream_calls), 2)
+        self.assertEqual(self.fake.verifier_input, ARTIFACT)
+        self.assertEqual(
+            report["observation"]["schema_version"],
+            "omp.attempt-observation/v1",
+        )
+        self.assertEqual(
+            report["outcome"]["schema_version"],
+            "omp.attempt-outcome/v1",
+        )
+
+
 class ImageBindingAndIsolationTests(WorkerRuntimeFixture):
     def _assert_binding_rejected_before_stream(self) -> dict[str, object]:
         report = self.run_worker()

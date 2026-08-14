@@ -1,5 +1,5 @@
 {
-  "schema_version": "omp.worker-run-manifest/v1",
+  "schema_version": "omp.worker-run-manifest/v2",
   "run_id": "docker-runsc-fixture-v1",
   "role": "task",
   "task": {

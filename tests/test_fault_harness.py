@@ -32,6 +32,7 @@ class FaultHarnessTests(unittest.TestCase):
         self.assertEqual(report["covered_reason_count"], 29)
         self.assertEqual(report["passed_scenarios"], 29)
         self.assertEqual(report["failed_scenarios"], 0)
+        self.assertEqual(report["diagnostics"], [])
         self.assertEqual(len(report["covered_reason_codes"]), 29)
         self.assertEqual(
             report["quality_summary"],
@@ -55,6 +56,42 @@ class FaultHarnessTests(unittest.TestCase):
         self.assertTrue(all(item["observation_valid"] for item in scenarios))
         self.assertTrue(all(item["outcome_valid"] for item in scenarios))
         self.assertTrue(all(item["diagnostics"] == [] for item in scenarios))
+
+    def test_aggregate_quality_divergence_fails_gate(self) -> None:
+        wrong_summary = {
+            "total_attempts": 29,
+            "scored_attempts": 4,
+            "accepted": 2,
+            "rejected": 2,
+            "quality_score": 0.5,
+            "not_scored": {
+                "retryable_invalid": 18,
+                "quarantined": 5,
+                "cancelled": 1,
+                "excluded": 1,
+            },
+        }
+        with patch(
+            "rolebench.fault_harness.summarize_outcomes",
+            return_value=wrong_summary,
+        ):
+            report = self.run_report()
+
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["failed_scenarios"], 0)
+        self.assertEqual(report["quality_summary"], wrong_summary)
+        self.assertEqual(
+            report["diagnostics"],
+            [
+                "quality summary mismatch: "
+                'expected {"accepted":1,"not_scored":{"cancelled":1,"excluded":1,'
+                '"quarantined":5,"retryable_invalid":18},"quality_score":0.25,'
+                '"rejected":3,"scored_attempts":4,"total_attempts":29}, '
+                'actual {"accepted":2,"not_scored":{"cancelled":1,"excluded":1,'
+                '"quarantined":5,"retryable_invalid":18},"quality_score":0.5,'
+                '"rejected":2,"scored_attempts":4,"total_attempts":29}'
+            ],
+        )
 
     def test_report_is_deterministic(self) -> None:
         first = self.run_report()
@@ -118,6 +155,28 @@ class FaultHarnessTests(unittest.TestCase):
 
         self.assertFalse(report["passed"])
         self.assertEqual(report["failed_scenarios"], 29)
+        self.assertEqual(
+            report["quality_summary"],
+            {
+                "total_attempts": 0,
+                "scored_attempts": 0,
+                "accepted": 0,
+                "rejected": 0,
+                "quality_score": None,
+                "not_scored": {
+                    "retryable_invalid": 0,
+                    "quarantined": 0,
+                    "cancelled": 0,
+                    "excluded": 0,
+                },
+            },
+        )
+        self.assertTrue(
+            any(
+                "quality summary mismatch" in str(diagnostic)
+                for diagnostic in report["diagnostics"]
+            )
+        )
         scenarios = report["scenarios"]
         self.assertIsInstance(scenarios, list)
         for scenario in scenarios:
