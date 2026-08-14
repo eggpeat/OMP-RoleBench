@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from rolebench.accounting import AccountingError
+from rolebench.accounting_rules import ATTEMPT_OUTCOME_RULES
 from rolebench.contracts import canonical_json
 from rolebench.fault_harness import FaultHarnessError, _observation, run_fault_check
 
@@ -105,6 +108,57 @@ class FaultHarnessTests(unittest.TestCase):
         excluded = actual_by_reason["non-scored-evidence"]
         self.assertEqual(excluded["disposition"], "excluded")
         self.assertFalse(excluded["counts_toward_quality"])
+
+    def test_classification_error_returns_structured_failed_report(self) -> None:
+        with patch(
+            "rolebench.fault_harness.classify_attempt",
+            side_effect=AccountingError("forced classification failure"),
+        ):
+            report = self.run_report()
+
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["failed_scenarios"], 29)
+        scenarios = report["scenarios"]
+        self.assertIsInstance(scenarios, list)
+        for scenario in scenarios:
+            self.assertFalse(scenario["passed"])
+            self.assertFalse(scenario["outcome_valid"])
+            self.assertIn(
+                "classification error: forced classification failure",
+                scenario["diagnostics"],
+            )
+
+    def test_reason_code_coverage_divergence_fails_gate(self) -> None:
+        added_rule = ATTEMPT_OUTCOME_RULES["verifier-accepted"]
+        variants = (
+            (
+                {**ATTEMPT_OUTCOME_RULES, "future-reason": added_rule},
+                ["future-reason"],
+                [],
+            ),
+            (
+                {
+                    reason: rule
+                    for reason, rule in ATTEMPT_OUTCOME_RULES.items()
+                    if reason != "verifier-accepted"
+                },
+                [],
+                ["verifier-accepted"],
+            ),
+        )
+        for rules, missing, unexpected in variants:
+            with self.subTest(missing=missing, unexpected=unexpected):
+                with patch(
+                    "rolebench.fault_harness.ATTEMPT_OUTCOME_RULES",
+                    rules,
+                ):
+                    report = self.run_report()
+
+                self.assertFalse(report["passed"])
+                self.assertEqual(report["failed_scenarios"], 0)
+                self.assertEqual(report["passed_scenarios"], 29)
+                self.assertEqual(report["missing_reason_codes"], missing)
+                self.assertEqual(report["unexpected_reason_codes"], unexpected)
 
     def test_invalid_or_tampered_policy_fails_closed(self) -> None:
         policy = json.loads((PRODUCT_ROOT / POLICY_PATH).read_text(encoding="utf-8"))

@@ -1,12 +1,13 @@
-FROM busybox@sha256:7a3ebe5bfd1a4a19797d20b0c0bb39d44393e9a03fd852c0865b0f540d868df0
+FROM python:3.13-slim-bookworm@sha256:00faa2debb87529f9f0764e9491d8ba400a3678976616c3bd7cb193745ac20d1
 
 ARG PRIVATE_TREE_SHA256
 
 LABEL org.omp.rolebench.task.role="task" \
+      org.omp.rolebench.task.stage="verifier" \
       org.omp.rolebench.task.verifier-private-tree-sha256="${PRIVATE_TREE_SHA256}"
 
 COPY verifier-private/ /opt/rolebench/task/verifier-private/
-RUN chmod 0555 /opt/rolebench/task/verifier-private/verifier.sh
+RUN chmod 0555 /opt/rolebench/task/verifier-private/verifier.py
 
 USER 2000:2000
-ENTRYPOINT ["/opt/rolebench/task/verifier-private/verifier.sh"]
+ENTRYPOINT ["/opt/rolebench/task/verifier-private/verifier.py"]

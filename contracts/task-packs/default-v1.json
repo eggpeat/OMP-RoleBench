@@ -1,0 +1,43 @@
+{
+  "entries": [
+    {
+      "qualification": {
+        "digest_sha256": "0cd4997cd7aa5d2791bb44c20640c57278f319ee45147d5b57d5f39e4c028642",
+        "path": "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "4a10014cf31ac08d7ac7fe9c6e7cdbcb7b3537bcb3c6cfa401ddeb831a20f164",
+        "path": "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "47dbff7fe39221fd3f5672faf969913befb2e0d5a6d41931092c809bc58fc6bf",
+        "path": "contracts/tasks/terminal-bench.multi-source-data-merger/2.1-r6/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "81899adf9f41c6cd922a7ca0229d02b35cebe77142db3fe0cda8fa15c0d0bcb4",
+        "path": "contracts/tasks/terminal-bench.multi-source-data-merger/2.1-r6/task.json"
+      }
+    }
+  ],
+  "pack_id": "default-v1",
+  "partition": "anchor",
+  "required_capabilities": [
+    "terminal-tool-use",
+    "code-editing",
+    "repository-navigation",
+    "instruction-following",
+    "interactive-reasoning"
+  ],
+  "role": "default",
+  "role_contract": {
+    "contract_id": "role-contract/default/v1",
+    "digest_sha256": "40f8245e689517ac8c979a9e89a94bdf4b1fecfd975a9af97b2851511ebed2c9"
+  },
+  "routing_eligible": false,
+  "schema_version": "omp.task-pack/v1",
+  "selection_method": "fixed-anchor",
+  "status": "calibration",
+  "task_mix": "default-v1"
+}

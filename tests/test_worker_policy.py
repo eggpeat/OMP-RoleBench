@@ -76,7 +76,8 @@ class ValidWorkerPolicyTests(WorkerPolicyFixture):
         accounting = definitions["accounting"]
         resources = definitions["resources"]
         timeouts = definitions["timeouts"]
-        for value in (executor, network, verifier, accounting, resources, timeouts):
+        handoff = definitions["handoff"]
+        for value in (executor, network, verifier, accounting, resources, timeouts, handoff):
             self.assertIsInstance(value, dict)
             self.assertFalse(value["additionalProperties"])
 
@@ -92,6 +93,11 @@ class ValidWorkerPolicyTests(WorkerPolicyFixture):
             accounting["properties"]["quality_denominator"],
             {"const": "valid-scored-attempts-only"},
         )
+        self.assertEqual(handoff["properties"]["require_runner_exit"], {"const": True})
+        self.assertEqual(handoff["properties"]["runner_input_read_only"], {"const": True})
+        self.assertEqual(handoff["properties"]["verifier_input_read_only"], {"const": True})
+        self.assertNotIn("verifier_read_only", handoff["properties"])
+
         for definition_name in ("resources", "timeouts"):
             properties = definitions[definition_name]["properties"]
             for field, constraint in properties.items():
@@ -177,7 +183,7 @@ class InvalidWorkerPolicyTests(WorkerPolicyFixture):
             (
                 POLICY,
                 "$.timeouts.total_seconds",
-                "must be at least the sum of setup, agent, artifact, verifier, and termination grace timeouts",
+                "must be at least the sum of setup, agent, artifact, runner, verifier, and termination grace timeouts",
             ),
             self.diagnostics(),
         )
@@ -188,7 +194,7 @@ class InvalidWorkerPolicyTests(WorkerPolicyFixture):
         self.assertIsInstance(timeouts, dict)
         timeouts["termination_grace_seconds"] = timeouts["setup_seconds"]
         timeouts["artifact_seconds"] = 301
-        timeouts["total_seconds"] = 6000
+        timeouts["total_seconds"] = 7000
         self.write_json(POLICY, policy)
         matching = {
             diagnostic

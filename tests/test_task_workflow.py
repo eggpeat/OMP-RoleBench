@@ -239,7 +239,7 @@ def _admission_report(
     run_id = f"{probe}-{trial}"
     reward = 1 if verifier_outcome == "accepted" else 0
     observation = {
-        "schema_version": "omp.attempt-observation/v1",
+        "schema_version": "omp.attempt-observation/v2",
         "observation_id": f"{run_id}-observation",
         "observed_at": "2026-08-13T00:00:00Z",
         "attempt": {
@@ -253,6 +253,9 @@ def _admission_report(
             "agent_started": True,
             "agent_finished": True,
             "artifact_frozen": True,
+            "runner_started": True,
+            "runner_finished": True,
+            "runner_evidence_frozen": True,
             "verifier_started": True,
             "verifier_finished": True,
         },
@@ -282,15 +285,18 @@ def _admission_report(
         "digests": {
             "task": canonical_sha256(task),
             "config": "2" * 64,
-            "agent_image": command_digest,
-            "verifier_image": "7" * 64,
+            "agent_image": str(task["admission_agents"][probe]["image"]).rpartition("@sha256:")[2],
+            "runner_image": str(task["runner"]["image"]).rpartition("@sha256:")[2],
+            "verifier_image": str(task["verifier"]["image"]).rpartition("@sha256:")[2],
             "runtime_policy": "2" * 64,
             "artifact": artifact_digest,
+            "runner_evidence": "e" * 64,
             "trajectory": sha256(run_id.encode()).hexdigest(),
             "task_public_tree": "3" * 64,
             "verifier_private_tree": "4" * 64,
             "agent_image_config": command_digest,
-            "verifier_image_config": "8" * 64,
+            "runner_image_config": task["runner"]["config_digest_sha256"],
+            "verifier_image_config": task["verifier"]["config_digest_sha256"],
         },
     }
     report = {
@@ -300,17 +306,22 @@ def _admission_report(
         "external_provider_calls": 0,
         "policy_digest_sha256": "2" * 64,
         "artifact_digest_sha256": artifact_digest,
+        "runner_evidence_digest_sha256": "e" * 64,
         "observation": observation,
         "outcome": classify_attempt(observation),
         "doctor": {"ready": True},
         "isolation": {
             "agent": {"verified": True},
+            "runner": {"verified": True},
             "verifier": {"verified": True},
             "distinct_images": True,
             "resource_enforcement": True,
-            "task_image_binding_verified": True,
+            "image_binding": {"agent": True, "runner": True, "verifier": True},
+            "image_binding_verified": True,
             "artifact_frozen_after_agent_exit": True,
-            "immutable_handoff": True,
+            "runner_evidence_frozen_after_runner_exit": True,
+            "immutable_agent_runner_handoff": True,
+            "immutable_runner_verifier_handoff": True,
         },
         "diagnostics": [],
     }
@@ -328,7 +339,19 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
         "reviews": {
             "privacy": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "c" * 64},
             "license": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "d" * 64},
-            "verifier": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "e" * 64},
+            "verifier": {
+                "decision": "approved",
+                "reviewer": "reviewer",
+                "reviewed_at": "2026-01-01T00:00:00Z",
+                "evidence_digest_sha256": "e" * 64,
+                "runner_image": "runner.example/task@sha256:" + "f" * 64,
+                "runner_config_digest_sha256": "d" * 64,
+                "runner_platform": {"os": "linux", "architecture": "amd64", "variant": None},
+                "verifier_image": "verifier.example/task@sha256:" + "7" * 64,
+                "verifier_config_digest_sha256": "8" * 64,
+                "verifier_platform": {"os": "linux", "architecture": "amd64", "variant": None},
+                "private_tree_digest_sha256": "4" * 64,
+            },
             "split": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "f" * 64},
         },
         "policy": {"path": "contracts/policy.json", "digest_sha256": "2" * 64},
@@ -365,11 +388,28 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
                 "argv": ["tamper"],
             },
         },
+        "runner": {
+            "image": "runner.example/task@sha256:" + "f" * 64,
+            "config_digest_sha256": "d" * 64,
+            "platform": {"os": "linux", "architecture": "amd64", "variant": None},
+            "asset_tree_digest_sha256": "3" * 64,
+            "argv": ["runner"],
+        },
         "verifier": {
             "image": "verifier.example/task@sha256:" + "7" * 64,
             "config_digest_sha256": "8" * 64,
             "platform": {"os": "linux", "architecture": "amd64", "variant": None},
             "asset_tree_digest_sha256": "4" * 64, "argv": ["verify"],
+        },
+        "objective": {
+            "mode": "file",
+            "scoring": "binary",
+            "criteria": ["return exact contents of workspace/input.txt"],
+            "observation": {
+                "artifact_kind": "data-only",
+                "authority": "host-process",
+                "runner_output_trust": "untrusted",
+            },
         },
     }
     _write_json(task_path, task)
@@ -432,8 +472,12 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
         "task_id": "fixture", "task_version": "1", "content_digest_sha256": "1" * 64,
         "source_task": {"path": "tasks/task.json", "digest_sha256": canonical_sha256(task)},
         "reviews": task["reviews"],
-        "verifier_provenance": {
-            "reviewer_id": "reviewer", "verifier_image": task["verifier"]["image"],
+        "evaluation_provenance": {
+            "reviewer_id": "reviewer",
+            "runner_image": task["runner"]["image"],
+            "runner_config_digest_sha256": task["runner"]["config_digest_sha256"],
+            "runner_platform": task["runner"]["platform"],
+            "verifier_image": task["verifier"]["image"],
             "verifier_config_digest_sha256": task["verifier"]["config_digest_sha256"],
             "verifier_platform": task["verifier"]["platform"],
             "review_digest_sha256": "e" * 64,
@@ -443,10 +487,12 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
             "public_tree_digest_sha256": "3" * 64,
             "verifier_private_tree_digest_sha256": "4" * 64,
             "agent_config_digest_sha256": "6" * 64,
+            "runner_config_digest_sha256": "d" * 64,
             "verifier_config_digest_sha256": "8" * 64,
         },
         "checks": {
-            "privacy": "pass", "license": "pass", "verifier_isolation": "pass",
+            "privacy": "pass", "license": "pass", "runner_isolation": "pass", "verifier_isolation": "pass",
+            "observation_authority": "pass",
             "tamper_resistance": {
                 "result": "pass",
                 "command_digest_sha256": "e" * 64,
@@ -700,6 +746,246 @@ def test_generate_qualification_rejects_nondeterministic_probe_artifacts(
         )
 
 
+def test_qualification_revalidation_rejects_mismatched_runner_binding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, qualification_path, task, qualification = _qualification_pair(tmp_path)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    task["runner"]["config_digest_sha256"] = "9" * 64
+    _write_json(task_path, task)
+    result = check_task_qualification(tmp_path, task_path, qualification_path)
+    assert result["valid"] is False
+    assert any(
+        "evidence is invalid" in diag
+        or "runner config provenance does not match" in diag
+        or "observed mapping does not match" in diag
+        for diag in result["diagnostics"]
+    )
+
+
+def test_generate_qualification_executable_task_is_rejected(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    task["objective"]["observation"] = {
+        "artifact_kind": "executable",
+        "authority": "source-separated-service",
+        "runner_output_trust": "untrusted",
+    }
+    _write_json(task_path, task)
+    new_task_digest = canonical_sha256(task)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+    for report_list in reports.values():
+        for rpath in report_list:
+            rep = json.loads(rpath.read_text())
+            rep["observation"]["digests"]["task"] = new_task_digest
+            rep["outcome"] = classify_attempt(rep["observation"])
+            _write_json(rpath, rep)
+    output = tmp_path / "qualifications/executable_rejected.json"
+    qualification = generate_task_qualification(
+        tmp_path,
+        task_path,
+        reports["baseline"],
+        reports["reference"],
+        reports["tamper"],
+        output,
+        reviewer="reviewer",
+    )
+    assert qualification["checks"]["observation_authority"] == "fail"
+    assert qualification["decision"] == "rejected"
+
+
+def test_image_inspection_binds_exact_stage_label(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    image = "example.invalid/runner@sha256:" + "a" * 64
+    container = {
+        "image": image,
+        "config_digest_sha256": "b" * 64,
+        "platform": {
+            "os": "linux",
+            "architecture": "amd64",
+            "variant": None,
+        },
+        "argv": ["/runner.py"],
+    }
+    labels = {
+        "org.omp.rolebench.task.role": "task",
+        "org.omp.rolebench.task.stage": "runner",
+        "org.omp.rolebench.task.public-tree-sha256": "c" * 64,
+    }
+    image_data = {
+        "Id": "sha256:" + "b" * 64,
+        "RepoDigests": [image],
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:" + "a" * 64,
+        },
+        "Os": "linux",
+        "Architecture": "amd64",
+        "Variant": None,
+        "Config": {"Labels": labels},
+    }
+    monkeypatch.setattr(
+        task_workflow,
+        "_docker_json",
+        lambda *args: image_data,
+    )
+
+    observed = task_workflow._inspect_image(
+        "docker",
+        container,
+        "task",
+        "c" * 64,
+        "d" * 64,
+        stage="runner",
+    )
+    assert observed["image"] == image
+
+    labels["org.omp.rolebench.task.stage"] = "agent"
+    with pytest.raises(
+        TaskAdmissionError,
+        match="labels do not match",
+    ):
+        task_workflow._inspect_image(
+            "docker",
+            container,
+            "task",
+            "c" * 64,
+            "d" * 64,
+            stage="runner",
+        )
+
+
+def test_image_inspection_extracts_distinct_oci_config_digest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_data = b'{"architecture":"amd64","os":"linux"}'
+    config_digest = sha256(config_data).hexdigest()
+    manifest_data = json.dumps(
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "digest": f"sha256:{config_digest}",
+                "size": len(config_data),
+            },
+            "layers": [],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    manifest_digest = sha256(manifest_data).hexdigest()
+    index_data = json.dumps(
+        {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": f"sha256:{manifest_digest}",
+                    "size": len(manifest_data),
+                }
+            ],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    archive_path = tmp_path / "image.tar"
+    with tarfile.open(archive_path, "w") as archive:
+        for name, data in (
+            ("index.json", index_data),
+            (
+                f"blobs/sha256/{manifest_digest}",
+                manifest_data,
+            ),
+            (f"blobs/sha256/{config_digest}", config_data),
+        ):
+            entry = tarfile.TarInfo(name)
+            entry.size = len(data)
+            archive.addfile(entry, io.BytesIO(data))
+
+    image = f"example.invalid/runner@sha256:{manifest_digest}"
+    container = {
+        "image": image,
+        "config_digest_sha256": config_digest,
+        "argv": ["--rolebench-run"],
+        "platform": {
+            "os": "linux",
+            "architecture": "amd64",
+            "variant": None,
+        },
+    }
+    image_data = {
+        "Id": f"sha256:{manifest_digest}",
+        "RepoDigests": [image],
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": f"sha256:{manifest_digest}",
+        },
+        "Os": "linux",
+        "Architecture": "amd64",
+        "Variant": None,
+        "Config": {
+            "Labels": {
+                "org.omp.rolebench.task.role": "task",
+                "org.omp.rolebench.task.stage": "runner",
+                "org.omp.rolebench.task.public-tree-sha256": "c" * 64,
+            }
+        },
+    }
+
+    monkeypatch.setattr(
+        task_workflow,
+        "_docker_json",
+        lambda *_args: image_data,
+    )
+
+    def export_image(
+        _docker: str,
+        arguments: tuple[str, ...],
+        **_kwargs: object,
+    ) -> SimpleNamespace:
+        output = Path(arguments[arguments.index("--output") + 1])
+        shutil.copyfile(archive_path, output)
+        return SimpleNamespace(
+            returncode=0,
+            timed_out=False,
+            overflowed=False,
+            stdout=b"",
+        )
+
+    monkeypatch.setattr(task_workflow, "_docker_result", export_image)
+    inspected = task_workflow._inspect_image(
+        "docker",
+        container,
+        "task",
+        "c" * 64,
+        "d" * 64,
+        stage="runner",
+    )
+
+    assert inspected["config_digest_sha256"] == config_digest
+
+
 def test_container_tree_capture_hashes_archive_in_fresh_child_directory(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -823,7 +1109,7 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
     output = tmp_path / ".rolebench/runs/run.json"
     manifest = prepare_worker_manifest(tmp_path, task_path, qualification_path, "run-1", output)
     assert manifest == {
-        "schema_version": "omp.worker-run-manifest/v1", "run_id": "run-1", "role": "task",
+        "schema_version": "omp.worker-run-manifest/v2", "run_id": "run-1", "role": "task",
         "task": {
             "digest_sha256": canonical_sha256(task),
             "qualification_digest_sha256": canonical_sha256(qualification),
@@ -833,6 +1119,7 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
         },
         "policy": task["policy"], "provider": {"enabled": False},
         "agent": {key: task["agent"][key] for key in ("image", "config_digest_sha256", "platform", "argv")},
+        "runner": {key: task["runner"][key] for key in ("image", "config_digest_sha256", "platform", "argv")},
         "verifier": {key: task["verifier"][key] for key in ("image", "config_digest_sha256", "platform", "argv")},
     }
     with pytest.raises(TaskWorkflowError):

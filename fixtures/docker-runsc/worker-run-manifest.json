@@ -7,19 +7,43 @@
   },
   "policy": {
     "path": "contracts/scored-worker-policy.json",
-    "digest_sha256": "c773b99f959a64065d0237ac96af2c70f3e3fd6c676c87383645b94f8d1983ac"
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70"
   },
   "provider": {
     "enabled": false
   },
   "agent": {
     "image": "rolebench/docker-runsc-agent@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "config_digest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "platform": {
+      "os": "linux",
+      "architecture": "amd64",
+      "variant": null
+    },
     "argv": [
       "/usr/local/bin/rolebench-agent"
     ]
   },
+  "runner": {
+    "image": "rolebench/docker-runsc-runner@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "config_digest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "platform": {
+      "os": "linux",
+      "architecture": "amd64",
+      "variant": null
+    },
+    "argv": [
+      "/usr/local/bin/rolebench-runner"
+    ]
+  },
   "verifier": {
     "image": "rolebench/docker-runsc-verifier@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "config_digest_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "platform": {
+      "os": "linux",
+      "architecture": "amd64",
+      "variant": null
+    },
     "argv": [
       "/usr/local/bin/rolebench-verifier"
     ]

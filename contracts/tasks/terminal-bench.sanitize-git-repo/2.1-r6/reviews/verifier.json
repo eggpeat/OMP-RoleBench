@@ -1,0 +1,56 @@
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "tamper_rejected": "pass",
+    "traversal_rejected": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Generated reference and tamper probes lacked executable shebangs.",
+      "resolution": "Restored shebangs, rebuilt images, and reran exact evidence."
+    },
+    {
+      "finding": "Unified-diff hunk header counts and new-file positions were not enforced.",
+      "resolution": "Added strict old/new count and new-position validation, rebuilt the runner image, and reran exact evidence."
+    },
+    {
+      "finding": "No-newline markers were syntax-checked but ignored when comparing and applying hunk records.",
+      "resolution": "Bound markers to the immediately preceding record, enforced placement, removed the marked line terminator, rebuilt the runner image, and reran exact evidence."
+    },
+    {
+      "finding": "Patch headers and paths admitted ambiguous or resource-amplifying forms.",
+      "resolution": "Required matching normalized existing-file paths, rejected creation, deletion, duplicate targets, pre-hunk content, invalid path bounds, and oversized hunk coordinates, then rebuilt the runner image and reran exact evidence."
+    }
+  ],
+  "report_digests_sha256": [
+    "0667c6d3ab2ddb42699da3e0c4c44a268d15e861bbad8eccb26564a315a448cf",
+    "bec63a83ab4abc9c909d0aa5db848422d74afe25f2cbc6bbf40ab6fae7c746dd",
+    "003a5fb394c47c3dca730dbbaaf4d20164db17217e2c11b3906a30bb1fb2850c",
+    "42f144e1126492d5abdab8cb5123b7ce53a86b9524ba403ac88aeea8129e53aa",
+    "3b2aa4cf5c1febfed86bb1873f1b1517b21d57736d71090c70f76f49e93887fe",
+    "d4d517eff391c4f68fa814afa00648cb781c4c85cdf0809d049005f16756c2c2"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-14T21:57:02Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "8ec5ca848187328046ed9c0617092fdb3c6ece7c16cff88555d655487551f389",
+    "runner_config_digest_sha256": "c197714b3746d19dbc34b72140a79ddad5acc1d0a8ecb3edbdc0cb4a2c09b378",
+    "runner_image": "rolebench.local/sanitize-default-runner@sha256:777eedc56ea59958364e5e6358ed12e236d9f547bcb494f03021849c0fde43e5",
+    "smoke_binding_digest_sha256": "620222721d6b6368a3fc90d7cb463b2b4b9d57fbb9765084ab434cc946d7b48e",
+    "verifier_config_digest_sha256": "5348735f1423d7f48972a765d3d3c45b58a41f40fc59caba4c065f027568d289",
+    "verifier_image": "rolebench.local/sanitize-default-verifier@sha256:08f44e93798433f5eb0acf61c566c9af8c9806f7d73b3d6d150d2242b397fe00",
+    "verifier_private_tree_digest_sha256": "bba4905d65622fbd093b035f1d171c113250f35a5bd8f646dcbb8e13a37cefa1"
+  },
+  "task_id": "terminal-bench.sanitize-git-repo",
+  "task_version": "2.1-r6"
+}

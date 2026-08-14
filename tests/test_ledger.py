@@ -31,21 +31,40 @@ class LedgerFixture(unittest.TestCase):
 
     def observation(self, run_id: str = "run-test") -> dict[str, object]:
         return {
-            "schema_version": "omp.attempt-observation/v1",
+            "schema_version": "omp.attempt-observation/v2",
             "observation_id": f"{run_id}-observation",
             "observed_at": "2026-08-14T11:59:00Z",
             "attempt": {"attempt_id": run_id, "number": 1, "previous_attempt_id": None},
             "stage": "complete",
-            "lifecycle": {"environment_started": True, "agent_started": True, "agent_finished": True, "artifact_frozen": True, "verifier_started": True, "verifier_finished": True},
+            "lifecycle": {
+                "environment_started": True,
+                "agent_started": True,
+                "agent_finished": True,
+                "artifact_frozen": True,
+                "runner_started": True,
+                "runner_finished": True,
+                "runner_evidence_frozen": True,
+                "verifier_started": True,
+                "verifier_finished": True,
+            },
             "readiness": {"environment": "ready", "runner": "healthy", "provider": "available"},
             "issues": [],
             "provider": {"request_started": True, "http_status": 200},
             "termination": {"kind": "completed", "exit_code": 0, "signal": None, "oom_scope": "none"},
             "verifier": {"outcome": "accepted", "result_valid": True, "reward": 1},
             "integrity": {"state": "verified"},
-            "digests": {"task": SHA, "config": SHA, "agent_image": SHA, "verifier_image": SHA, "runtime_policy": SHA, "artifact": SHA, "trajectory": SHA},
+            "digests": {
+                "task": SHA,
+                "config": SHA,
+                "agent_image": SHA,
+                "runner_image": SHA,
+                "verifier_image": SHA,
+                "runtime_policy": SHA,
+                "artifact": SHA,
+                "runner_evidence": SHA,
+                "trajectory": SHA,
+            },
         }
-
     def outcome(self, observation: dict[str, object]) -> dict[str, object]:
         return classify_attempt(observation)
 

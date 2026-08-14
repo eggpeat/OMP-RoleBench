@@ -1,0 +1,29 @@
+{
+  "assignment": {
+    "assignment_method": "author-assigned",
+    "confidentiality": "public",
+    "family_id": "terminal-bench.sanitize-git-repo",
+    "partition": "anchor",
+    "role": "default"
+  },
+  "capability_tags": [
+    "terminal-tool-use",
+    "code-editing",
+    "repository-navigation",
+    "instruction-following"
+  ],
+  "decision": "approved",
+  "findings": [],
+  "pack_condition": {
+    "companion_task_id": "terminal-bench.multi-source-data-merger",
+    "required_capability": "interactive-reasoning",
+    "status": "reviewed-companion-required"
+  },
+  "rationale": "Direct main-session repository sanitization with exact scope preservation; fixed public anchor selected before model outcomes. Interactive reasoning is intentionally not claimed.",
+  "review_type": "split",
+  "reviewed_at": "2026-08-14T17:36:49Z",
+  "reviewer": "rolebench/reviewer/role-fit-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "task_id": "terminal-bench.sanitize-git-repo",
+  "task_version": "2.1-r6"
+}

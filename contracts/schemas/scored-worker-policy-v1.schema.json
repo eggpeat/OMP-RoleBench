@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:scored-worker-policy:v1",
+  "title": "RoleBench Scored Worker Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "policy_id", "executor", "network", "resources", "timeouts", "handoff", "verifier", "accounting"],
+  "properties": {
+    "schema_version": {"const": "omp.scored-worker-policy/v1"},
+    "policy_id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "executor": {"$ref": "#/$defs/executor"},
+    "network": {"$ref": "#/$defs/network"},
+    "resources": {"$ref": "#/$defs/resources"},
+    "timeouts": {"$ref": "#/$defs/timeouts"},
+    "handoff": {"$ref": "#/$defs/handoff"},
+    "verifier": {"$ref": "#/$defs/verifier"},
+    "accounting": {"$ref": "#/$defs/accounting"}
+  },
+  "$defs": {
+    "user": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uid", "gid"],
+      "properties": {
+        "uid": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+        "gid": {"type": "integer", "minimum": 1, "maximum": 2147483647}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["drop", "add"],
+      "properties": {
+        "drop": {"const": ["ALL"]},
+        "add": {"const": []}
+      }
+    },
+    "rootFilesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_only"],
+      "properties": {"read_only": {"const": true}}
+    },
+    "executor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "oci_runtime", "rootless", "privileged", "user", "capabilities", "namespaces", "root_filesystem", "scratch", "devices", "mounts"],
+      "properties": {
+        "engine": {"const": "docker"},
+        "oci_runtime": {"const": "runsc"},
+        "rootless": {"const": true},
+        "privileged": {"const": false},
+        "user": {"$ref": "#/$defs/user"},
+        "capabilities": {"$ref": "#/$defs/capabilities"},
+        "namespaces": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["host_network", "host_pid", "host_ipc", "host_user", "host_uts"],
+          "properties": {
+            "host_network": {"const": false},
+            "host_pid": {"const": false},
+            "host_ipc": {"const": false},
+            "host_user": {"const": false},
+            "host_uts": {"const": false}
+          }
+        },
+        "root_filesystem": {"$ref": "#/$defs/rootFilesystem"},
+        "scratch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "ephemeral", "size_bytes"],
+          "properties": {
+            "path": {"const": "/workspace"},
+            "ephemeral": {"const": true},
+            "size_bytes": {"type": "integer", "minimum": 1, "maximum": 1099511627776}
+          }
+        },
+        "devices": {"const": []},
+        "mounts": {"const": []}
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "direct_egress", "metadata_endpoints", "service_account_tokens", "raw_provider_credentials"],
+      "properties": {
+        "mode": {"const": "provider-proxy-only"},
+        "direct_egress": {"const": false},
+        "metadata_endpoints": {"const": false},
+        "service_account_tokens": {"const": false},
+        "raw_provider_credentials": {"const": false}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu_limit", "memory_bytes", "pids_limit", "open_files_limit", "output_bytes_limit", "artifact_bytes_limit"],
+      "properties": {
+        "cpu_limit": {"type": "number", "exclusiveMinimum": 0, "maximum": 64},
+        "memory_bytes": {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+        "pids_limit": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "open_files_limit": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "output_bytes_limit": {"type": "integer", "minimum": 1, "maximum": 10737418240},
+        "artifact_bytes_limit": {"type": "integer", "minimum": 1, "maximum": 1099511627776}
+      }
+    },
+    "timeouts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setup_seconds", "agent_seconds", "artifact_seconds", "verifier_seconds", "termination_grace_seconds", "total_seconds"],
+      "properties": {
+        "setup_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+        "agent_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 43200},
+        "artifact_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+        "verifier_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 43200},
+        "termination_grace_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 300},
+        "total_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 86400}
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "digest_algorithm", "require_agent_exit", "verifier_read_only"],
+      "properties": {
+        "mode": {"const": "immutable-content-addressed"},
+        "digest_algorithm": {"const": "sha256"},
+        "require_agent_exit": {"const": true},
+        "verifier_read_only": {"const": true}
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["isolated", "network", "privileged", "user", "capabilities", "root_filesystem", "raw_provider_credentials", "service_account_tokens"],
+      "properties": {
+        "isolated": {"const": true},
+        "network": {"const": "none"},
+        "privileged": {"const": false},
+        "user": {"$ref": "#/$defs/user"},
+        "capabilities": {"$ref": "#/$defs/capabilities"},
+        "root_filesystem": {"$ref": "#/$defs/rootFilesystem"},
+        "raw_provider_credentials": {"const": false},
+        "service_account_tokens": {"const": false}
+      }
+    },
+    "accounting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fail_closed", "infrastructure_failures_count_toward_quality", "verifier_failures_count_toward_quality", "require_decisive_verifier", "quality_denominator"],
+      "properties": {
+        "fail_closed": {"const": true},
+        "infrastructure_failures_count_toward_quality": {"const": false},
+        "verifier_failures_count_toward_quality": {"const": false},
+        "require_decisive_verifier": {"const": true},
+        "quality_denominator": {"const": "valid-scored-attempts-only"}
+      }
+    }
+  }
+}

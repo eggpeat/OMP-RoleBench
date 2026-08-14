@@ -31,6 +31,10 @@ from .contracts import (
     tree_sha256,
     validate_value,
 )
+from .image_identity import (
+    ImageIdentityError,
+    image_config_digest_from_archive,
+)
 from .worker import WorkerError, capture_command, local_docker_argv
 
 _MAX_SESSION_BYTES: Final = 32 * 1024 * 1024
@@ -768,13 +772,24 @@ def _diagnostics(result: object) -> list[str]:
     return [f"{item.file}:{item.json_path}: {item.message}" for item in getattr(result, "diagnostics", ())]
 
 
-def _expected_decision(qualification: JSONObject) -> str:
+def _expected_decision(task: JSONObject, qualification: JSONObject) -> str:
     checks = qualification.get("checks")
     if not isinstance(checks, dict):
         return "rejected"
+    objective = task.get("objective")
+    obs = objective.get("observation") if isinstance(objective, dict) else None
+    artifact_kind = obs.get("artifact_kind") if isinstance(obs, dict) else None
+    authority = obs.get("authority") if isinstance(obs, dict) else None
+    expected_obs_auth = (
+        "pass"
+        if (artifact_kind == "data-only" and authority in ("host-process", "host-filesystem"))
+        else "fail"
+    )
+    if checks.get("observation_authority") != expected_obs_auth or expected_obs_auth != "pass":
+        return "rejected"
     simple_mandatory = (
-        "privacy", "license", "verifier_isolation", "determinism",
-        "infrastructure_classification",
+        "privacy", "license", "runner_isolation", "verifier_isolation", "observation_authority",
+        "determinism", "infrastructure_classification",
     )
     if any(checks.get(name) != "pass" for name in simple_mandatory):
         return "rejected"
@@ -884,6 +899,7 @@ def _check_task_qualification_values(
                         root,
                         tuple(paths),
                         task,
+                        probe=probe,
                         verifier_outcome=verifier_outcome,
                     )
                 )
@@ -944,7 +960,8 @@ def _check_task_qualification_values(
             diagnostics.append(
                 "qualification probe command digests must differ"
             )
-    provenance = qualification.get("verifier_provenance")
+    provenance = qualification.get("evaluation_provenance")
+    runner = task.get("runner")
     verifier = task.get("verifier")
     reviews = task.get("reviews")
     verifier_review = (
@@ -954,9 +971,26 @@ def _check_task_qualification_values(
     )
     if (
         isinstance(provenance, dict)
+        and isinstance(runner, dict)
         and isinstance(verifier, dict)
         and isinstance(verifier_review, dict)
     ):
+        if provenance.get("runner_image") != runner.get("image"):
+            diagnostics.append(
+                "qualification runner image does not match task"
+            )
+        if provenance.get(
+            "runner_config_digest_sha256"
+        ) != runner.get("config_digest_sha256"):
+            diagnostics.append(
+                "qualification runner config provenance does not match task"
+            )
+        if provenance.get("runner_platform") != runner.get(
+            "platform"
+        ):
+            diagnostics.append(
+                "qualification runner platform provenance does not match task"
+            )
         if provenance.get("verifier_image") != verifier.get("image"):
             diagnostics.append(
                 "qualification verifier image does not match task"
@@ -986,7 +1020,7 @@ def _check_task_qualification_values(
                 "qualification verifier review digest does not match task review"
             )
     else:
-        diagnostics.append("qualification verifier provenance is missing")
+        diagnostics.append("qualification evaluation provenance is missing")
     observed = qualification.get("observed_mapping")
     assets = task.get("assets")
     agent = task.get("agent")
@@ -994,6 +1028,7 @@ def _check_task_qualification_values(
         isinstance(observed, dict)
         and isinstance(assets, dict)
         and isinstance(agent, dict)
+        and isinstance(runner, dict)
         and isinstance(verifier, dict)
     ):
         public = assets.get("public")
@@ -1013,6 +1048,9 @@ def _check_task_qualification_values(
             "agent_config_digest_sha256": agent.get(
                 "config_digest_sha256"
             ),
+            "runner_config_digest_sha256": runner.get(
+                "config_digest_sha256"
+            ),
             "verifier_config_digest_sha256": verifier.get(
                 "config_digest_sha256"
             ),
@@ -1023,7 +1061,7 @@ def _check_task_qualification_values(
             )
     else:
         diagnostics.append("qualification observed mapping is missing")
-    expected = _expected_decision(qualification)
+    expected = _expected_decision(task, qualification)
     if qualification.get("decision") != expected:
         diagnostics.append(
             f"qualification decision must be {expected}"
@@ -1139,6 +1177,65 @@ def _docker_json(docker: str, arguments: Sequence[str]) -> JSONValue:
         ) from error
 
 
+def _image_digest_suffix(image: object) -> str:
+    if not isinstance(image, str) or "@sha256:" not in image:
+        raise TaskAdmissionError("task image reference is not digest-pinned")
+    digest = image.rpartition("@sha256:")[2]
+    if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise TaskAdmissionError("task image digest is malformed")
+    return digest
+
+
+def _effective_image_config_digest(
+    docker: str,
+    image: str,
+    image_data: JSONObject,
+    manifest_digest_sha256: str,
+) -> str:
+    engine_id = image_data.get("Id")
+    if isinstance(engine_id, str):
+        engine_digest = engine_id.removeprefix("sha256:")
+        if (
+            re.fullmatch(r"[0-9a-f]{64}", engine_digest) is not None
+            and engine_digest != manifest_digest_sha256
+        ):
+            return engine_digest
+
+    with tempfile.TemporaryDirectory(
+        prefix="rolebench-image-identity-"
+    ) as temporary:
+        archive_path = Path(temporary) / "image.tar"
+        result = _docker_result(
+            docker,
+            (
+                "image",
+                "save",
+                "--output",
+                str(archive_path),
+                image,
+            ),
+            timeout=300,
+            output_limit=1024 * 1024,
+        )
+        if (
+            result.timed_out
+            or result.overflowed
+            or result.returncode != 0
+        ):
+            raise TaskAdmissionError(
+                "container config identity export failed"
+            )
+        try:
+            return image_config_digest_from_archive(
+                archive_path,
+                manifest_digest_sha256,
+            )
+        except ImageIdentityError as error:
+            raise TaskAdmissionError(
+                "container config identity is invalid"
+            ) from error
+
+
 def _inspect_image(
     docker: str,
     container: JSONObject,
@@ -1146,12 +1243,16 @@ def _inspect_image(
     public_digest: str,
     private_digest: str,
     *,
-    verifier: bool,
+    stage: str,
 ) -> JSONObject:
+    if stage not in {"agent", "runner", "verifier"}:
+        raise TaskAdmissionError("unknown task container stage")
+    verifier = stage == "verifier"
     image = container.get("image")
     if not isinstance(image, str) or "@sha256:" not in image:
         raise TaskAdmissionError("container image is not digest-pinned")
-    reference_digest = f"sha256:{image.rpartition('@sha256:')[2]}"
+    manifest_digest_sha256 = image.rpartition("@sha256:")[2]
+    reference_digest = f"sha256:{manifest_digest_sha256}"
     image_data = _docker_json(
         docker,
         ("image", "inspect", image, "--format", "{{json .}}"),
@@ -1174,9 +1275,12 @@ def _inspect_image(
         raise TaskAdmissionError(
             "container image descriptor does not match pinned reference"
         )
-    inspected_config = image_data.get("Id")
-    if isinstance(inspected_config, str):
-        inspected_config = inspected_config.removeprefix("sha256:")
+    inspected_config = _effective_image_config_digest(
+        docker,
+        image,
+        image_data,
+        manifest_digest_sha256,
+    )
     if inspected_config != container.get("config_digest_sha256"):
         raise TaskAdmissionError("container config digest does not match task")
     platform = container.get("platform")
@@ -1198,6 +1302,7 @@ def _inspect_image(
     )
     required = {
         "org.omp.rolebench.task.role": role,
+        "org.omp.rolebench.task.stage": stage,
         content_key: private_digest if verifier else public_digest,
     }
     observed = {
@@ -1442,6 +1547,7 @@ def _qualification_report(
     path: Path,
     task: JSONObject,
     *,
+    probe: str,
     verifier_outcome: str,
 ) -> tuple[JSONObject, str, str]:
     report_file = _artifact(root, path)
@@ -1512,6 +1618,8 @@ def _qualification_report(
     if (
         report.get("artifact_digest_sha256")
         != digests.get("artifact")
+        or report.get("runner_evidence_digest_sha256")
+        != digests.get("runner_evidence")
         or report.get("policy_digest_sha256")
         != digests.get("runtime_policy")
     ):
@@ -1519,8 +1627,20 @@ def _qualification_report(
             "qualification report envelope does not match its observation"
         )
     assets = task.get("assets")
+    runner = task.get("runner")
     verifier = task.get("verifier")
-    if not isinstance(assets, dict) or not isinstance(verifier, dict):
+    admission_agents = task.get("admission_agents")
+    expected_agent = (
+        admission_agents.get(probe)
+        if isinstance(admission_agents, dict)
+        else None
+    )
+    if (
+        not isinstance(assets, dict)
+        or not isinstance(runner, dict)
+        or not isinstance(verifier, dict)
+        or not isinstance(expected_agent, dict)
+    ):
         raise TaskAdmissionError("task bindings are incomplete")
     public = assets.get("public")
     private = assets.get("verifier_private")
@@ -1536,9 +1656,12 @@ def _qualification_report(
             if isinstance(private, dict)
             else None
         ),
-        "verifier_image_config": verifier.get(
-            "config_digest_sha256"
-        ),
+        "agent_image": _image_digest_suffix(expected_agent.get("image")),
+        "agent_image_config": expected_agent.get("config_digest_sha256"),
+        "runner_image": _image_digest_suffix(runner.get("image")),
+        "runner_image_config": runner.get("config_digest_sha256"),
+        "verifier_image": _image_digest_suffix(verifier.get("image")),
+        "verifier_image_config": verifier.get("config_digest_sha256"),
     }
     if any(
         digests.get(name) != value
@@ -1563,6 +1686,7 @@ def _qualification_group(
     paths: Sequence[Path],
     task: JSONObject,
     *,
+    probe: str,
     verifier_outcome: str,
 ) -> tuple[list[JSONObject], str, list[JSONObject]]:
     if (
@@ -1586,6 +1710,7 @@ def _qualification_group(
             root,
             path,
             task,
+            probe=probe,
             verifier_outcome=verifier_outcome,
         )
         reports.append(report)
@@ -1713,6 +1838,7 @@ def generate_task_qualification(
             resolved_root,
             baseline_report_paths,
             task,
+            probe="baseline",
             verifier_outcome="rejected",
         )
     )
@@ -1721,6 +1847,7 @@ def generate_task_qualification(
             resolved_root,
             reference_report_paths,
             task,
+            probe="reference",
             verifier_outcome="accepted",
         )
     )
@@ -1729,6 +1856,7 @@ def generate_task_qualification(
             resolved_root,
             tamper_report_paths,
             task,
+            probe="tamper",
             verifier_outcome="rejected",
         )
     )
@@ -1777,10 +1905,23 @@ def generate_task_qualification(
         raise TaskAdmissionError(
             "qualification reports do not match task admission agents"
         )
-    verifier = task["verifier"]
-    assets = task["assets"]
+    runner = task.get("runner")
+    verifier = task.get("verifier")
+    assets = task.get("assets")
+    if not isinstance(runner, dict) or not isinstance(verifier, dict) or not isinstance(assets, dict):
+        raise TaskAdmissionError("task container or asset mapping is incomplete")
+    objective = task.get("objective")
+    obs = objective.get("observation") if isinstance(objective, dict) else None
+    artifact_kind = obs.get("artifact_kind") if isinstance(obs, dict) else None
+    authority = obs.get("authority") if isinstance(obs, dict) else None
+    if artifact_kind == "data-only" and authority in ("host-process", "host-filesystem"):
+        observation_authority = "pass"
+        decision = "calibration-required"
+    else:
+        observation_authority = "fail"
+        decision = "rejected"
     qualification: JSONObject = {
-        "schema_version": "omp.task-qualification/v1",
+        "schema_version": "omp.task-qualification/v2",
         "task_id": task["task_id"],
         "task_version": task["task_version"],
         "content_digest_sha256": task["content_digest_sha256"],
@@ -1789,8 +1930,13 @@ def generate_task_qualification(
             "digest_sha256": canonical_sha256(task),
         },
         "reviews": reviews,
-        "verifier_provenance": {
+        "evaluation_provenance": {
             "reviewer_id": verifier_review["reviewer"],
+            "runner_image": runner["image"],
+            "runner_config_digest_sha256": runner[
+                "config_digest_sha256"
+            ],
+            "runner_platform": runner["platform"],
             "verifier_image": verifier["image"],
             "verifier_config_digest_sha256": verifier[
                 "config_digest_sha256"
@@ -1811,6 +1957,9 @@ def generate_task_qualification(
             "agent_config_digest_sha256": task["agent"][
                 "config_digest_sha256"
             ],
+            "runner_config_digest_sha256": runner[
+                "config_digest_sha256"
+            ],
             "verifier_config_digest_sha256": verifier[
                 "config_digest_sha256"
             ],
@@ -1828,7 +1977,9 @@ def generate_task_qualification(
                 "command_digest_sha256": reference_command,
                 "evidence": reference_evidence,
             },
+            "runner_isolation": "pass",
             "verifier_isolation": "pass",
+            "observation_authority": observation_authority,
             "tamper_resistance": {
                 "result": "pass",
                 "command_digest_sha256": tamper_command,
@@ -1838,7 +1989,7 @@ def generate_task_qualification(
             "infrastructure_classification": "pass",
             "discrimination": "calibration-required",
         },
-        "decision": "calibration-required",
+        "decision": decision,
     }
     if not validate_value(
         resolved_root,
@@ -1878,8 +2029,9 @@ def _prepare_bound_manifest(
             "diagnostic task must be explicitly routing-ineligible"
         )
     assets = task.get("assets")
+    runner = task.get("runner")
     verifier = task.get("verifier")
-    if not isinstance(assets, dict) or not isinstance(verifier, dict):
+    if not isinstance(assets, dict) or not isinstance(runner, dict) or not isinstance(verifier, dict):
         raise TaskAdmissionError(
             "task execution bindings are incomplete"
         )
@@ -1902,12 +2054,26 @@ def _prepare_bound_manifest(
             "agent image is not bound to public content"
         )
     if (
+        not isinstance(public_digest, str)
+        or runner.get("asset_tree_digest_sha256") != public_digest
+    ):
+        raise TaskAdmissionError(
+            "runner image is not bound to public content"
+        )
+    if (
         not isinstance(private_digest, str)
         or verifier.get("asset_tree_digest_sha256")
         != private_digest
     ):
         raise TaskAdmissionError(
             "verifier image is not bound to private content"
+        )
+    agent_config = agent.get("config_digest_sha256")
+    runner_config = runner.get("config_digest_sha256")
+    verifier_config = verifier.get("config_digest_sha256")
+    if len({agent_config, runner_config, verifier_config}) != 3:
+        raise TaskAdmissionError(
+            "manifest container config digests must be pairwise distinct"
         )
     task_digest = canonical_sha256(task)
     agent_manifest = _inspect_image(
@@ -1916,7 +2082,15 @@ def _prepare_bound_manifest(
         task["role"],
         public_digest,
         private_digest,
-        verifier=False,
+        stage="agent",
+    )
+    runner_manifest = _inspect_image(
+        docker,
+        runner,
+        task["role"],
+        public_digest,
+        private_digest,
+        stage="runner",
     )
     verifier_manifest = _inspect_image(
         docker,
@@ -1924,9 +2098,9 @@ def _prepare_bound_manifest(
         task["role"],
         public_digest,
         private_digest,
-        verifier=True,
+        stage="verifier",
     )
-    captured_public = _container_tree_digest(
+    captured_public_agent = _container_tree_digest(
         docker,
         str(agent["image"]),
         "/opt/rolebench/task/public",
@@ -1935,6 +2109,18 @@ def _prepare_bound_manifest(
     _container_tree_digest(
         docker,
         str(agent["image"]),
+        "/opt/rolebench/task/verifier-private",
+        must_exist=False,
+    )
+    captured_public_runner = _container_tree_digest(
+        docker,
+        str(runner["image"]),
+        "/opt/rolebench/task/public",
+        must_exist=True,
+    )
+    _container_tree_digest(
+        docker,
+        str(runner["image"]),
         "/opt/rolebench/task/verifier-private",
         must_exist=False,
     )
@@ -1951,7 +2137,8 @@ def _prepare_bound_manifest(
         must_exist=False,
     )
     if (
-        captured_public != public_digest
+        captured_public_agent != public_digest
+        or captured_public_runner != public_digest
         or captured_private != private_digest
     ):
         raise TaskAdmissionError(
@@ -1968,13 +2155,14 @@ def _prepare_bound_manifest(
             canonical_sha256(qualification)
         )
     manifest: JSONObject = {
-        "schema_version": "omp.worker-run-manifest/v1",
+        "schema_version": "omp.worker-run-manifest/v2",
         "run_id": run_id,
         "role": task["role"],
         "task": task_binding,
         "policy": task["policy"],
         "provider": {"enabled": False},
         "agent": agent_manifest,
+        "runner": runner_manifest,
         "verifier": verifier_manifest,
     }
     if not validate_value(

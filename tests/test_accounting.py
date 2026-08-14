@@ -35,7 +35,7 @@ class AccountingFixture(unittest.TestCase):
 
     def observation(self) -> dict[str, object]:
         return {
-            "schema_version": "omp.attempt-observation/v1",
+            "schema_version": "omp.attempt-observation/v2",
             "observation_id": "observation-test",
             "observed_at": "2026-08-13T12:00:00Z",
             "attempt": {
@@ -49,6 +49,9 @@ class AccountingFixture(unittest.TestCase):
                 "agent_started": True,
                 "agent_finished": True,
                 "artifact_frozen": True,
+                "runner_started": True,
+                "runner_finished": True,
+                "runner_evidence_frozen": True,
                 "verifier_started": True,
                 "verifier_finished": True,
             },
@@ -75,13 +78,14 @@ class AccountingFixture(unittest.TestCase):
                 "task": SHA,
                 "config": SHA,
                 "agent_image": SHA,
+                "runner_image": SHA,
                 "verifier_image": SHA,
                 "runtime_policy": SHA,
                 "artifact": SHA,
+                "runner_evidence": SHA,
                 "trajectory": SHA,
             },
         }
-
     def before_agent(self, issue: str, *, environment_started: bool) -> dict[str, object]:
         value = self.observation()
         value["stage"] = "environment"
@@ -91,6 +95,9 @@ class AccountingFixture(unittest.TestCase):
             "agent_started": False,
             "agent_finished": False,
             "artifact_frozen": False,
+            "runner_started": False,
+            "runner_finished": False,
+            "runner_evidence_frozen": False,
             "verifier_started": False,
             "verifier_finished": False,
         }
@@ -114,6 +121,7 @@ class AccountingFixture(unittest.TestCase):
         digests = value["digests"]
         self.assertIsInstance(digests, dict)
         digests["artifact"] = None
+        digests["runner_evidence"] = None
         return value
 
     def provider_failure(self, issue: str, status: int | None) -> dict[str, object]:
@@ -125,6 +133,9 @@ class AccountingFixture(unittest.TestCase):
         lifecycle.update(
             {
                 "artifact_frozen": False,
+                "runner_started": False,
+                "runner_finished": False,
+                "runner_evidence_frozen": False,
                 "verifier_started": False,
                 "verifier_finished": False,
             }
@@ -141,8 +152,8 @@ class AccountingFixture(unittest.TestCase):
         digests = value["digests"]
         self.assertIsInstance(digests, dict)
         digests["artifact"] = None
+        digests["runner_evidence"] = None
         return value
-
     def verifier_failure(self, issue: str, *, finished: bool) -> dict[str, object]:
         value = self.observation()
         value["stage"] = "verifier"
@@ -172,6 +183,9 @@ class AccountingFixture(unittest.TestCase):
             {
                 "agent_finished": agent_finished,
                 "artifact_frozen": False,
+                "runner_started": False,
+                "runner_finished": False,
+                "runner_evidence_frozen": False,
                 "verifier_started": False,
                 "verifier_finished": False,
             }
@@ -190,8 +204,8 @@ class AccountingFixture(unittest.TestCase):
         digests = value["digests"]
         self.assertIsInstance(digests, dict)
         digests["artifact"] = None
+        digests["runner_evidence"] = None
         return value
-
     def assert_valid_artifact(self, schema_name: str, value: dict[str, object]) -> None:
         result = validate_artifact(
             self.root,
@@ -651,6 +665,7 @@ class ScoreSummaryTests(AccountingFixture):
                     "task_public_tree": SHA,
                     "verifier_private_tree": SHA,
                     "agent_image_config": SHA,
+                    "runner_image_config": SHA,
                     "verifier_image_config": SHA,
                 }
             )
@@ -674,6 +689,49 @@ class ScoreSummaryTests(AccountingFixture):
                 ],
                 1,
             )
+
+    def test_provider_disabled_admission_and_calibration_runs_are_excluded(
+        self,
+    ) -> None:
+        for evidence_use in (
+            "admission-only",
+            "calibration-only",
+        ):
+            with self.subTest(evidence_use=evidence_use):
+                observation = self.observation()
+                observation["evidence_use"] = evidence_use
+                readiness = observation["readiness"]
+                self.assertIsInstance(readiness, dict)
+                readiness["provider"] = "unknown"
+                observation["provider"] = {
+                    "request_started": False,
+                    "http_status": None,
+                }
+                digests = observation["digests"]
+                self.assertIsInstance(digests, dict)
+                digests.update(
+                    {
+                        "task_public_tree": SHA,
+                        "verifier_private_tree": SHA,
+                        "agent_image_config": SHA,
+                        "runner_image_config": SHA,
+                        "verifier_image_config": SHA,
+                    }
+                )
+                if evidence_use == "calibration-only":
+                    digests["qualification"] = SHA
+
+                self.assert_valid_artifact("attempt-observation", observation)
+                outcome = classify_attempt(observation)
+
+                self.assertEqual(
+                    outcome["reason_code"],
+                    "non-scored-evidence",
+                )
+                self.assertEqual(outcome["disposition"], "excluded")
+                self.assertEqual(outcome["verifier_outcome"], "indeterminate")
+                self.assertFalse(outcome["counts_toward_quality"])
+                self.assert_valid_artifact("attempt-outcome", outcome)
 
     def test_no_decisive_result_has_no_quality_score(self) -> None:
         outcome = classify_attempt(

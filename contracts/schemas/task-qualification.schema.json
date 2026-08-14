@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:task-qualification:v1",
-  "title": "RoleBench Task Qualification v1",
+  "$id": "urn:omp-rolebench:schema:task-qualification:v2",
+  "title": "RoleBench Task Qualification v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "task_id", "task_version", "content_digest_sha256", "source_task", "reviews", "verifier_provenance", "observed_mapping", "checks", "decision"],
+  "required": ["schema_version", "task_id", "task_version", "content_digest_sha256", "source_task", "reviews", "evaluation_provenance", "observed_mapping", "checks", "decision"],
   "properties": {
-    "schema_version": {"const": "omp.task-qualification/v1"},
+    "schema_version": {"const": "omp.task-qualification/v2"},
     "task_id": {"$ref": "#/$defs/id"},
     "task_version": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"},
     "content_digest_sha256": {"$ref": "#/$defs/sha256"},
@@ -20,11 +20,14 @@
         "split": {"$ref": "#/$defs/review_attestation"}
       }
     },
-    "verifier_provenance": {
+    "evaluation_provenance": {
       "type": "object", "additionalProperties": false,
-      "required": ["reviewer_id", "verifier_image", "verifier_config_digest_sha256", "verifier_platform", "review_digest_sha256"],
+      "required": ["reviewer_id", "runner_image", "runner_config_digest_sha256", "runner_platform", "verifier_image", "verifier_config_digest_sha256", "verifier_platform", "review_digest_sha256"],
       "properties": {
         "reviewer_id": {"$ref": "#/$defs/id"},
+        "runner_image": {"$ref": "#/$defs/image"},
+        "runner_config_digest_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_platform": {"$ref": "#/$defs/platform"},
         "verifier_image": {"$ref": "#/$defs/image"},
         "verifier_config_digest_sha256": {"$ref": "#/$defs/sha256"},
         "verifier_platform": {"$ref": "#/$defs/platform"},
@@ -33,24 +36,27 @@
     },
     "observed_mapping": {
       "type": "object", "additionalProperties": false,
-      "required": ["task_digest_sha256", "public_tree_digest_sha256", "verifier_private_tree_digest_sha256", "agent_config_digest_sha256", "verifier_config_digest_sha256"],
+      "required": ["task_digest_sha256", "public_tree_digest_sha256", "verifier_private_tree_digest_sha256", "agent_config_digest_sha256", "runner_config_digest_sha256", "verifier_config_digest_sha256"],
       "properties": {
         "task_digest_sha256": {"$ref": "#/$defs/sha256"},
         "public_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
         "verifier_private_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
         "agent_config_digest_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_config_digest_sha256": {"$ref": "#/$defs/sha256"},
         "verifier_config_digest_sha256": {"$ref": "#/$defs/sha256"}
       }
     },
     "checks": {
       "type": "object", "additionalProperties": false,
-      "required": ["privacy", "license", "baseline_fails", "reference_passes", "verifier_isolation", "tamper_resistance", "determinism", "infrastructure_classification", "discrimination"],
+      "required": ["privacy", "license", "baseline_fails", "reference_passes", "runner_isolation", "verifier_isolation", "observation_authority", "tamper_resistance", "determinism", "infrastructure_classification", "discrimination"],
       "properties": {
         "privacy": {"$ref": "#/$defs/check"},
         "license": {"$ref": "#/$defs/check"},
         "baseline_fails": {"$ref": "#/$defs/command_check"},
         "reference_passes": {"$ref": "#/$defs/command_check"},
+        "runner_isolation": {"$ref": "#/$defs/check"},
         "verifier_isolation": {"$ref": "#/$defs/check"},
+        "observation_authority": {"$ref": "#/$defs/check"},
         "tamper_resistance": {"$ref": "#/$defs/command_check"},
         "determinism": {"$ref": "#/$defs/check"},
         "infrastructure_classification": {"$ref": "#/$defs/check"},
@@ -68,11 +74,12 @@
     "reference": {"type": "object", "additionalProperties": false, "required": ["path", "digest_sha256"], "properties": {"path": {"$ref": "#/$defs/path"}, "digest_sha256": {"$ref": "#/$defs/sha256"}}},
     "review_attestation": {
       "type": "object",
-      "required": ["decision", "reviewer", "reviewed_at", "evidence_digest_sha256"],
+      "required": ["decision", "reviewer", "reviewed_at", "evidence_path", "evidence_digest_sha256"],
       "properties": {
         "decision": {"const": "approved"},
         "reviewer": {"$ref": "#/$defs/id"},
         "reviewed_at": {"type": "string", "format": "date-time"},
+        "evidence_path": {"$ref": "#/$defs/path"},
         "evidence_digest_sha256": {"$ref": "#/$defs/sha256"}
       }
     },

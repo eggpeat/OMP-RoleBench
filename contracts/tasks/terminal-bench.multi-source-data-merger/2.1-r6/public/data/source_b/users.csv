@@ -1,0 +1,5 @@
+user_id,name,email_address,created_at,is_active
+101,Example Alpha Secondary,alpha-secondary@example.test,2024-01-10,true
+102,Example Beta,beta-secondary@example.test,2024-02-19,false
+103,Example Gamma,gamma-secondary@example.test,2024-03-01,true
+105,Example Epsilon,epsilon-primary@example.test,2024-05-01,true

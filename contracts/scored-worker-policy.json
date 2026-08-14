@@ -1,6 +1,6 @@
 {
-  "schema_version": "omp.scored-worker-policy/v1",
-  "policy_id": "rolebench-scored-worker-v1",
+  "schema_version": "omp.scored-worker-policy/v2",
+  "policy_id": "rolebench-scored-worker-v2",
   "executor": {
     "engine": "docker",
     "oci_runtime": "runsc",
@@ -43,15 +43,18 @@
     "setup_seconds": 300,
     "agent_seconds": 3600,
     "artifact_seconds": 300,
+    "runner_seconds": 900,
     "verifier_seconds": 900,
     "termination_grace_seconds": 30,
-    "total_seconds": 5400
+    "total_seconds": 6300
   },
   "handoff": {
     "mode": "immutable-content-addressed",
     "digest_algorithm": "sha256",
     "require_agent_exit": true,
-    "verifier_read_only": true
+    "require_runner_exit": true,
+    "runner_input_read_only": true,
+    "verifier_input_read_only": true
   },
   "verifier": {
     "isolated": true,

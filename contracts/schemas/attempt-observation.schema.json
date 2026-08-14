@@ -1,26 +1,29 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:attempt-observation:v1",
-  "title": "RoleBench Attempt Observation v1",
+  "$id": "urn:omp-rolebench:schema:attempt-observation:v2",
+  "title": "RoleBench Attempt Observation v2",
   "$comment": "Normalized facts from one benchmark attempt. This artifact records what happened; it does not decide whether the attempt affects model quality.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "observation_id", "observed_at", "attempt", "stage", "lifecycle", "readiness", "issues", "provider", "termination", "verifier", "integrity", "digests"],
   "properties": {
-    "schema_version": {"const": "omp.attempt-observation/v1"},
+    "schema_version": {"const": "omp.attempt-observation/v2"},
     "observation_id": {"type": "string", "minLength": 1},
     "observed_at": {"type": "string", "format": "date-time"},
     "attempt": {"$ref": "#/$defs/attempt"},
-    "stage": {"enum": ["queued", "environment", "agent", "artifact", "verifier", "complete"]},
+    "stage": {"enum": ["queued", "environment", "agent", "artifact", "runner", "runner-evidence", "verifier", "complete"]},
     "lifecycle": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["environment_started", "agent_started", "agent_finished", "artifact_frozen", "verifier_started", "verifier_finished"],
+      "required": ["environment_started", "agent_started", "agent_finished", "artifact_frozen", "runner_started", "runner_finished", "runner_evidence_frozen", "verifier_started", "verifier_finished"],
       "properties": {
         "environment_started": {"type": "boolean"},
         "agent_started": {"type": "boolean"},
         "agent_finished": {"type": "boolean"},
         "artifact_frozen": {"type": "boolean"},
+        "runner_started": {"type": "boolean"},
+        "runner_finished": {"type": "boolean"},
+        "runner_evidence_frozen": {"type": "boolean"},
         "verifier_started": {"type": "boolean"},
         "verifier_finished": {"type": "boolean"}
       }
@@ -130,6 +133,7 @@
               "task_public_tree",
               "verifier_private_tree",
               "agent_image_config",
+              "runner_image_config",
               "verifier_image_config"
             ],
             "not": {"required": ["qualification"]}
@@ -152,6 +156,7 @@
               "task_public_tree",
               "verifier_private_tree",
               "agent_image_config",
+              "runner_image_config",
               "verifier_image_config"
             ]
           }
@@ -197,19 +202,22 @@
     "digests": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["task", "config", "agent_image", "verifier_image", "runtime_policy", "artifact", "trajectory"],
+      "required": ["task", "config", "agent_image", "runner_image", "verifier_image", "runtime_policy", "artifact", "runner_evidence", "trajectory"],
       "properties": {
         "task": {"$ref": "#/$defs/sha256"},
         "config": {"$ref": "#/$defs/sha256"},
         "agent_image": {"$ref": "#/$defs/sha256"},
+        "runner_image": {"$ref": "#/$defs/sha256"},
         "verifier_image": {"$ref": "#/$defs/sha256"},
         "runtime_policy": {"$ref": "#/$defs/sha256"},
         "artifact": {"$ref": "#/$defs/nullableSha256"},
+        "runner_evidence": {"$ref": "#/$defs/nullableSha256"},
         "trajectory": {"$ref": "#/$defs/nullableSha256"},
         "qualification": {"$ref": "#/$defs/sha256"},
         "task_public_tree": {"$ref": "#/$defs/sha256"},
         "verifier_private_tree": {"$ref": "#/$defs/sha256"},
         "agent_image_config": {"$ref": "#/$defs/sha256"},
+        "runner_image_config": {"$ref": "#/$defs/sha256"},
         "verifier_image_config": {"$ref": "#/$defs/sha256"}
       }
     }

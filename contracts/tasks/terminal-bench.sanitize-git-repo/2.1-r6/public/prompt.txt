@@ -1,0 +1,10 @@
+Sanitize the `dclm` repository of every credential-shaped test value. All values are intentionally synthetic fixtures, not live credentials.
+
+Find each synthetic value and replace it consistently:
+
+- `AWS_ACCESS_KEY_ID` value -> `<your-aws-access-key-id>`
+- `AWS_SECRET_ACCESS_KEY` value -> `<your-aws-secret-access-key>`
+- GitHub token -> `<your-github-token>`
+- Hugging Face token -> `<your-huggingface-token>`
+
+No original credential-shaped value may remain after sanitization. Preserve the placeholders and every unrelated byte: do not add, delete, rename, or otherwise modify files or clean content.

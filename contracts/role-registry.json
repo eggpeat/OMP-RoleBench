@@ -31,6 +31,7 @@
     "advisor": "contracts/roles/advisor.json"
   },
   "task_packs": {
+    "default": "contracts/task-packs/default-v1.json",
     "task": "contracts/task-packs/task-v1.json",
     "smol": "contracts/task-packs/smol-v1.json",
     "slow": "contracts/task-packs/slow-v1.json"

@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:scored-worker-policy:v1",
-  "title": "RoleBench Scored Worker Policy v1",
+  "$id": "urn:omp-rolebench:schema:scored-worker-policy:v2",
+  "title": "RoleBench Scored Worker Policy v2",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "policy_id", "executor", "network", "resources", "timeouts", "handoff", "verifier", "accounting"],
   "properties": {
-    "schema_version": {"const": "omp.scored-worker-policy/v1"},
+    "schema_version": {"const": "omp.scored-worker-policy/v2"},
     "policy_id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
     "executor": {"$ref": "#/$defs/executor"},
     "network": {"$ref": "#/$defs/network"},
@@ -107,11 +107,12 @@
     "timeouts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["setup_seconds", "agent_seconds", "artifact_seconds", "verifier_seconds", "termination_grace_seconds", "total_seconds"],
+      "required": ["setup_seconds", "agent_seconds", "artifact_seconds", "runner_seconds", "verifier_seconds", "termination_grace_seconds", "total_seconds"],
       "properties": {
         "setup_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
         "agent_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 43200},
         "artifact_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+        "runner_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 43200},
         "verifier_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 43200},
         "termination_grace_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 300},
         "total_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 86400}
@@ -120,12 +121,14 @@
     "handoff": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode", "digest_algorithm", "require_agent_exit", "verifier_read_only"],
+      "required": ["mode", "digest_algorithm", "require_agent_exit", "require_runner_exit", "runner_input_read_only", "verifier_input_read_only"],
       "properties": {
         "mode": {"const": "immutable-content-addressed"},
         "digest_algorithm": {"const": "sha256"},
         "require_agent_exit": {"const": true},
-        "verifier_read_only": {"const": true}
+        "require_runner_exit": {"const": true},
+        "runner_input_read_only": {"const": true},
+        "verifier_input_read_only": {"const": true}
       }
     },
     "verifier": {
