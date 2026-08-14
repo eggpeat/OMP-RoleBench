@@ -1,8 +1,8 @@
 # Contributing to OMP RoleBench
 
-RoleBench turns benchmark evidence, capability requirements, demand, and capacity into reviewable OMP role-allocation policies. Contributions must preserve three properties: **measured quality**, **reproducibility**, and **data minimization**.
+RoleBench turns a fixed OMP role benchmark profile and exact candidate model routes into reviewable evidence and ranked model-to-role recommendations. Optional capacity inputs can extend qualified recommendations into allocation policies; optional session-derived tasks can extend the default benchmark profile. Contributions must preserve four properties: **measured quality**, **reproducibility**, **canonical defaults**, and **data minimization**.
 
-The project is currently building its contract and diagnostic layers. Read the [design specification](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, estimator, optimizer, or OMP integration change.
+The project is currently building its contract, worker, and diagnostic-authoring layers. It does not yet ship a default benchmark corpus, provider-backed evaluation, model-route recommendations, session-to-task synthesis, an optimizer, or OMP runtime integration. Read the [target architecture](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, benchmark-profile, estimator, optimizer, or OMP integration change, and keep planned behavior distinct from implemented behavior in user-facing documentation.
 
 ## License of contributions
 
@@ -62,10 +62,12 @@ For a substantial design change, open an issue or draft proposal before implemen
 
 RoleBench owns:
 
-- role contracts and diagnostic packs;
-- benchmark orchestration and normalized evidence;
+- canonical role contracts and the fixed default benchmark profile;
+- versioned task packs, benchmark orchestration, and normalized evidence;
+- optional private session-to-task candidate generation;
 - capability, reliability, latency, cost, and quota-consumption estimates;
-- demand and aggregate capacity snapshots;
+- ranked model-route qualifications and recommendations;
+- optional demand and aggregate capacity snapshots;
 - constrained allocation and regret validation; and
 - immutable policy generation and explanation.
 
@@ -77,7 +79,7 @@ OMP owns:
 - policy loading, compatibility checks, and deterministic route selection; and
 - runtime decision telemetry and explicit user overrides.
 
-Do not make OMP import RoleBench's datasets, estimator, optimizer, Harbor integration, or statistical dependencies. Do not make a RoleBench policy select a credential or account. `capacity_pool` is an opaque aggregate accounting boundary; credential choice remains provider-managed inside OMP.
+The offline recommendation workflow must not require OMP session history, capacity data, a generated allocation policy, or runtime integration. Do not make OMP import RoleBench's datasets, estimator, optimizer, Harbor integration, or statistical dependencies. Do not make a RoleBench policy select a credential or account. `capacity_pool` is an opaque aggregate accounting boundary; credential choice remains provider-managed inside OMP.
 
 ## Contract changes
 
@@ -90,7 +92,8 @@ When changing a contract:
 - retain explicit timestamps, source versions, and content digests needed for replay;
 - enforce cross-field invariants in `src/rolebench/contracts.py` when JSON Schema cannot express them;
 - add valid and invalid artifact fixtures that prove observable behavior;
-- update the design documentation when semantics change; and
+- update the target architecture when semantics change;
+- update the README's current-status and user-workflow claims only when the shipped behavior supports them; and
 - explain compatibility and migration in the pull request.
 
 A change that removes a field, changes its meaning, tightens accepted values incompatibly, or adds a required field needs a new schema version. Do not silently redefine a published `v1` artifact. Additive compatible changes still require a deliberate review because canonical checksums and consumers may be affected.
@@ -143,16 +146,18 @@ A clean result covers all 29 accounting reason codes with 4 scored controls, 18 
 
 Changes to `worker.py`, `scripts/rolebench-runsc-wrapper`, the manifest contract, or the fixture images must also run the focused worker tests, a clean doctor, the provider-disabled fixture manifest, and representative observed failure probes. Persist each exercised report with `rolebench worker run MANIFEST --report .rolebench/REPORT.json`; report creation is exclusive and never overwrites prior evidence. The runtime result must show `external_provider_calls: 0`, `resource_enforcement: true`, distinct images, immutable handoff, and the expected unscored accounting result. Provider-proxy integration and representative live model-task compatibility remain required before this worker can execute scored provider-backed benchmarks.
 
-## Role contracts
+## Role contracts and the default profile
 
 The built-in registry mirrors OMP's canonical role list. A registry update must:
 
 - pin the exact OMP repository revision, source path, and symbol;
 - preserve exact role order and complete manifest coverage;
 - update the registry schema and validation tests together; and
-- explain how the OMP change affects diagnostics and policy compatibility.
+- explain how the OMP change affects diagnostics, recommendations, and policy compatibility.
 
-Do not introduce agent-specific benchmark lanes. If a workload genuinely needs distinct thresholds or task composition, propose a custom role contract with explicit semantics.
+The completed default benchmark profile must map every built-in role to versioned task packs whose capability tags cover that role's required capabilities. A missing or uncalibrated pack makes the role recommendation-ineligible; it must not make session access mandatory or be hidden by an inferred fallback. Do not add empty packs merely to claim coverage.
+
+Do not introduce agent-specific benchmark lanes. If a workload genuinely needs distinct thresholds or task composition, propose a custom role contract with explicit semantics. Optional session-derived tasks remain supplements to a built-in or custom contract, not a new implicit role taxonomy.
 
 New or revised numerical thresholds require calibration evidence. Until then, use:
 
@@ -170,20 +175,33 @@ A `frozen` threshold change must cite the capability snapshot, held-out validati
 
 ## Benchmark tasks and verifiers
 
-Every diagnostic task must declare:
+The default profile uses two kinds of scored task:
 
-- the role contract and capability tags it exercises;
-- task source, version, and content digest;
-- environment/image and runner versions;
-- objective success criteria where practical;
-- infrastructure-failure classification; and
-- any license or redistribution constraints.
+1. pinned Terminal-Bench anchors where the task directly exercises an OMP role capability; and
+2. fixed OMP-native Terminal-Bench-style tasks for role capabilities the public benchmark does not cover.
+
+Optional session-derived diagnostics are a third authoring source, not part of the standard workflow. Held-out task families are validation inputs and must remain outside task selection and estimator fitting.
+
+Every current `omp.diagnostic-task/v1` artifact must declare:
+
+- its role contract, task mix, capability tags, difficulty, and partition;
+- task and source versions plus content and source digests;
+- separately content-addressed public and verifier-private assets;
+- the policy reference and exact agent, admission-agent, and verifier image, config, platform, and asset-tree identities;
+- objective criteria, scoring mode, and the fixed unscored failure classes; and
+- authorship, independent reviews, license expression, and redistribution status.
+
+A future default-profile or evidence contract should additionally bind the benchmark harness, runner, and verifier software versions used to produce a result. Do not add those undeclared fields to the closed v1 diagnostic-task object; version the schema and its consumers first.
 
 ### Diagnostic-task authoring and admission
 
-Task discovery is not admission. RoleBench uses sessions only when the user explicitly selects them so local diagnostics can reflect that installation's actual workloads rather than a universal task mix. Keep source sessions, imported workspaces, private repositories, candidate records, generated drafts, and every run artifact under ignored `.rolebench/` or another private artifact store. The implemented `rolebench tasks scan-session` command may emit only opaque candidate references, entry ordinals, and deterministic signal kinds; it must not emit raw prompts, responses, tool payloads, paths, session IDs, model/provider/account identifiers, or stable source fingerprints. `rolebench tasks import-omp-gym` is a one-way parser for the public `task.toml` plus `workspace/` format; it must not import OMP Gym code, follow links, infer redistribution rights, or treat successful parsing as approval.
+Task discovery is not admission. Curated public anchors, purpose-built OMP-native tasks, OMP Gym imports, and explicitly selected local sessions all enter the same source-agnostic review path. Keep source sessions, imported workspaces, private repositories, candidate records, generated drafts, and every run artifact under ignored `.rolebench/` or another private artifact store.
 
-The planned local session-to-task generator may inspect selected session content only inside the operator-controlled private authoring boundary. It should identify recurring goals, tool patterns, constraints, and failure modes, then synthesize minimal self-contained task drafts with proposed role and capability tags. It must remove user-specific text, paths, secrets, account data, and proprietary artifacts rather than replay or lightly paraphrase a session. Generated drafts remain private and non-authoritative until the normal independent reviews approve a versioned task. This generator is not implemented in v1.
+The implemented `rolebench tasks scan-session` command returns a versioned privacy-minimized candidate. It may expose no source-derived detail beyond `entry_count`, which counts parsed v3 message entries, and signal objects whose `ordinal` indexes those message entries and whose `kind` is deterministic. It must not emit raw prompts, responses, tool payloads, paths, session IDs, model/provider/account identifiers, or stable source fingerprints.
+
+`rolebench tasks import-omp-gym` is a one-way parser for the public `task.toml` plus `workspace/` format. It must not import OMP Gym code, follow links, infer redistribution rights, or treat successful parsing as approval.
+
+The planned local session-to-task generator is optional and may inspect only sessions the operator explicitly selects. It may read selected content only inside the operator-controlled private authoring boundary, where it should identify recurring goals, tool patterns, constraints, and failure modes and synthesize minimal self-contained drafts with proposed canonical role and capability tags. It must remove user-specific text, paths, secrets, account data, and proprietary artifacts rather than replay or lightly paraphrase a session. Generated drafts supplement the fixed profile and remain private and non-authoritative until the normal independent reviews approve a versioned task. This generator is not implemented in v1.
 
 A versioned task may proceed only after explicit, independent privacy, license, verifier, and split reviews. The author cannot perform those reviews. Redistribution must be permitted before a license review can approve the task. Public and verifier-private trees are separately content-addressed; the agent image must contain the exact public tree and no verifier-private root, while the verifier image must contain the exact private tree and no public root. Every image reference, OCI manifest/config digest, platform, fixed role/content label, task digest, policy digest, and review binding is re-observed before run preparation.
 
@@ -250,12 +268,14 @@ A pull request should state:
 
 - [ ] Problem and intended behavior
 - [ ] Files and contract versions affected
+- [ ] Whether the change affects the fixed default profile, an optional local extension, or advanced allocation/runtime behavior
 - [ ] Compatibility or migration impact
 - [ ] Security/privacy impact
 - [ ] Exact validation commands and observed results
-- [ ] Benchmark task, dataset, route, OMP, runner, and verifier versions when applicable
+- [ ] Benchmark task, dataset, route, OMP, harness, runner, and verifier versions when applicable
 - [ ] Whether outputs are measured evidence, synthetic fixtures, or inference
 - [ ] For session-derived work, how sessions were explicitly selected, kept private, de-identified, and separated from published artifacts
+- [ ] Whether README current-status claims still match implemented behavior
 - [ ] Remaining limitations or unverified paths
 
-Reviewers should be able to reproduce a contract or policy result from pinned inputs without access to another contributor's credentials or local session history.
+Reviewers should be able to reproduce a contract, recommendation, or policy result from pinned inputs without access to another contributor's credentials or local session history.

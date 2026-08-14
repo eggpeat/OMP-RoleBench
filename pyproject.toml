@@ -5,13 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "omp-rolebench"
 version = "0.1.0"
-description = "Contract-first role benchmarking and routing for Oh My Pi"
+description = "Evidence-based model-to-role benchmarking and recommendations for Oh My Pi"
+readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
+keywords = ["oh-my-pi", "omp", "benchmarking", "model-routing", "terminal-bench"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Testing",
+]
 dependencies = [
   "jsonschema>=4.19,<5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/eggpeat/omp-rolebench"
+Repository = "https://github.com/eggpeat/omp-rolebench"
+Issues = "https://github.com/eggpeat/omp-rolebench/issues"
 
 [project.scripts]
 rolebench = "rolebench.cli:main"

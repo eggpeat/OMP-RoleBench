@@ -1,78 +1,81 @@
-# Benchmark-Informed Role Routing for OMP
+# Benchmark-Informed Model-to-Role Assignment and Routing for OMP
 
-**Status:** Partner design proposal  
-**Date:** August 12, 2026  
-**Working name:** OMP RoleBench + Role Router
+- **Status:** Living target architecture
+- **Last reviewed:** August 14, 2026
+- **Project:** OMP RoleBench
 
 ## Executive decision
 
-Build this as two coordinated products:
+Build an open-source offline toolkit with a narrow, explicit boundary to OMP runtime behavior:
 
-1. **A separate `omp-rolebench` repository** owns role diagnostics, benchmark orchestration, evidence, capability estimation, capacity-aware optimization, validation, and policy generation.
-2. **Focused upstream OMP pull requests** add the generic runtime seam required to load, explain, shadow, and enforce a versioned role-allocation policy.
+1. **`omp-rolebench`** owns the canonical role benchmark profile, diagnostic tasks, benchmark orchestration, evidence, model-route qualification and recommendation, capability estimation, optional local task generation, capacity-aware optimization, validation, and policy generation.
+2. **Focused upstream OMP changes** provide the generic runtime seam required to load, explain, shadow, and enforce a versioned role-allocation policy.
 
-Use a fork of OMP to develop and test those pull requests, but do **not** make a permanent product fork the intended distribution model. The benchmark changes more quickly than the OMP runtime, carries heavier datasets and statistical dependencies, and should be independently versioned. OMP should remain capable of routing without containing the benchmark corpus or optimizer.
+RoleBench must deliver useful model-to-role recommendations without session history, a capacity optimizer, or OMP runtime integration. Develop upstream integration against an OMP fork, but do **not** make a permanent product fork the distribution model. The benchmark changes more quickly than the runtime, carries heavier datasets and statistical dependencies, and should be independently versioned.
 
-OMP already contains several useful building blocks: canonical model roles, role-alias resolution, preserved role identity on structured subagent launches, normalized provider/account usage reporting, retry and fallback behavior, a credential-distribution diagnostic, and a Harbor-backed metaharness. The project should extend those capabilities rather than replace them.
+OMP already contains canonical model roles, role-alias resolution, preserved role identity on structured subagent launches, normalized provider/account usage reporting, retry and fallback behavior, a credential-distribution diagnostic, and a Harbor-backed metaharness. RoleBench should extend those capabilities rather than replace them.
 
 ## Product definition
 
-> Given an installation's user-selected OMP sessions, fixed anchors, role contracts, candidate model routes, quality requirements, expected demand, and live capacity, derive a private local diagnostic mix, produce a versioned allocation policy, and execute it deterministically.
+> Given OMP's canonical roles, a fixed default benchmark profile, and candidate model routes, produce reproducible role-specific evidence and ranked model-route recommendations. Optionally supplement the default profile with reviewed tasks derived from explicitly selected local sessions. Where demand and capacity data are available, turn qualified recommendations into a versioned allocation policy that OMP can execute deterministically.
 
 The complete product loop is:
 
 ```text
-user-selected OMP sessions + fixed public anchors
-    ↓ private offline task discovery
-OMP role contracts + installation-specific diagnostics
+OMP canonical roles + fixed default benchmark profile
+                     + optional reviewed session-derived tasks
     ↓
-benchmark evidence
+candidate exact model routes
     ↓
-role × route capability estimates
+objective, sandboxed benchmark evidence
     ↓
+role × route capability and reliability estimates
+    ↓
+ranked model-route recommendations per role
+    ↓ optional
 capacity-constrained allocation policy
-    ↓
+    ↓ optional
 deterministic OMP role routing
-    ↓
-agents and workflows consume @roles
 ```
 
-The system replaces arbitrary role weights and model assignments with reproducible decisions backed by measured quality, operational performance, and available capacity.
+The core toolkit replaces arbitrary model assignments with reproducible recommendations backed by measured quality, operational performance, provenance, and uncertainty. Capacity-aware traffic distribution and runtime enforcement are advanced layers, not prerequisites for the offline recommendation workflow.
 
 ## Problem
 
 OMP can map roles to models and recover from provider failures, but a user still has to decide manually:
 
-- which model/provider/effort route is qualified for each role;
-- how much traffic each qualified route should receive;
-- how to balance several subscription, API, account, and concurrency limits;
-- when a cheaper or faster model is actually good enough;
-- how to update those choices after a model, provider, OMP release, or quota state changes; and
-- why a particular request was routed as it was.
+- which provider/model/effort route is qualified for each canonical role;
+- which qualified route is the best default assignment for that role;
+- whether a cheaper or faster route is actually good enough;
+- how confident the evidence is and which capabilities remain untested;
+- when assignments should change after a model, provider, harness, or OMP release; and
+- optionally, how traffic should be distributed across subscription, API, account, and concurrency limits.
 
-General leaderboards are insufficient. Terminal-Bench is valuable evidence for terminal competence, but its aggregate score does not directly answer whether a route satisfies OMP's `task`, `plan`, `vision`, `commit`, or other role contracts. It also does not incorporate the user's live capacity and expected workload.
+General leaderboards are insufficient. Terminal-Bench is valuable evidence for terminal competence, but its aggregate score does not directly answer whether a route satisfies OMP's `task`, `plan`, `vision`, `commit`, or other role contracts. It also does not distinguish every exact route or cover every OMP capability.
 
 ## Goals
 
-1. Estimate role-specific capability and uncertainty for each exact model route.
-2. Use Terminal-Bench-style executable tasks where they are diagnostically appropriate.
-3. Run only enough diagnostics to make a stable allocation decision.
-4. Enforce role-specific capability and reliability floors.
-5. Allocate traffic across provider/account capacity pools and quota windows.
-6. Produce immutable, inspectable, versioned policy artifacts.
-7. Route deterministically and keep decisions sticky at the appropriate scope.
-8. Reuse OMP's existing model resolution, authentication, usage health, and recovery behavior.
-9. Support shadow evaluation before a policy controls production traffic.
-10. Preserve explicit user model selection as an intentional override.
-11. Derive and refresh privacy-reviewed diagnostics from opt-in user session samples so local policies reflect the workloads that installation actually runs.
+1. Ship a fixed, versioned default benchmark profile mapped to every canonical OMP role.
+2. Use pinned Terminal-Bench tasks where appropriate and Terminal-Bench-style OMP-native executable tasks for uncovered role capabilities.
+3. Evaluate exact provider/model/effort routes rather than ambiguous model names.
+4. Produce reproducible role-specific qualification and ranked assignment recommendations with explicit uncertainty and coverage.
+5. Work without access to OMP session history.
+6. Optionally derive supplemental private task candidates from explicitly selected local sessions.
+7. Enforce role-specific capability and reliability floors and distinguish model failures from provider or infrastructure failures.
+8. Run only enough diagnostics to make a stable recommendation or explain why evidence is insufficient.
+9. Optionally allocate traffic across capacity pools and quota windows and emit immutable, inspectable policies.
+10. Reuse OMP's existing model resolution, authentication, usage health, and recovery behavior for runtime integration.
+11. Preserve explicit user model selection as an intentional override.
 
 ## Non-goals
 
-- Reproduce an official Terminal-Bench score from a tiny subset.
+- Require session logs, sweep a user's history by default, or treat raw session content as benchmark evidence.
+- Reproduce an official Terminal-Bench score from a small or modified subset.
+- Treat a public benchmark aggregate as a direct OMP role score.
 - Build another general model leaderboard.
 - Benchmark or allocate by agent name.
 - Let an online LLM choose a model at request time.
-- Hide all quality, cost, latency, and capacity tradeoffs inside one arbitrary composite score.
+- Hide quality, cost, latency, capacity, and uncertainty inside one arbitrary composite score.
 - Put benchmark tasks, large run artifacts, statistical notebooks, or optimizer dependencies into OMP core.
 - Dynamically mutate routing weights on every request without publishing a new policy version.
 
@@ -88,13 +91,15 @@ agent/workflow → @role → role router → concrete route
 
 Agent identity may be retained in telemetry to diagnose interactions, but it is not a benchmark lane or allocation dimension. If a genuinely different workload requires different thresholds or task mixes, it should become a custom role contract rather than an agent-specific exception.
 
-### User sessions—not a universal task suite—define local relevance
+### Fixed canonical baseline; optional local extension
 
-RoleBench must evaluate the work a particular user gives OMP instead of assuming every installation has the same role mix, task families, or quality requirements. The operator explicitly selects local sessions for an offline authoring run. Inside that private boundary, RoleBench should identify recurring goals, tool patterns, artifacts, constraints, and failure modes, then generate minimal self-contained diagnostic drafts with proposed role bindings and capability tags. Different users can therefore produce different local task mixes and demand forecasts even when they share the same canonical role contracts.
+Every installation begins with the same versioned mapping from canonical OMP roles to required capabilities and fixed task packs. That baseline makes recommendations reproducible, comparable across installations, and usable without private user data. Missing default coverage makes a role ineligible for recommendation; it must not silently turn session access into a prerequisite.
 
-Raw session content may be read only inside the operator-controlled local authoring boundary. It must not enter candidate metadata, benchmark evidence, policies, routing telemetry, or public artifacts. A generated draft remains private by default, must remove user-specific content, and receives no scoring or routing authority until independent privacy, redistribution, verifier, and split reviews approve a versioned task. Fixed public anchors preserve cross-installation comparability; personalized diagnostics determine whether routes fit the local workload.
+An operator may explicitly select local sessions for an offline authoring run when recurring work is not represented by the fixed profile. Inside that private boundary, RoleBench may identify goals, tool patterns, artifacts, constraints, and failure modes and propose minimal self-contained diagnostic drafts with canonical role bindings and capability tags. Approved local diagnostics supplement the baseline; they do not replace it or change the role taxonomy.
 
-This generation loop is dynamic but not online: workload drift may trigger a new offline authoring and calibration cycle, which produces new immutable task and policy versions. It never changes weights during a request. The current `scan-session` command implements only the privacy-minimized discovery envelope for one selected session; executable session-to-task synthesis remains planned work.
+Raw session content may be read only inside the operator-controlled local authoring boundary. It must not enter candidate metadata, benchmark evidence, policies, routing telemetry, or public artifacts. Generated drafts remain private and non-authoritative until independent privacy, redistribution, verifier, split, qualification, and calibration reviews approve them. The current `scan-session` command implements only privacy-minimized signal discovery; executable session-to-task synthesis remains planned.
+
+This extension is dynamic but not online: workload drift may trigger a new offline authoring and calibration cycle that produces new immutable task and policy versions. It never changes weights during a request.
 
 ### Exact routes—not model names—are evaluated
 
@@ -126,27 +131,26 @@ Live capacity is sampled by the optimizer and recorded in the generated policy. 
 
 ## Canonical OMP roles
 
-OMP currently defines ten built-in roles. These IDs are the v1 diagnostic taxonomy.
+OMP currently defines ten built-in roles. These IDs are the v1 diagnostic taxonomy and the required keys of the completed default benchmark profile.
 
 | Role | Diagnostic contract | Primary decision signal |
 | --- | --- | --- |
 | `default` | Broad interactive coding, terminal work, and tool use | Accepted-solve rate across representative work |
-| `task` | Self-contained delegated implementation | Reliable autonomous completion |
-| `slow` | Hard diagnosis, reasoning, and recovery | Quality on difficult tasks |
-| `plan` | Architecture, decomposition, and sequencing | Executability and correctness of the plan |
-| `advisor` | Independent review and defect discovery | Defect/risk recall with controlled false positives |
 | `smol` | Bounded mechanical and lightweight work | Success within strict latency/cost budgets |
-| `tiny` | Titles, memory operations, classification, and metadata | Exact output, reliability, speed, and minimal consumption |
-| `commit` | Commit-message generation | Semantic coverage, convention adherence, and no invention |
+| `slow` | Hard diagnosis, reasoning, and recovery | Quality on difficult tasks |
 | `vision` | Image-grounded and multimodal work | Correct evidence grounding and required input support |
+| `plan` | Architecture, decomposition, and sequencing | Executability and correctness of the plan |
 | `designer` | UI/UX judgment and implementation | Functional correctness plus visual quality |
+| `commit` | Commit-message generation | Semantic coverage, convention adherence, and no invention |
+| `tiny` | Titles, memory operations, classification, and metadata | Exact output, reliability, speed, and minimal consumption |
+| `task` | Self-contained delegated implementation | Reliable autonomous completion |
+| `advisor` | Independent review and defect discovery | Defect/risk recall with controlled false positives |
 
-The runtime and policy schema should support all built-in roles from the beginning. Diagnostic spending may prioritize roles with active demand and consequential allocation decisions.
+Each built-in role must map to at least one versioned default task pack whose capability tags cover the role's required capabilities before RoleBench calls the default profile complete. A route receives no recommendation for a role with inadequate task coverage or calibration. Session-derived tasks may improve local coverage, but cannot stand in for a missing canonical default.
 
-Custom roles can be added later. A custom role must either:
+The runtime and policy schemas support all built-in roles from the beginning. Diagnostic spending may prioritize roles with active demand, but the public default-profile contract remains complete and explicit.
 
-- inherit a built-in diagnostic contract and override explicit thresholds/demand; or
-- provide its own versioned contract and diagnostic task mix.
+Custom roles are optional extensions. A custom role must either inherit a built-in diagnostic contract and override explicit thresholds or demand, or provide its own versioned contract and diagnostic task mix.
 
 ## System architecture and repository ownership
 
@@ -170,20 +174,20 @@ OMP must not depend on the benchmark corpus, estimator, optimizer, Harbor, or a 
 
 ### `omp-rolebench` repository
 
-The separate project owns evidence production and policy generation:
+The separate toolkit owns offline evidence production, recommendation, and policy generation:
 
-- role-contract manifests and version history;
+- canonical role-contract manifests and version history;
+- the fixed default role benchmark profile and versioned task packs;
+- pinned references to applicable public Terminal-Bench datasets and tasks;
+- OMP-native Terminal-Bench-style diagnostics and executable verifiers;
 - private, opt-in user-session analysis and local session-to-task candidate generation;
-- OMP-native diagnostic tasks and executable verifiers;
-- pinned references to public Terminal-Bench datasets/tasks;
 - Harbor dataset packaging and the OMP benchmark adapter/configuration;
 - run manifests and normalized evidence ingestion;
 - task selection and adaptive stopping;
-- role × route capability estimation;
+- role × route capability estimation and ranked recommendations;
 - latency, reliability, token, cost, and quota-consumption models;
-- capacity snapshots and demand forecasts;
-- constrained optimization;
-- allocation-regret validation;
+- optional capacity snapshots and demand forecasts;
+- constrained optimization and allocation-regret validation;
 - policy schema, generation, checksums, and publishing; and
 - reports and dashboards.
 
@@ -277,6 +281,41 @@ For each `role × route` pair:
 - sample count, task coverage, and evidence freshness; and
 - calibration/model version.
 
+### Role recommendation
+
+The first independently useful product artifact is a capacity-independent recommendation snapshot:
+
+```yaml
+schema_version: omp.role-recommendation/v1
+recommendation_id: role-recommendation-2026-08-14.001
+created_at: 2026-08-14T13:00:00Z
+role_registry_digest: sha256:...
+benchmark_profile: default-v1
+evidence_snapshot: evidence-2026-08-14.001
+capability_snapshot: capability-2026-08-14.001
+recommender_version: role-recommender-v1
+
+roles:
+  task:
+    status: recommended
+    selected_route: openai-codex/gpt-5.6-terra:high
+    qualified_routes:
+      - route_id: openai-codex/gpt-5.6-terra:high
+        rank: 1
+        probability_above_quality_floor: 0.97
+      - route_id: anthropic/claude-sonnet-5:high
+        rank: 2
+        probability_above_quality_floor: 0.95
+    excluded_routes:
+      - route_id: example/provider-route:low
+        reason_codes:
+          - insufficient-capability-confidence
+```
+
+Each role records `recommended`, `insufficient-evidence`, `no-qualified-route`, or `inactive`. A recommended route must clear the role's capability and reliability floors; rank may then consider accepted-solve quality, latency, and cost under an explicit deterministic rule. Every selection and exclusion is traceable to the profile, evidence, capability snapshot, thresholds, and reason codes.
+
+This artifact answers “which route should I assign to this role?” without requiring demand forecasts, capacity data, traffic weights, or OMP runtime integration. The allocation optimizer may consume its qualified route set, but cannot weaken its quality gates.
+
 ### Capacity snapshot
 
 Capacity is indexed by pool and time window, not by model name alone:
@@ -357,29 +396,30 @@ The raw prompt, credentials, and sensitive account identifiers are not required.
 
 ## Diagnostic methodology
 
-### Task sources
+### Default benchmark profile and task sources
 
-1. **User-session-derived OMP-native diagnostics:** private, opt-in tasks generated from recurring work in user-selected sessions. They determine local relevance but remain private until independently reviewed and explicitly approved for redistribution.
-2. **Fixed OMP-native contract anchors:** small, purpose-built tasks that preserve comparable coverage across installations, especially for `smol`, `tiny`, `commit`, `vision`, and `designer`.
-3. **Terminal-Bench anchors:** pinned public tasks useful for `default`, `task`, and `slow`, with selected evidence for `plan` and `advisor` where justified.
-4. **Held-out routing tests:** task families and model routes excluded from task generation, task selection, and estimator fitting, used only to measure allocation regret.
+The default profile is a versioned mapping from every canonical role to required capabilities and fixed task packs. It is sufficient for the standard recommendation workflow and contains no user session data.
 
-Do not copy or relabel an official Terminal-Bench dataset in a way that implies an official score. Record the exact dataset release and task digest. Report results as RoleBench estimates.
+1. **Terminal-Bench anchors:** pinned public tasks useful for `default`, `task`, and `slow`, with selected evidence for `plan` and `advisor` where justified.
+2. **Fixed OMP-native anchors:** small, purpose-built Terminal-Bench-style tasks for all roles, especially `smol`, `tiny`, `commit`, `vision`, and `designer`.
+3. **Held-out routing tests:** task families and model routes excluded from task selection and estimator fitting, used only to measure recommendation and allocation regret.
+4. **Optional session-derived diagnostics:** private supplemental tasks generated from recurring work in explicitly selected sessions. They are outside the default profile unless independently reviewed, licensed for redistribution, and deliberately published.
 
-### Diagnostic-task admission and execution
+Do not copy or relabel an official Terminal-Bench dataset in a way that implies an official score. Record the exact dataset release, task digest, harness, and route identity. Report results as RoleBench role estimates.
 
-The task pipeline separates private workload discovery, generation, authoring, admission, calibration, and evidence use:
+### Candidate authoring, admission, and evidence use
 
-1. The operator explicitly selects one or more local OMP sessions. RoleBench must not sweep all history by default or upload a session for task generation.
-2. The implemented `scan-session` command reads one selected OMP JSONL session and emits a fresh opaque candidate plus entry ordinals and signal kinds only. Raw text, paths, IDs, model/provider/account fields, and stable session fingerprints are prohibited.
-3. A planned local generator evaluates the selected session content only inside the private authoring boundary, identifies recurring role/capability patterns, and synthesizes minimal self-contained task drafts. It must not copy user-specific prompts, repository paths, secrets, account data, or proprietary artifacts into its output. This synthesis stage is not implemented in v1.
-4. As an alternative authoring input, `import-omp-gym` parses only the public `task.toml` and `workspace/` format into a private candidate directory. It does not import OMP Gym code, follow links, infer licensing, or grant admission.
-5. An operator turns a private draft into `omp.diagnostic-task/v1` with a canonical role binding, public/private asset digests, exact single-platform agent/admission/verifier image identities, objective criteria, and independent privacy, license, verifier, and split approvals.
-6. `prepare-admission-run` independently re-inspects the image manifest, config ID, platform, fixed role/content labels, and in-image asset trees. The agent image must expose the exact public tree and no verifier-private tree; the verifier image must expose the exact private tree and no public tree.
-7. At least two healthy runs for each distinct baseline, reference, and tamper image establish deterministic failure, success, and tamper rejection. `qualify` reparses each worker report, recomputes accounting, requires exact run/envelope/isolation/task/policy/probe-image mappings, and requires identical artifact/reward results across repeats.
-8. V1 qualifications are `calibration-required`, not proof of cross-model discrimination. V1 cannot claim `admitted` or freeze a routing-eligible pack until a later version defines independently reviewed discrimination evidence. `prepare-run` therefore permits only non-holdout `calibration-only` execution and preserves the observed task/image/policy bindings in `omp.worker-run-manifest/v1`.
-9. The normal rootless Docker/`runsc` worker executes both admission and calibration manifests, freezes the bounded artifact after agent exit, streams it once to the distinct networkless verifier, and emits observation/outcome records with explicit `evidence_use`. Accounting classifies otherwise-scoreable admission/calibration attempts as excluded evidence, never normal model-quality evidence.
-10. The append-only experiment ledger may journal immutable artifacts and worker reports locally, but it has no admission, calibration, or routing authority. Every consumer revalidates source artifacts and recomputes worker outcomes.
+The task pipeline is source-agnostic and separates candidate acquisition, authoring, admission, calibration, and evidence use. No step requires a user session:
+
+1. A candidate may come from a pinned public task, a purpose-built OMP-native task, `import-omp-gym`, or the optional local session workflow.
+2. `import-omp-gym` parses only the public `task.toml` and `workspace/` format into a private candidate directory. It does not import OMP Gym code, follow links, infer licensing, or grant admission.
+3. For the optional local workflow, `scan-session` reads one caller-selected OMP JSONL session and returns a versioned privacy-minimized candidate with a fresh opaque reference, `entry_count` for parsed v3 message entries, and signal objects whose `ordinal` indexes those message entries and whose `kind` identifies the signal. Raw text, paths, IDs, model/provider/account fields, and stable session fingerprints are prohibited. A planned local generator may inspect selected content only inside the private boundary and synthesize de-identified task drafts; that synthesis is not implemented in v1.
+4. An operator turns a candidate into `omp.diagnostic-task/v1` with a canonical role binding, capability tags, public/private asset digests, exact single-platform agent/admission/verifier image identities, objective criteria, and independent privacy, license, verifier, and split approvals.
+5. `prepare-admission-run` independently re-inspects the image manifest, config ID, platform, fixed role/content labels, and in-image asset trees. The agent image must expose the exact public tree and no verifier-private tree; the verifier image must expose the exact private tree and no public tree.
+6. At least two healthy runs for each distinct baseline, reference, and tamper image establish deterministic failure, success, and tamper rejection. `qualify` reparses every report, recomputes accounting, requires exact run/envelope/isolation/task/policy/probe-image mappings, and requires identical artifact/reward results across repeats.
+7. V1 qualifications are `calibration-required`, not proof of cross-model discrimination. V1 cannot claim `admitted` or freeze a routing-eligible pack until a later contract defines independently reviewed discrimination evidence. `prepare-run` therefore permits only non-holdout `calibration-only` execution and preserves the observed task/image/policy bindings in `omp.worker-run-manifest/v1`.
+8. The normal rootless Docker/`runsc` worker executes admission and calibration manifests, freezes the bounded artifact after agent exit, streams it once to the distinct networkless verifier, and emits observation/outcome records with explicit `evidence_use`. Accounting classifies otherwise-scoreable admission or calibration attempts as excluded evidence, never normal model-quality evidence.
+9. The append-only experiment ledger may journal immutable artifacts and worker reports locally, but it has no admission, calibration, recommendation, or routing authority. Every consumer revalidates source artifacts and recomputes worker outcomes.
 
 Public pilot packs remain empty and routing-ineligible. Public repository validation rejects holdout content; confidential holdouts require an author-independent split outside the public tree. The `synthetic-fixture` source kind exists only for provider-disabled smoke tests and is mechanically excluded from all task packs. Runtime tasks, qualifications, reports, journals, image archives, and imported candidates stay under ignored `.rolebench/` or an external private artifact store.
 
@@ -417,9 +457,9 @@ The initial estimator can use:
 - partial pooling across related roles without collapsing their outputs;
 - hierarchical log-time and log-cost models;
 - a separate operational-failure model; and
-- weak public-benchmark priors that are updated by OMP-native evidence.
+- weak public-benchmark priors that are updated by direct RoleBench evidence.
 
-Public Terminal-Bench results are priors/calibration evidence, not direct OMP role scores. Model/harness settings that are not identical must not be treated as identical routes.
+Published Terminal-Bench aggregate results are priors or calibration context, not direct OMP role scores. Direct evidence comes from executing pinned applicable tasks under the recorded RoleBench harness against the exact candidate route. Model, provider, effort, transport, harness, and OMP settings that are not identical must not be treated as the same route or result.
 
 ### Validation target
 
@@ -650,73 +690,82 @@ Recommended sequence:
 
 Each PR should be independently useful, documented, tested, and manually exercised.
 
-## RoleBench repository layout
+## Target RoleBench repository layout and CLI
+
+The target layout extends the current repository without moving benchmark or statistical dependencies into OMP:
 
 ```text
 omp-rolebench/
 ├── contracts/
+│   ├── role-registry.json
 │   ├── roles/
+│   ├── task-packs/
 │   └── schemas/
 ├── tasks/
-│   ├── terminal/
-│   ├── tiny/
-│   ├── commit/
-│   ├── vision/
-│   └── designer/
-├── datasets/
-│   └── harbor/
+│   ├── terminal-bench/
+│   └── omp-native/
+│       └── <canonical-role>/
 ├── adapters/
 │   └── omp/
-├── rolebench/
+├── src/rolebench/
 │   ├── evidence/
 │   ├── estimate/
+│   ├── recommend/
 │   ├── capacity/
-│   ├── demand/
 │   ├── optimize/
-│   ├── validate/
 │   └── policy/
+├── fixtures/
 ├── tests/
 ├── reports/
 └── docs/
 ```
 
-Suggested CLI:
+The target CLI makes recommendation a first-class step. These commands are planned; the README is authoritative for commands implemented today.
 
 ```text
+rolebench profile show default-v1
 rolebench inventory
-rolebench run --roles task,smol,slow --routes <manifest>
+rolebench run --profile default-v1 --routes <manifest>
 rolebench fit --evidence <snapshot>
-rolebench optimize --capabilities <snapshot> --capacity <snapshot> --demand <snapshot>
+rolebench recommend --capabilities <snapshot>
+rolebench optimize --recommendation <snapshot> --capacity <snapshot> --demand <snapshot>
 rolebench validate --policy <policy>
 rolebench publish --policy <policy>
 ```
 
 ## Delivery workstreams
 
-### A. Role contracts and diagnostics
+### A. Default role benchmark
 
-- Freeze v1 built-in role contracts.
-- Build the private opt-in session-to-task generator and drift-triggered regeneration workflow.
-- Select initial Terminal-Bench anchors.
-- Build OMP-native microdiagnostics and objective verifiers.
-- Maintain held-out tasks and trajectory-integrity checks.
+- Freeze v1 built-in role contracts and required capability tags.
+- Define the versioned default profile across all ten canonical roles.
+- Select and pin applicable Terminal-Bench anchors.
+- Build OMP-native Terminal-Bench-style diagnostics and objective verifiers for uncovered capabilities.
+- Maintain author-independent held-out tasks and trajectory-integrity checks.
 
-### B. Evidence, estimation, and optimizer
+### B. Evidence and recommendations
 
-- Define normalized schemas.
-- Ingest OMP/metaharness/Harbor artifacts.
-- Fit calibrated role × route posteriors.
+- Complete the credentialless provider-proxy execution boundary.
+- Ingest normalized OMP/metaharness/Harbor artifacts.
+- Fit calibrated role × route capability and reliability posteriors.
 - Implement adaptive task selection and stopping.
-- Build the constrained optimizer and regret validation.
+- Emit ranked per-role recommendations with coverage, uncertainty, and refusal reasons.
 
-### C. OMP runtime integration
+### C. Optional local task generation
 
-- Align with OMP maintainers.
-- Add the central role-routing seam.
+- Build the private, opt-in session-to-task generator on top of the existing discovery envelope.
+- Require de-identification and the normal independent task reviews before any generated task contributes evidence.
+- Support offline regeneration for workload drift without making session access a default-workflow dependency.
+
+### D. Allocation and OMP runtime integration
+
+- Build optional capacity and demand snapshots, constrained allocation, and regret validation.
+- Generate immutable, explainable allocation policies.
+- Add the central OMP role-routing seam.
 - Implement shadow decisions, policy validation, deterministic selection, health gating, telemetry, and explanation.
 - Preserve explicit overrides and legacy behavior.
 
-These workstreams can proceed in parallel once the v1 data contracts and role semantics are frozen.
+These workstreams share the v1 role and artifact contracts. The default benchmark and recommendation path is the first independently useful product; optional task generation and runtime policy enforcement must not block it.
 
 ## Milestones
 
@@ -724,35 +773,38 @@ These workstreams can proceed in parallel once the v1 data contracts and role se
 
 - Agree on repository ownership.
 - Freeze v1 role, route, evidence, capability, capacity, policy, and decision schemas.
-- Agree on the OMP core seam with maintainers.
 - Pin the first OMP and Terminal-Bench releases.
+- Define minimum default task-pack coverage for all ten canonical roles.
 
-### Milestone 1 — Offline vertical slice
+### Milestone 1 — Default offline recommendation
 
-- Derive and independently review a small personalized diagnostic set from user-selected sessions alongside fixed anchors.
-- Run several candidate routes on a small `task`/`smol`/`slow` diagnostic set.
-- Produce normalized evidence and capability snapshots.
-- Solve a synthetic multi-provider capacity scenario.
+- Curate and independently review a fixed `task`/`smol`/`slow` diagnostic set.
+- Run several exact candidate routes without using session logs.
+- Produce normalized evidence and calibrated capability snapshots.
+- Emit a ranked recommendation for each covered role, or an explicit insufficient-evidence result.
+- Validate the recommendation on held-out task families.
+
+### Milestone 2 — Complete canonical profile and optional local overlay
+
+- Expand the fixed profile and recommendation output to all ten canonical roles.
+- Add opt-in session-to-task generation as a supplemental source.
+- Prove that the default workflow and its validation remain reproducible without local session data.
+- Recalibrate only through new immutable task, evidence, and recommendation versions.
+
+### Milestone 3 — Capacity-aware policy and OMP shadow routing
+
+- Solve representative multi-provider capacity scenarios using only qualified routes.
 - Generate and explain a valid policy artifact.
+- Load the policy into OMP and produce deterministic shadow decisions.
+- Compare shadow choices with static mappings and verify replay, explicit overrides, and safe fallback.
 
-### Milestone 2 — OMP shadow routing
-
-- Load the policy into OMP.
-- Produce deterministic shadow decisions for real role requests.
-- Compare shadow choices with current static mappings.
-- Verify logging, replay, explicit overrides, and safe fallback.
-
-### Milestone 3 — Controlled enforcement
+### Milestone 4 — Controlled enforcement and adaptive calibration
 
 - Enable one or two noncritical roles first.
 - Observe quality, availability, quota consumption, and policy churn.
 - Roll back atomically to static role mappings on any policy/runtime failure.
-
-### Milestone 4 — Adaptive proxy calibration
-
-- Expand role packs and route families.
-- Validate against fuller Terminal-Bench/RoleBench runs.
-- Freeze the first task-selection model only after held-out allocation-regret gates pass.
+- Expand route families and validate against fuller Terminal-Bench/RoleBench runs.
+- Freeze task-selection behavior only after held-out recommendation and allocation-regret gates pass.
 
 ## Acceptance criteria
 
@@ -774,13 +826,18 @@ These workstreams can proceed in parallel once the v1 data contracts and role se
 - Infeasible problems return an explanation rather than silently weakening quality requirements.
 - Policy diffs explain changes in evidence, demand, capacity, or constraints.
 
-### Diagnostic validity
+### Diagnostic and recommendation validity
 
-- Each task is mapped to an explicit role contract and capability tag.
+- The standard workflow completes without reading OMP session logs.
+- The completed default profile maps every canonical role to explicit required capabilities and versioned task packs.
+- Each task is mapped to one explicit role contract and capability tags.
 - Objective verifiers are used wherever practical.
-- Task and verifier digests are recorded.
-- Infrastructure failures are distinguished from model failures.
-- Held-out validation measures allocation regret.
+- Task, environment, harness, verifier, and route digests are recorded.
+- Infrastructure and provider failures are distinguished from model failures.
+- A recommendation identifies its evidence, coverage, uncertainty, and qualification decision.
+- Insufficient coverage or confidence produces an explicit refusal rather than a guessed assignment.
+- Optional session-derived tasks remain non-authoritative until the normal independent reviews and calibration gates pass.
+- Held-out validation measures recommendation and allocation regret.
 - No unofficial result is labeled an official Terminal-Bench score.
 
 ## Security and integrity
@@ -800,16 +857,17 @@ These workstreams can proceed in parallel once the v1 data contracts and role se
 
 1. Should `omp.route-policy/v1` be JSON-only for canonical signing, with YAML accepted only as authoring input?
 2. Does OMP core implement the full policy provider, or should a minimal core seam allow a separately packaged official extension to do so?
-3. What are the first three roles and candidate routes for the calibration pilot?
-4. How should expected role demand be combined from user forecasts and observed OMP telemetry?
-5. Which unknown-capacity default is appropriate for each provider class?
-6. Where should signed/approved policy artifacts be published and how should activation approval work?
-7. Which role contracts may be overridden locally, and which safety/reliability floors are non-negotiable?
-8. How should users select session families and sampling windows, approve generated drafts, and detect workload drift without exporting raw sessions?
+3. What are the first candidate routes for the `task`/`smol`/`slow` recommendation pilot?
+4. What minimum fixed task and capability coverage makes each canonical role recommendation-eligible?
+5. How should expected role demand be combined from user forecasts and observed OMP telemetry?
+6. Which unknown-capacity default is appropriate for each provider class?
+7. Where should signed or approved policy artifacts be published, and how should activation approval work?
+8. Which role contracts may be overridden locally, and which safety or reliability floors are non-negotiable?
+9. For the optional local extension, how should users select session families and sampling windows, approve generated drafts, and detect workload drift without exporting raw sessions?
 
 ## Recommendation in one sentence
 
-**Develop against an OMP fork, upstream the generic deterministic role-routing runtime in focused PRs, and keep the evolving diagnostic corpus, estimator, optimizer, and policy generator in a separate `omp-rolebench` repository.**
+**Ship `omp-rolebench` first as an open-source offline toolkit that maps a fixed Terminal-Bench-style capability profile to OMP's canonical roles and produces evidence-backed model-route recommendations; add private session-derived tasks as an optional extension, and upstream deterministic policy execution separately.**
 
 ## Current OMP references
 
