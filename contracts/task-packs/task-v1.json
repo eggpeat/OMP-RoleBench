@@ -1,0 +1,22 @@
+{
+  "schema_version": "omp.task-pack/v1",
+  "pack_id": "task-v1",
+  "role": "task",
+  "task_mix": "task-v1",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "dc927f53dafcf63acb5e3609786e6e32a6913d1eadb29b60a7997a606ddca2f6"
+  },
+  "partition": "anchor",
+  "status": "authoring",
+  "routing_eligible": false,
+  "selection_method": "fixed-anchor",
+  "required_capabilities": [
+    "autonomous-task-execution",
+    "terminal-tool-use",
+    "code-editing",
+    "repository-navigation",
+    "targeted-verification"
+  ],
+  "entries": []
+}

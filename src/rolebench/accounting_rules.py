@@ -60,6 +60,14 @@ ATTEMPT_OUTCOME_RULES: dict[str, OutcomeRule] = {
         ("operator-cancelled",),
         ("none",),
     ),
+    "non-scored-evidence": (
+        "excluded",
+        ("experiment_scope",),
+        "no-valid-attempt",
+        "indeterminate",
+        _ALL_TERMINATIONS,
+        _ALL_OOM_SCOPES,
+    ),
     "suspected-reward-hacking": (
         "quarantined",
         ("suspected_reward_hacking",),

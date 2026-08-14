@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from io import StringIO
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -85,13 +86,23 @@ class WorkerRunCliTests(unittest.TestCase):
 
     def test_parser_accepts_run_options(self) -> None:
         arguments = build_parser().parse_args(
-            ["worker", "run", "manifest.json", "--docker", "podman-docker", "--json"]
+            [
+                "worker",
+                "run",
+                "manifest.json",
+                "--docker",
+                "podman-docker",
+                "--json",
+                "--report",
+                "report.json",
+            ]
         )
 
         self.assertEqual((arguments.group, arguments.command), ("worker", "run"))
         self.assertEqual(arguments.manifest, Path("manifest.json"))
         self.assertEqual(arguments.docker, "podman-docker")
         self.assertTrue(arguments.as_json)
+        self.assertEqual(arguments.report, Path("report.json"))
 
     @patch("rolebench.cli.doctor_worker")
     def test_doctor_json_is_canonical_and_ready_returns_zero(
@@ -182,6 +193,56 @@ class WorkerRunCliTests(unittest.TestCase):
             MANIFEST_PATH,
             docker="/opt/docker",
         )
+
+    @patch("rolebench.cli.run_worker")
+    def test_run_writes_canonical_report_once_inside_repository(
+        self,
+        worker: object,
+    ) -> None:
+        report = worker_run_report()
+        worker.return_value = report
+        output = StringIO()
+        error = StringIO()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            report_path = root / ".rolebench/reports/report.json"
+            with patch("rolebench.cli.resolve_root", return_value=root):
+                status = run(
+                    [
+                        "--root",
+                        str(root),
+                        "worker",
+                        "run",
+                        "manifest.json",
+                        "--report",
+                        ".rolebench/reports/report.json",
+                    ],
+                    stdout=output,
+                    stderr=error,
+                )
+                repeated = run(
+                    [
+                        "--root",
+                        str(root),
+                        "worker",
+                        "run",
+                        "manifest.json",
+                        "--report",
+                        ".rolebench/reports/report.json",
+                    ],
+                    stdout=StringIO(),
+                    stderr=error,
+                )
+
+            self.assertEqual(status, 0)
+            self.assertEqual(report_path.read_text(), canonical_json(report) + "\n")
+            self.assertEqual(report_path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(
+                report_path.parent.stat().st_mode & 0o777,
+                0o700,
+            )
+            self.assertEqual(repeated, 2)
+            self.assertIn("error: cannot create worker report\n", error.getvalue())
 
     @patch("rolebench.cli.run_worker")
     def test_run_plain_pass_shows_accounting_isolation_and_no_diagnostics(

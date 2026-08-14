@@ -19,6 +19,17 @@ CONTRACTS_ROOT = PRODUCT_ROOT / "contracts"
 AGENT_IMAGE = "example.invalid/agent@sha256:" + "1" * 64
 VERIFIER_IMAGE = "example.invalid/verifier@sha256:" + "2" * 64
 ARTIFACT = b"deterministic\x00artifact\n"
+QUALIFICATION_DIGEST = "4" * 64
+PUBLIC_TREE_DIGEST = "5" * 64
+PRIVATE_TREE_DIGEST = "6" * 64
+AGENT_CONFIG_DIGEST = "7" * 64
+VERIFIER_CONFIG_DIGEST = "8" * 64
+OCI_MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json"
+OCI_INDEX_MEDIA_TYPE = "application/vnd.oci.image.index.v1+json"
+TASK_ROLE_LABEL = "org.omp.rolebench.task.role"
+PUBLIC_TREE_LABEL = "org.omp.rolebench.task.public-tree-sha256"
+PRIVATE_TREE_LABEL = "org.omp.rolebench.task.verifier-private-tree-sha256"
+
 
 
 def _result(code: int = 0, stdout: bytes = b"", stderr: bytes = b"") -> worker._CommandResult:
@@ -64,6 +75,10 @@ class FakeDocker:
         self.agent_state_exit = 0
         self.verifier_state_exit = 0
         self.remove_failure: str | None = None
+        self.image_inspects: dict[str, dict[str, object]] = {}
+        self.container_config_digests: dict[str, str] = {}
+        self.container_task_labels: dict[str, dict[str, str]] = {}
+
 
     def run(
         self,
@@ -73,11 +88,22 @@ class FakeDocker:
         input_source: bytes | object | None = None,
     ) -> worker._CommandResult:
         self.commands.append(list(argv))
+        command = (
+            argv[len(DOCKER_PREFIX)]
+            if argv[:len(DOCKER_PREFIX)] == DOCKER_PREFIX
+            else None
+        )
         if argv[len(DOCKER_PREFIX):len(DOCKER_PREFIX) + 3] == ["info", "--format", "{{json .}}"]:
             return _result(stdout=json.dumps(self.info).encode())
         if argv == ["/fixture/rolebench-runsc-wrapper", "--rolebench-doctor"]:
             return _result(stdout=json.dumps(self.wrapper_report).encode())
-        command = argv[len(DOCKER_PREFIX)] if argv[:len(DOCKER_PREFIX)] == DOCKER_PREFIX else None
+        if command == "image":
+            image = argv[len(DOCKER_PREFIX) + 2]
+            inspect = self.image_inspects.get(image)
+            if inspect is None:
+                return _result(code=1, stderr=b"image unavailable")
+            return _result(stdout=json.dumps(inspect).encode())
+
         if command == "create":
             name = argv[argv.index("--name") + 1]
             container = "verifier-id" if "verifier" in name else "agent-id"
@@ -155,13 +181,15 @@ class FakeDocker:
                 )
             }
         exit_code = self.verifier_state_exit if verifier else self.agent_state_exit
-        return {
+        labels = {"org.omp.rolebench.owner": self.ownership}
+        labels.update(self.container_task_labels.get(container, {}))
+        value: dict[str, object] = {
             "Id": container,
             "Config": {
                 "User": f"{uid}:{gid}",
                 "OpenStdin": verifier,
                 "Image": VERIFIER_IMAGE if verifier else AGENT_IMAGE,
-                "Labels": {"org.omp.rolebench.owner": self.ownership},
+                "Labels": labels,
             },
             "HostConfig": {
                 "Runtime": "runsc",
@@ -192,6 +220,10 @@ class FakeDocker:
                 "Status": "exited" if self.finished.get(container) else "created",
             },
         }
+        config_digest = self.container_config_digests.get(container)
+        if config_digest is not None:
+            value["Image"] = f"sha256:{config_digest}"
+        return value
 
 
 class WorkerRuntimeFixture(unittest.TestCase):
@@ -228,6 +260,62 @@ class WorkerRuntimeFixture(unittest.TestCase):
 
     def run_worker(self) -> dict[str, object]:
         return worker.run_worker(self.root, Path("worker.json"), docker="docker-fixture")
+
+    def enable_task_binding(self) -> None:
+        self.manifest["task"].update(
+            {
+                "qualification_digest_sha256": QUALIFICATION_DIGEST,
+                "public_tree_digest_sha256": PUBLIC_TREE_DIGEST,
+                "verifier_private_tree_digest_sha256": PRIVATE_TREE_DIGEST,
+                "evidence_use": "calibration-only",
+            }
+        )
+        platform = {"os": "linux", "architecture": "amd64", "variant": None}
+        self.manifest["agent"].update(
+            {
+                "config_digest_sha256": AGENT_CONFIG_DIGEST,
+                "platform": platform,
+            }
+        )
+        self.manifest["verifier"].update(
+            {
+                "config_digest_sha256": VERIFIER_CONFIG_DIGEST,
+                "platform": platform,
+            }
+        )
+        agent_labels = {
+            TASK_ROLE_LABEL: "task",
+            PUBLIC_TREE_LABEL: PUBLIC_TREE_DIGEST,
+        }
+        verifier_labels = {
+            TASK_ROLE_LABEL: "task",
+            PRIVATE_TREE_LABEL: PRIVATE_TREE_DIGEST,
+        }
+        for image, config_digest, labels in (
+            (AGENT_IMAGE, AGENT_CONFIG_DIGEST, agent_labels),
+            (VERIFIER_IMAGE, VERIFIER_CONFIG_DIGEST, verifier_labels),
+        ):
+            self.fake.image_inspects[image] = {
+                "Id": f"sha256:{config_digest}",
+                "RepoDigests": [image],
+                "Descriptor": {
+                    "mediaType": OCI_MANIFEST_MEDIA_TYPE,
+                    "digest": image.rsplit("@", 1)[1],
+                },
+                "Os": "linux",
+                "Architecture": "amd64",
+                "Variant": None,
+                "Config": {"Labels": labels.copy()},
+            }
+        self.fake.container_config_digests = {
+            "agent-id": AGENT_CONFIG_DIGEST,
+            "verifier-id": VERIFIER_CONFIG_DIGEST,
+        }
+        self.fake.container_task_labels = {
+            "agent-id": agent_labels.copy(),
+            "verifier-id": verifier_labels.copy(),
+        }
+        self._write_manifest()
 
 
 class ManifestRuntimeGuardTests(WorkerRuntimeFixture):
@@ -332,6 +420,135 @@ class DoctorTests(WorkerRuntimeFixture):
             "requirement-failed:resource-enforcement",
             report["diagnostics"],
         )
+
+
+class TaskImageBindingTests(WorkerRuntimeFixture):
+    def _assert_binding_rejected_before_stream(self) -> dict[str, object]:
+        report = self.run_worker()
+        self.assertFalse(report["passed"])
+        self.assertIn("sandbox-violation", report["observation"]["issues"])
+        self.assertEqual(report["outcome"]["disposition"], "quarantined")
+        self.assertEqual(self.fake.stream_calls, [])
+        return report
+
+    def _assert_image_label_rejected(
+        self,
+        image: str,
+        label: str,
+        replacement: str | None,
+    ) -> None:
+        self.enable_task_binding()
+        labels = self.fake.image_inspects[image]["Config"]["Labels"]
+        if replacement is None:
+            labels.pop(label)
+        else:
+            labels[label] = replacement
+        self._assert_binding_rejected_before_stream()
+
+    def test_valid_binding_reaches_pipeline_and_records_bound_digests(self) -> None:
+        self.enable_task_binding()
+
+        report = self.run_worker()
+
+        self.assertTrue(report["passed"])
+        self.assertEqual(len(self.fake.stream_calls), 2)
+        digests = report["observation"]["digests"]
+        self.assertEqual(
+            {
+                key: digests[key]
+                for key in (
+                    "config",
+                    "qualification",
+                    "task_public_tree",
+                    "verifier_private_tree",
+                    "agent_image_config",
+                    "verifier_image_config",
+                )
+            },
+            {
+                "config": hashlib.sha256(
+                    canonical_json(self.manifest).encode()
+                ).hexdigest(),
+                "qualification": QUALIFICATION_DIGEST,
+                "task_public_tree": PUBLIC_TREE_DIGEST,
+                "verifier_private_tree": PRIVATE_TREE_DIGEST,
+                "agent_image_config": AGENT_CONFIG_DIGEST,
+                "verifier_image_config": VERIFIER_CONFIG_DIGEST,
+            },
+        )
+        self.assertTrue(report["isolation"]["task_image_binding_verified"])
+
+    def test_missing_role_label_is_rejected_before_agent_stream(self) -> None:
+        self._assert_image_label_rejected(AGENT_IMAGE, TASK_ROLE_LABEL, None)
+
+    def test_wrong_role_label_is_rejected_before_agent_stream(self) -> None:
+        self._assert_image_label_rejected(AGENT_IMAGE, TASK_ROLE_LABEL, "other")
+
+    def test_missing_public_tree_label_is_rejected_before_agent_stream(self) -> None:
+        self._assert_image_label_rejected(AGENT_IMAGE, PUBLIC_TREE_LABEL, None)
+
+    def test_wrong_public_tree_label_is_rejected_before_agent_stream(self) -> None:
+        self._assert_image_label_rejected(
+            AGENT_IMAGE,
+            PUBLIC_TREE_LABEL,
+            "9" * 64,
+        )
+
+    def test_missing_private_tree_label_is_rejected_before_agent_stream(self) -> None:
+        self._assert_image_label_rejected(VERIFIER_IMAGE, PRIVATE_TREE_LABEL, None)
+
+    def test_wrong_private_tree_label_is_rejected_before_agent_stream(self) -> None:
+        self._assert_image_label_rejected(
+            VERIFIER_IMAGE,
+            PRIVATE_TREE_LABEL,
+            "9" * 64,
+        )
+
+    def test_manifest_digest_mismatch_is_rejected_before_agent_stream(self) -> None:
+        self.enable_task_binding()
+        self.fake.image_inspects[AGENT_IMAGE]["Descriptor"]["digest"] = (
+            "sha256:" + "9" * 64
+        )
+
+        self._assert_binding_rejected_before_stream()
+
+    def test_manifest_config_id_mismatch_is_rejected_before_agent_stream(self) -> None:
+        self.enable_task_binding()
+        self.fake.image_inspects[AGENT_IMAGE]["Id"] = "sha256:" + "9" * 64
+
+        self._assert_binding_rejected_before_stream()
+
+    def test_multi_platform_index_is_rejected_before_agent_stream(self) -> None:
+        self.enable_task_binding()
+        self.fake.image_inspects[AGENT_IMAGE]["Descriptor"][
+            "mediaType"
+        ] = OCI_INDEX_MEDIA_TYPE
+
+        self._assert_binding_rejected_before_stream()
+
+    def test_same_agent_and_verifier_config_digest_is_rejected_at_load(self) -> None:
+        self.enable_task_binding()
+        self.manifest["verifier"]["config_digest_sha256"] = AGENT_CONFIG_DIGEST
+        self._write_manifest()
+
+        with self.assertRaisesRegex(
+            worker.WorkerError,
+            "agent and verifier image config digests must differ",
+        ):
+            self.run_worker()
+        self.assertEqual(self.fake.commands, [])
+        self.assertEqual(self.fake.stream_calls, [])
+
+    def test_effective_config_id_mismatch_is_rejected_before_agent_stream(self) -> None:
+        self.enable_task_binding()
+
+        def mutate(container: str, value: dict[str, object]) -> None:
+            if container == "agent-id":
+                value["Image"] = "sha256:" + "9" * 64
+
+        self.fake.inspect_mutator = mutate
+
+        self._assert_binding_rejected_before_stream()
 
 
 class SuccessfulRuntimeTests(WorkerRuntimeFixture):

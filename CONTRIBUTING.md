@@ -135,9 +135,9 @@ Run the deterministic no-model gate after changing the worker policy or accounti
 rolebench worker fault-check contracts/scored-worker-policy.json
 ```
 
-A clean result covers all 28 accounting reason codes with 4 scored controls, 18 retryable system failures, 5 quarantined controls, 1 cancellation, and zero external calls. The gate is synthetic: it validates policy and accounting behavior but does not prove installed runtime behavior.
+A clean result covers all 29 accounting reason codes with 4 scored controls, 18 retryable system failures, 5 quarantined controls, 1 cancellation, 1 excluded-evidence control, and zero external calls. The gate is synthetic: it validates policy and accounting behavior but does not prove installed runtime behavior.
 
-Changes to `worker.py`, `scripts/rolebench-runsc-wrapper`, the manifest contract, or the fixture images must also run the focused worker tests, a clean doctor, the provider-disabled fixture manifest, and representative observed failure probes. The runtime result must show `external_provider_calls: 0`, `resource_enforcement: true`, distinct images, immutable handoff, and the expected unscored accounting result. Provider-proxy integration and representative live model-task compatibility remain required before this worker can execute scored provider-backed benchmarks.
+Changes to `worker.py`, `scripts/rolebench-runsc-wrapper`, the manifest contract, or the fixture images must also run the focused worker tests, a clean doctor, the provider-disabled fixture manifest, and representative observed failure probes. Persist each exercised report with `rolebench worker run MANIFEST --report .rolebench/REPORT.json`; report creation is exclusive and never overwrites prior evidence. The runtime result must show `external_provider_calls: 0`, `resource_enforcement: true`, distinct images, immutable handoff, and the expected unscored accounting result. Provider-proxy integration and representative live model-task compatibility remain required before this worker can execute scored provider-backed benchmarks.
 
 ## Role contracts
 
@@ -174,6 +174,16 @@ Every diagnostic task must declare:
 - objective success criteria where practical;
 - infrastructure-failure classification; and
 - any license or redistribution constraints.
+
+### Diagnostic-task authoring and admission
+
+Task discovery is not admission. Keep source sessions, imported workspaces, private repositories, candidate records, and every run artifact under ignored `.rolebench/` or another private artifact store. `rolebench tasks scan-session` may emit only opaque candidate references, entry ordinals, and deterministic signal kinds; it must not emit raw prompts, responses, tool payloads, paths, session IDs, model/provider/account identifiers, or stable source fingerprints. `rolebench tasks import-omp-gym` is a one-way parser for the public `task.toml` plus `workspace/` format; it must not import OMP Gym code, follow links, infer redistribution rights, or treat successful parsing as approval.
+
+A versioned task may proceed only after explicit, independent privacy, license, verifier, and split reviews. The author cannot perform those reviews. Redistribution must be permitted before a license review can approve the task. Public and verifier-private trees are separately content-addressed; the agent image must contain the exact public tree and no verifier-private root, while the verifier image must contain the exact private tree and no public root. Every image reference, OCI manifest/config digest, platform, fixed role/content label, task digest, policy digest, and review binding is re-observed before run preparation.
+
+Admission uses at least two healthy reports for each distinct baseline, reference, and tamper image. Baseline and tamper probes must reject with identical artifacts/rewards across repeats; reference probes must accept with identical artifacts/rewards. Qualification reparses every report, recomputes its outcome, and checks exact run, isolation, task, policy, and probe-image mappings. V1 qualifications remain `calibration-required`; V1 deliberately cannot claim `admitted` or freeze a routing-eligible pack because no reviewed cross-model discrimination-evidence contract exists yet. They permit only `calibration-only` preparation, and those outcomes are excluded from normal model-quality scoring. Holdout tasks cannot be prepared through this path. `synthetic-fixture` tasks are smoke inputs only and semantic validation rejects them from every pack.
+
+The append-only experiment ledger is a local, hash-chained journal. It is never admission, calibration, or routing authority. Pack verification and every later evidence consumer must independently reload and validate task, qualification, image, and report artifacts. Do not commit local manifests, qualifications, reports, journals, image archives, or private verifier assets except for small intentionally curated source fixtures whose licensing and privacy reviews are explicit.
 
 Verifier guidance by role:
 
@@ -216,6 +226,15 @@ Never commit or publish:
 - live provider error bodies that may contain sensitive request data.
 
 Run untrusted benchmark tasks in isolated containers. Keep credentials host-side when using Harbor and route provider traffic through the approved gateway. Pin task images and verifier code. Treat policy activation and publishing like configuration deployment: validate checksums, write atomically, retain the previous valid version, and support rollback.
+
+The local workflow has explicit trust boundaries:
+
+- reviewer IDs and evidence digests are human-governed attestations, not authenticated identities or signatures;
+- the user-owned rootless Docker daemon, selected Docker executable, installed RoleBench `runsc` wrapper/gVisor release, and Docker inspect/copy responses are trusted host components;
+- OCI digest immutability and the registry/daemon's digest resolution are trusted;
+- verifier-private images must be built by a controlled local/private builder; final-image separation does not make an untrusted remote build context safe;
+- `.rolebench/` is a Git hygiene rule, not an access-control boundary; private stores still require restrictive permissions and publication review; and
+- the ledger hash chain is unkeyed and owner-rewritable. It proves internal consistency only relative to a separately trusted head and cannot authorize any workflow state.
 
 Report a suspected credential or private-data leak directly to the repository owner. Do not open a public issue containing sensitive details.
 

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
+import stat
 from typing import Sequence, TextIO
 
 from .accounting import AccountingError, classify_attempt, summarize_outcomes
@@ -24,6 +26,23 @@ from .contracts import (
     validate_repository,
 )
 from .fault_harness import FaultHarnessError, run_fault_check
+from .ledger import (
+    LedgerError,
+    append_artifacts,
+    append_worker_report,
+    verify_ledger,
+)
+from .task_workflow import (
+    TaskAdmissionError,
+    TaskWorkflowError,
+    check_task_qualification,
+    generate_task_qualification,
+    import_omp_gym_task,
+    prepare_admission_worker_manifest,
+    prepare_worker_manifest,
+    scan_session_candidates,
+    verify_task_pack,
+)
 from .worker import WorkerError, doctor_worker, run_worker
 
 
@@ -96,6 +115,142 @@ def build_parser() -> argparse.ArgumentParser:
     worker_run.add_argument("manifest", type=Path)
     worker_run.add_argument("--docker", default="docker", metavar="PATH")
     worker_run.add_argument("--json", action="store_true", dest="as_json")
+    worker_run.add_argument(
+        "--report",
+        type=Path,
+        help="write the immutable worker report as canonical JSON",
+    )
+    tasks = groups.add_parser(
+        "tasks",
+        help="author, review, and prepare diagnostic tasks",
+    )
+    task_commands = tasks.add_subparsers(dest="command", required=True)
+    scan_session = task_commands.add_parser(
+        "scan-session",
+        help="privately scan one explicit OMP session for candidate signals",
+    )
+    scan_session.add_argument("session", type=Path)
+    scan_session.add_argument("--role-hint", choices=BUILTIN_ROLES)
+
+    import_omp_gym = task_commands.add_parser(
+        "import-omp-gym",
+        help="import one omp-gym task into the private candidate area",
+    )
+    import_omp_gym.add_argument("source", type=Path)
+    import_omp_gym.add_argument("destination", type=Path)
+    import_omp_gym.add_argument("--source-version", required=True)
+    import_omp_gym.add_argument("--license", required=True, dest="license_expression")
+    import_omp_gym.add_argument("--role-hint", choices=BUILTIN_ROLES)
+    import_omp_gym.add_argument(
+        "--capability",
+        action="append",
+        default=[],
+        dest="capability_hints",
+        metavar="TAG",
+    )
+
+    qualification_check = task_commands.add_parser(
+        "qualification-check",
+        help="cross-check one task and reviewed qualification",
+    )
+    qualification_check.add_argument("task", type=Path)
+    qualification_check.add_argument("qualification", type=Path)
+    qualification_check.add_argument("--json", action="store_true", dest="as_json")
+
+    qualify = task_commands.add_parser(
+        "qualify",
+        help="generate reviewed qualification from healthy worker evidence",
+    )
+    qualify.add_argument("task", type=Path)
+    qualify.add_argument(
+        "--baseline-report",
+        action="append",
+        required=True,
+        type=Path,
+    )
+    qualify.add_argument(
+        "--reference-report",
+        action="append",
+        required=True,
+        type=Path,
+    )
+    qualify.add_argument(
+        "--tamper-report",
+        action="append",
+        required=True,
+        type=Path,
+    )
+    qualify.add_argument("--reviewer", required=True)
+    qualify.add_argument("--output", type=Path, required=True)
+    qualify.add_argument("--json", action="store_true", dest="as_json")
+
+    pack_verify = task_commands.add_parser(
+        "pack-verify",
+        help="validate one versioned task pack and its admission links",
+    )
+    pack_verify.add_argument("pack", type=Path)
+    pack_verify.add_argument("--json", action="store_true", dest="as_json")
+
+    prepare_admission = task_commands.add_parser(
+        "prepare-admission-run",
+        help="prepare a content-bound baseline, reference, or tamper run",
+    )
+    prepare_admission.add_argument("task", type=Path)
+    prepare_admission.add_argument(
+        "--probe",
+        required=True,
+        choices=("baseline", "reference", "tamper"),
+    )
+    prepare_admission.add_argument("--run-id", required=True)
+    prepare_admission.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+    )
+    prepare_admission.add_argument(
+        "--docker",
+        default="docker",
+        metavar="PATH",
+    )
+
+    prepare_run = task_commands.add_parser(
+        "prepare-run",
+        help="prepare a content-bound provider-disabled worker manifest",
+    )
+    prepare_run.add_argument("task", type=Path)
+    prepare_run.add_argument("qualification", type=Path)
+    prepare_run.add_argument("--run-id", required=True)
+    prepare_run.add_argument("--output", type=Path, required=True)
+    prepare_run.add_argument("--docker", default="docker", metavar="PATH")
+
+    ledger = groups.add_parser(
+        "ledger",
+        help="maintain a local non-authoritative experiment journal",
+    )
+    ledger_commands = ledger.add_subparsers(dest="command", required=True)
+    ledger_verify = ledger_commands.add_parser(
+        "verify",
+        help="verify a local journal hash chain",
+    )
+    ledger_verify.add_argument("ledger", type=Path)
+    ledger_verify.add_argument("--json", action="store_true", dest="as_json")
+
+    ledger_append = ledger_commands.add_parser(
+        "append",
+        help="append one normalized artifact to a local journal",
+    )
+    ledger_append.add_argument("ledger", type=Path)
+    ledger_append.add_argument("schema")
+    ledger_append.add_argument("artifact", type=Path)
+    ledger_append.add_argument("--json", action="store_true", dest="as_json")
+
+    append_report = ledger_commands.add_parser(
+        "append-worker-report",
+        help="append normalized observation and outcome from a worker report",
+    )
+    append_report.add_argument("ledger", type=Path)
+    append_report.add_argument("report", type=Path)
+    append_report.add_argument("--json", action="store_true", dest="as_json")
 
 
     return parser
@@ -148,6 +303,94 @@ def _read_json_object(root: Path, artifact_path: Path) -> JSONObject:
     return value
 
 
+def _write_worker_report(
+    root: Path,
+    output_path: Path,
+    report: JSONObject,
+) -> None:
+    resolved_root = root.expanduser().resolve(strict=True)
+    selected = output_path.expanduser()
+    if not selected.is_absolute():
+        selected = resolved_root / selected
+    candidate = Path(os.path.abspath(selected))
+    try:
+        relative = candidate.relative_to(resolved_root)
+    except ValueError as error:
+        raise WorkerError(
+            "worker report must remain inside the repository"
+        ) from error
+    if not relative.parts:
+        raise WorkerError(
+            "worker report must name a repository file"
+        )
+    parent = resolved_root
+    for part in relative.parts[:-1]:
+        parent /= part
+        try:
+            os.mkdir(parent, 0o700)
+        except FileExistsError:
+            try:
+                info = parent.lstat()
+            except OSError as error:
+                raise WorkerError(
+                    "worker report parent is unavailable"
+                ) from error
+            if (
+                stat.S_ISLNK(info.st_mode)
+                or not stat.S_ISDIR(info.st_mode)
+            ):
+                raise WorkerError(
+                    "worker report parent is unsafe"
+                )
+        except OSError as error:
+            raise WorkerError(
+                "cannot create worker report parent"
+            ) from error
+    output = parent / relative.name
+    encoded = (canonical_json(report) + "\n").encode("utf-8")
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | os.O_CLOEXEC
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        descriptor = os.open(output, flags, 0o600)
+    except OSError as error:
+        raise WorkerError("cannot create worker report") from error
+    try:
+        offset = 0
+        while offset < len(encoded):
+            written = os.write(descriptor, encoded[offset:])
+            if written <= 0:
+                raise OSError("short worker report write")
+            offset += written
+        os.fchmod(descriptor, 0o600)
+        os.fsync(descriptor)
+    except OSError as error:
+        os.close(descriptor)
+        output.unlink(missing_ok=True)
+        raise WorkerError(
+            "cannot persist worker report"
+        ) from error
+    else:
+        os.close(descriptor)
+    try:
+        parent_descriptor = os.open(
+            parent,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC,
+        )
+        try:
+            os.fsync(parent_descriptor)
+        finally:
+            os.close(parent_descriptor)
+    except OSError as error:
+        raise WorkerError(
+            "cannot synchronize worker report parent"
+        ) from error
+
+
 def _print_accounting_summary(summary: JSONObject, stdout: TextIO) -> None:
     quality_score = summary["quality_score"]
     accepted = summary["accepted"]
@@ -168,7 +411,8 @@ def _print_accounting_summary(summary: JSONObject, stdout: TextIO) -> None:
         "Not scored: "
         f"{not_scored['retryable_invalid']} system failures, "
         f"{not_scored['quarantined']} quarantined, "
-        f"{not_scored['cancelled']} cancelled",
+        f"{not_scored['cancelled']} cancelled, "
+        f"{not_scored['excluded']} excluded evidence",
         file=stdout,
     )
 
@@ -253,6 +497,24 @@ def _format_report_value(value: JSONValue) -> str:
     return canonical_json(value)
 
 
+def _print_workflow_report(report: JSONObject, stdout: TextIO) -> None:
+    for key in sorted(report):
+        if key == "diagnostics":
+            continue
+        print(
+            f"{key.replace('_', ' ')}: "
+            f"{_format_report_value(report[key])}",
+            file=stdout,
+        )
+    diagnostics = report.get("diagnostics")
+    if isinstance(diagnostics, list):
+        print("diagnostics:", file=stdout)
+        if not diagnostics:
+            print("  none", file=stdout)
+        for diagnostic in diagnostics:
+            print(f"  - {_format_report_value(diagnostic)}", file=stdout)
+
+
 def _print_report_diagnostics(report: JSONObject, stdout: TextIO) -> None:
     diagnostics = report.get("diagnostics")
     if not isinstance(diagnostics, list):
@@ -325,6 +587,139 @@ def run(
     arguments = build_parser().parse_args(argv)
     try:
         root = resolve_root(arguments.root)
+        if arguments.group == "tasks" and arguments.command == "scan-session":
+            candidate = scan_session_candidates(
+                arguments.session,
+                role_hint=arguments.role_hint,
+            )
+            print(canonical_json(candidate), file=stdout)
+            return 0
+
+        if arguments.group == "tasks" and arguments.command == "import-omp-gym":
+            candidate = import_omp_gym_task(
+                root,
+                arguments.source,
+                arguments.destination,
+                source_version=arguments.source_version,
+                license_expression=arguments.license_expression,
+                role_hint=arguments.role_hint,
+                capability_hints=tuple(arguments.capability_hints),
+            )
+            print(canonical_json(candidate), file=stdout)
+            return 0
+
+        if (
+            arguments.group == "tasks"
+            and arguments.command == "qualification-check"
+        ):
+            report = check_task_qualification(
+                root,
+                arguments.task,
+                arguments.qualification,
+            )
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_workflow_report(report, stdout)
+            return (
+                0
+                if report.get("valid") is True
+                and report.get("decision") == "admitted"
+                else 1
+            )
+
+        if arguments.group == "tasks" and arguments.command == "qualify":
+            qualification = generate_task_qualification(
+                root,
+                arguments.task,
+                tuple(arguments.baseline_report),
+                tuple(arguments.reference_report),
+                tuple(arguments.tamper_report),
+                arguments.output,
+                reviewer=arguments.reviewer,
+            )
+            if arguments.as_json:
+                print(canonical_json(qualification), file=stdout)
+            else:
+                _print_workflow_report(qualification, stdout)
+            return (
+                0
+                if qualification.get("decision") == "admitted"
+                else 1
+            )
+
+        if arguments.group == "tasks" and arguments.command == "pack-verify":
+            report = verify_task_pack(root, arguments.pack)
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_workflow_report(report, stdout)
+            return 0 if report.get("valid") is True else 1
+
+        if (
+            arguments.group == "tasks"
+            and arguments.command == "prepare-admission-run"
+        ):
+            manifest = prepare_admission_worker_manifest(
+                root,
+                arguments.task,
+                arguments.probe,
+                arguments.run_id,
+                arguments.output,
+                docker=arguments.docker,
+            )
+            print(canonical_json(manifest), file=stdout)
+            return 0
+
+        if arguments.group == "tasks" and arguments.command == "prepare-run":
+            manifest = prepare_worker_manifest(
+                root,
+                arguments.task,
+                arguments.qualification,
+                arguments.run_id,
+                arguments.output,
+                docker=arguments.docker,
+            )
+            print(canonical_json(manifest), file=stdout)
+            return 0
+
+        if arguments.group == "ledger" and arguments.command == "verify":
+            report = verify_ledger(root, arguments.ledger)
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_workflow_report(report, stdout)
+            return 0 if report.get("valid") is True else 1
+
+        if arguments.group == "ledger" and arguments.command == "append":
+            artifact = _read_json_object(root, arguments.artifact)
+            report = append_artifacts(
+                root,
+                arguments.ledger,
+                ((arguments.schema, artifact),),
+            )
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_workflow_report(report, stdout)
+            return 0
+
+        if (
+            arguments.group == "ledger"
+            and arguments.command == "append-worker-report"
+        ):
+            worker_report = _read_json_object(root, arguments.report)
+            report = append_worker_report(
+                root,
+                arguments.ledger,
+                worker_report,
+            )
+            if arguments.as_json:
+                print(canonical_json(report), file=stdout)
+            else:
+                _print_workflow_report(report, stdout)
+            return 0
+
         if arguments.group == "artifacts" and arguments.command == "validate":
             result = validate_artifact(root, arguments.schema_name, arguments.path)
             _print_diagnostics(
@@ -399,6 +794,8 @@ def run(
                 arguments.manifest,
                 docker=arguments.docker,
             )
+            if arguments.report is not None:
+                _write_worker_report(root, arguments.report, report)
             if arguments.as_json:
                 print(canonical_json(report), file=stdout)
             else:
@@ -454,7 +851,17 @@ def run(
             return 0
 
         raise ContractError(f"unknown command: {arguments.command}")
-    except (AccountingError, ContractError, FaultHarnessError, WorkerError) as error:
+    except TaskAdmissionError as error:
+        print(f"error: {error}", file=stderr)
+        return 1
+    except (
+        AccountingError,
+        ContractError,
+        FaultHarnessError,
+        LedgerError,
+        TaskWorkflowError,
+        WorkerError,
+    ) as error:
         print(f"error: {error}", file=stderr)
         return 2
 

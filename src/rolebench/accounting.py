@@ -70,7 +70,7 @@ def _outcome(
     termination = _object(observation.get("termination"), "termination")
     digests = _object(observation.get("digests"), "digests")
     scored = disposition == "scored"
-    return {
+    outcome: JSONObject = {
         "schema_version": "omp.attempt-outcome/v1",
         "observation_id": _string(observation.get("observation_id"), "observation_id"),
         "observation_digest_sha256": sha256(
@@ -88,6 +88,15 @@ def _outcome(
         "termination": dict(termination),
         "digests": dict(digests),
     }
+    evidence_use = observation.get("evidence_use")
+    if evidence_use is not None:
+        if evidence_use not in {
+            "admission-only",
+            "calibration-only",
+        }:
+            raise AccountingError("evidence_use is invalid")
+        outcome["evidence_use"] = evidence_use
+    return outcome
 
 
 def _invalid(
@@ -103,6 +112,17 @@ def _invalid(
         failure_domain=failure_domain,
         disposition="retryable-invalid",
         reason_code=reason_code,
+    )
+
+
+def _excluded(observation: JSONObject) -> JSONObject:
+    return _outcome(
+        observation,
+        model_outcome="no-valid-attempt",
+        verifier_outcome="indeterminate",
+        failure_domain="experiment_scope",
+        disposition="excluded",
+        reason_code="non-scored-evidence",
     )
 
 
@@ -139,6 +159,13 @@ def classify_attempt(observation: JSONObject) -> JSONObject:
 
     if observation.get("schema_version") != "omp.attempt-observation/v1":
         raise AccountingError("unsupported attempt observation schema_version")
+    evidence_use = observation.get("evidence_use")
+    if evidence_use not in {
+        None,
+        "admission-only",
+        "calibration-only",
+    }:
+        raise AccountingError("evidence_use is invalid")
 
     lifecycle = _object(observation.get("lifecycle"), "lifecycle")
     readiness = _object(observation.get("readiness"), "readiness")
@@ -296,6 +323,8 @@ def classify_attempt(observation: JSONObject) -> JSONObject:
                 "runner_harness",
                 "incomplete-observation",
             )
+        if evidence_use is not None:
+            return _excluded(observation)
         if termination_kind == "model-deadline":
             return _outcome(
                 observation,
@@ -343,6 +372,8 @@ def classify_attempt(observation: JSONObject) -> JSONObject:
                 "runner_harness",
                 "incomplete-observation",
             )
+        if evidence_use is not None:
+            return _excluded(observation)
         accepted = verifier_result == "accepted"
         return _outcome(
             observation,
@@ -414,6 +445,7 @@ def summarize_outcomes(outcomes: Sequence[JSONObject]) -> JSONObject:
     retryable_invalid = 0
     quarantined = 0
     cancelled = 0
+    excluded = 0
 
     for outcome in outcomes:
         if outcome.get("schema_version") != "omp.attempt-outcome/v1":
@@ -425,6 +457,8 @@ def summarize_outcomes(outcomes: Sequence[JSONObject]) -> JSONObject:
             accepted += 1
         elif model_outcome == "rejected":
             rejected += 1
+        elif disposition == "excluded":
+            excluded += 1
         elif disposition == "retryable-invalid":
             retryable_invalid += 1
         elif disposition == "quarantined":
@@ -443,5 +477,6 @@ def summarize_outcomes(outcomes: Sequence[JSONObject]) -> JSONObject:
             "retryable_invalid": retryable_invalid,
             "quarantined": quarantined,
             "cancelled": cancelled,
+            "excluded": excluded,
         },
     }

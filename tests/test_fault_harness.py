@@ -24,16 +24,16 @@ class FaultHarnessTests(unittest.TestCase):
 
         self.assertTrue(report["passed"])
         self.assertEqual(report["external_calls"], 0)
-        self.assertEqual(report["scenario_count"], 28)
-        self.assertEqual(report["expected_reason_count"], 28)
-        self.assertEqual(report["covered_reason_count"], 28)
-        self.assertEqual(report["passed_scenarios"], 28)
+        self.assertEqual(report["scenario_count"], 29)
+        self.assertEqual(report["expected_reason_count"], 29)
+        self.assertEqual(report["covered_reason_count"], 29)
+        self.assertEqual(report["passed_scenarios"], 29)
         self.assertEqual(report["failed_scenarios"], 0)
-        self.assertEqual(len(report["covered_reason_codes"]), 28)
+        self.assertEqual(len(report["covered_reason_codes"]), 29)
         self.assertEqual(
             report["quality_summary"],
             {
-                "total_attempts": 28,
+                "total_attempts": 29,
                 "scored_attempts": 4,
                 "accepted": 1,
                 "rejected": 3,
@@ -42,6 +42,7 @@ class FaultHarnessTests(unittest.TestCase):
                     "retryable_invalid": 18,
                     "quarantined": 5,
                     "cancelled": 1,
+                    "excluded": 1,
                 },
             },
         )
@@ -101,6 +102,9 @@ class FaultHarnessTests(unittest.TestCase):
             actual = actual_by_reason[reason]
             self.assertEqual(actual["disposition"], "retryable-invalid")
             self.assertFalse(actual["counts_toward_quality"])
+        excluded = actual_by_reason["non-scored-evidence"]
+        self.assertEqual(excluded["disposition"], "excluded")
+        self.assertFalse(excluded["counts_toward_quality"])
 
     def test_invalid_or_tampered_policy_fails_closed(self) -> None:
         policy = json.loads((PRODUCT_ROOT / POLICY_PATH).read_text(encoding="utf-8"))

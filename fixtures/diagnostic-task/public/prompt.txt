@@ -1,0 +1,1 @@
+Return the exact contents of workspace/input.txt as the artifact.

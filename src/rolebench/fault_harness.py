@@ -25,6 +25,7 @@ _EXPECTED_OUTCOMES: dict[str, tuple[str, str, str, str, str, bool]] = {
     "model-deadline": ("model-deadline", "scored", "timeout_model_deadline", "rejected", "indeterminate", True),
     "attempt-resource-limit": ("attempt-resource-limit", "scored", "model_task", "rejected", "indeterminate", True),
     "operator-cancelled": ("operator-cancelled", "cancelled", "external_cancellation", "no-valid-attempt", "indeterminate", False),
+    "non-scored-evidence": ("non-scored-evidence", "excluded", "experiment_scope", "no-valid-attempt", "indeterminate", False),
     "suspected-reward-hacking": ("suspected-reward-hacking", "quarantined", "suspected_reward_hacking", "no-valid-attempt", "indeterminate", False),
     "sandbox-violation": ("sandbox-violation", "quarantined", "policy_sandbox", "no-valid-attempt", "indeterminate", False),
     "artifact-tampering": ("artifact-tampering", "quarantined", "integrity", "no-valid-attempt", "indeterminate", False),
@@ -51,7 +52,7 @@ _EXPECTED_OUTCOMES: dict[str, tuple[str, str, str, str, str, bool]] = {
 }
 
 _EXPECTED_SUMMARY: JSONObject = {
-    "total_attempts": 28,
+    "total_attempts": 29,
     "scored_attempts": 4,
     "accepted": 1,
     "rejected": 3,
@@ -60,6 +61,7 @@ _EXPECTED_SUMMARY: JSONObject = {
         "retryable_invalid": 18,
         "quarantined": 5,
         "cancelled": 1,
+        "excluded": 1,
     },
 }
 _SHA = "0" * 64
@@ -161,6 +163,18 @@ def _stopped(observation: JSONObject, kind: str, oom_scope: str = "none") -> Non
 def _observation(scenario: str, policy_digest: str) -> JSONObject:
     value = _base_observation(scenario, policy_digest)
 
+    if scenario == "non-scored-evidence":
+        value["evidence_use"] = "admission-only"
+        digests = cast(JSONObject, value["digests"])
+        digests.update(
+            {
+                "task_public_tree": _SHA,
+                "verifier_private_tree": _SHA,
+                "agent_image_config": _SHA,
+                "verifier_image_config": _SHA,
+            }
+        )
+        return value
     if scenario == "verifier-rejected":
         value["verifier"] = {"outcome": "rejected", "result_valid": True, "reward": 0}
     elif scenario in {"model-deadline", "orchestrator-timeout", "operator-cancelled"}:
