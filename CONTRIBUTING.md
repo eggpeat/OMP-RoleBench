@@ -4,6 +4,10 @@ RoleBench turns benchmark evidence, capability requirements, demand, and capacit
 
 The project is currently building its contract and diagnostic layers. Read the [design specification](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, estimator, optimizer, or OMP integration change.
 
+## License of contributions
+
+The repository is licensed under the [MIT License](LICENSE). Unless a separate written agreement or an explicitly identified third-party asset license applies, contributions are submitted under the same MIT terms. Benchmark tasks, datasets, and imported assets must retain their own source, license, and redistribution provenance; the repository license does not override those terms.
+
 ## Development setup
 
 Requirements:
@@ -177,7 +181,9 @@ Every diagnostic task must declare:
 
 ### Diagnostic-task authoring and admission
 
-Task discovery is not admission. Keep source sessions, imported workspaces, private repositories, candidate records, and every run artifact under ignored `.rolebench/` or another private artifact store. `rolebench tasks scan-session` may emit only opaque candidate references, entry ordinals, and deterministic signal kinds; it must not emit raw prompts, responses, tool payloads, paths, session IDs, model/provider/account identifiers, or stable source fingerprints. `rolebench tasks import-omp-gym` is a one-way parser for the public `task.toml` plus `workspace/` format; it must not import OMP Gym code, follow links, infer redistribution rights, or treat successful parsing as approval.
+Task discovery is not admission. RoleBench uses sessions only when the user explicitly selects them so local diagnostics can reflect that installation's actual workloads rather than a universal task mix. Keep source sessions, imported workspaces, private repositories, candidate records, generated drafts, and every run artifact under ignored `.rolebench/` or another private artifact store. The implemented `rolebench tasks scan-session` command may emit only opaque candidate references, entry ordinals, and deterministic signal kinds; it must not emit raw prompts, responses, tool payloads, paths, session IDs, model/provider/account identifiers, or stable source fingerprints. `rolebench tasks import-omp-gym` is a one-way parser for the public `task.toml` plus `workspace/` format; it must not import OMP Gym code, follow links, infer redistribution rights, or treat successful parsing as approval.
+
+The planned local session-to-task generator may inspect selected session content only inside the operator-controlled private authoring boundary. It should identify recurring goals, tool patterns, constraints, and failure modes, then synthesize minimal self-contained task drafts with proposed role and capability tags. It must remove user-specific text, paths, secrets, account data, and proprietary artifacts rather than replay or lightly paraphrase a session. Generated drafts remain private and non-authoritative until the normal independent reviews approve a versioned task. This generator is not implemented in v1.
 
 A versioned task may proceed only after explicit, independent privacy, license, verifier, and split reviews. The author cannot perform those reviews. Redistribution must be permitted before a license review can approve the task. Public and verifier-private trees are separately content-addressed; the agent image must contain the exact public tree and no verifier-private root, while the verifier image must contain the exact private tree and no public root. Every image reference, OCI manifest/config digest, platform, fixed role/content label, task digest, policy digest, and review binding is re-observed before run preparation.
 
@@ -249,6 +255,7 @@ A pull request should state:
 - [ ] Exact validation commands and observed results
 - [ ] Benchmark task, dataset, route, OMP, runner, and verifier versions when applicable
 - [ ] Whether outputs are measured evidence, synthetic fixtures, or inference
+- [ ] For session-derived work, how sessions were explicitly selected, kept private, de-identified, and separated from published artifacts
 - [ ] Remaining limitations or unverified paths
 
 Reviewers should be able to reproduce a contract or policy result from pinned inputs without access to another contributor's credentials or local session history.
