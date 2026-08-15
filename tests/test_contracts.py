@@ -251,6 +251,21 @@ class InvalidRepositoryTests(ContractFixture):
         )
         self.assertGreaterEqual(len(diagnostics), 2)
 
+    def test_canonical_v2_policy_file_required(self) -> None:
+        v2_path = self.root / "contracts/scored-worker-policy-v2.json"
+        if v2_path.exists():
+            v2_path.unlink()
+        result = validate_repository(self.root)
+        self.assertFalse(result.valid)
+        self.assertTrue(
+            any(
+                diagnostic.file == "contracts/scored-worker-policy-v2.json"
+                and diagnostic.message == "required canonical policy file is missing or invalid"
+                for diagnostic in result.diagnostics
+            ),
+            result.diagnostics,
+        )
+
 
 
 class ArtifactValidationTests(ContractFixture):
@@ -540,6 +555,145 @@ class ArtifactValidationTests(ContractFixture):
         self.assertTrue(
             any(item["json_path"] == "$.checksum_sha256" for item in diagnostics)
         )
+
+    def test_diagnostic_task_policy_version_dispatch(self) -> None:
+        policy_v1 = {
+            "schema_version": "omp.scored-worker-policy/v1",
+            "policy_id": "v1-policy",
+            "executor": {
+                "user": {"uid": 10001, "gid": 10001},
+                "privileged": False,
+                "read_only_root": True,
+                "tmpfs": ["/tmp:rw,noexec,nosuid,size=64m"],
+            },
+            "network": {
+                "mode": "isolated-bridge",
+                "direct_egress": False,
+                "proxy": {
+                    "enabled": True,
+                    "host": "127.0.0.1",
+                    "port": 8080,
+                    "ca_cert_path": "certs/ca.pem",
+                    "allowed_domains": ["api.openai.com"],
+                },
+            },
+            "resources": {
+                "cpu_limit": 2.0,
+                "memory_limit_mb": 4096,
+                "pids_limit": 256,
+            },
+            "timeouts": {
+                "agent_seconds": 300,
+                "runner_seconds": 60,
+                "verifier_seconds": 60,
+            },
+            "handoff": {
+                "mode": "immutable-content-addressed",
+                "digest_algorithm": "sha256",
+                "require_agent_exit": True,
+                "quarantine_on_failure": True,
+            },
+            "verifier": {
+                "user": {"uid": 10002, "gid": 10002},
+                "network_mode": "none",
+                "read_only_root": True,
+                "require_isolated_container": True,
+            },
+            "accounting": {
+                "quarantine_on_suspicion": True,
+                "zero_score_on_rejection": True,
+            },
+        }
+        self.write_json("contracts/scored-worker-policy.json", policy_v1)
+        self.write_json("contracts/scored-worker-policy-v2.json", policy_v1)
+
+        v1_digest = canonical_sha256(policy_v1)
+
+        task_v1 = self.read_json(
+            "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/task.json"
+        )
+        task_v1["schema_version"] = "omp.diagnostic-task/v1"
+        task_v1["policy"] = {
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": v1_digest,
+        }
+        task_v1_wrong_path = dict(task_v1)
+        task_v1_wrong_path["policy"] = {
+            "path": "contracts/scored-worker-policy-v2.json",
+            "digest_sha256": v1_digest,
+        }
+        messages = self.diagnostic_messages("diagnostic-task", task_v1_wrong_path)
+        self.assertIn("must be 'contracts/scored-worker-policy.json'", messages)
+
+        task_v2_wrong_path = dict(task_v1)
+        task_v2_wrong_path["schema_version"] = "omp.diagnostic-task/v2"
+        task_v2_wrong_path["policy"] = {
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": v1_digest,
+        }
+        messages_v2 = self.diagnostic_messages("diagnostic-task", task_v2_wrong_path)
+        self.assertIn("must be 'contracts/scored-worker-policy-v2.json'", messages_v2)
+
+    def test_task_pack_frozen_status_enforces_qualification_version_and_decision(self) -> None:
+        contract = self.read_json("contracts/roles/default.json")
+        task_path = "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/task.json"
+        task = self.read_json(task_path)
+        qual_path = "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/qualification.json"
+        qual = self.read_json(qual_path)
+
+        pack = {
+            "schema_version": "omp.task-pack/v1",
+            "pack_id": "test-pack",
+            "role": "default",
+            "task_mix": "default-v1",
+            "role_contract": {
+                "contract_id": contract["contract_id"],
+                "digest_sha256": canonical_sha256(contract),
+            },
+            "partition": "anchor",
+            "status": "frozen",
+            "routing_eligible": True,
+            "selection_method": "fixed-anchor",
+            "required_capabilities": contract["required_capabilities"],
+            "split_review": {
+                "reviewer_id": "independent-reviewer",
+                "independent": True,
+                "review_digest_sha256": "0" * 64,
+            },
+            "entries": [
+                {
+                    "task": {
+                        "path": task_path,
+                        "digest_sha256": canonical_sha256(task),
+                    },
+                    "qualification": {
+                        "path": qual_path,
+                        "digest_sha256": canonical_sha256(qual),
+                    },
+                }
+            ],
+        }
+
+        qual_v1 = dict(qual)
+        qual_v1["schema_version"] = "omp.task-qualification/v1"
+        self.write_json(qual_path, qual_v1)
+        pack["entries"][0]["qualification"]["digest_sha256"] = canonical_sha256(qual_v1)
+        messages = self.diagnostic_messages("task-pack", pack)
+        self.assertIn("v1 qualifications cannot freeze a task pack", messages)
+
+        qual_rejected = dict(qual)
+        qual_rejected["decision"] = "rejected"
+        qual_rejected["checks"] = dict(qual["checks"])
+        qual_rejected["checks"]["determinism"] = "fail"
+        self.write_json(qual_path, qual_rejected)
+        pack["entries"][0]["qualification"]["digest_sha256"] = canonical_sha256(qual_rejected)
+        messages = self.diagnostic_messages("task-pack", pack)
+        self.assertIn("frozen packs require calibration-required qualifications", messages)
+
+        pack["status"] = "calibration"
+        pack["routing_eligible"] = False
+        messages = self.diagnostic_messages("task-pack", pack)
+        self.assertIn("calibration packs require calibration-required qualifications", messages)
 
 if __name__ == "__main__":
     unittest.main()

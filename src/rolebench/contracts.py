@@ -40,7 +40,9 @@ _SCHEMA_DIRECTORY = Path("contracts/schemas")
 _REGISTRY_FILE = Path("contracts/role-registry.json")
 _ROLE_DIRECTORY = Path("contracts/roles")
 _ROLE_SCHEMA = "role-contract.schema.json"
-_SCORED_WORKER_POLICY_FILE = Path("contracts/scored-worker-policy.json")
+_SCORED_WORKER_POLICY_V1_FILE = Path("contracts/scored-worker-policy.json")
+_SCORED_WORKER_POLICY_V2_FILE = Path("contracts/scored-worker-policy-v2.json")
+_SCORED_WORKER_POLICY_FILE = _SCORED_WORKER_POLICY_V2_FILE
 _SCORED_WORKER_POLICY_SCHEMA = "scored-worker-policy.schema.json"
 _WORKER_RUN_MANIFEST_SCHEMA = "worker-run-manifest"
 _TASK_PACK_DIRECTORY = Path("contracts/task-packs")
@@ -1137,10 +1139,14 @@ def _attempt_observation_semantics(
                 "$.verifier.outcome",
                 "a decisive verifier outcome requires completed termination",
             )
-        is_model_limit = kind == "model-deadline" or (
-            kind == "resource-limit"
-            and oom_scope == "attempt"
-            and "runner-failure" not in issue_set
+        evidence_use = observation.get("evidence_use")
+        is_model_limit = evidence_use is None and (
+            kind == "model-deadline"
+            or (
+                kind == "resource-limit"
+                and oom_scope == "attempt"
+                and "runner-failure" not in issue_set
+            )
         )
         if is_model_limit and (
             not isinstance(provider, dict)
@@ -2107,16 +2113,37 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
 
     policy = task.get("policy")
     if isinstance(policy, dict):
-        if policy.get("path") != _SCORED_WORKER_POLICY_FILE.as_posix():
-            yield Diagnostic(relative.as_posix(), "$.policy.path", f"must be {_SCORED_WORKER_POLICY_FILE.as_posix()!r}")
+        version_v2 = (
+            task.get("schema_version")
+            == "omp.diagnostic-task/v2"
+        )
+        expected_policy_file = (
+            _SCORED_WORKER_POLICY_V2_FILE
+            if version_v2
+            else _SCORED_WORKER_POLICY_V1_FILE
+        )
+        if policy.get("path") != expected_policy_file.as_posix():
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.policy.path",
+                f"must be {expected_policy_file.as_posix()!r}",
+            )
         try:
-            canonical_policy = _load_object(root, _SCORED_WORKER_POLICY_FILE)
+            canonical_policy = _load_object(root, expected_policy_file)
         except ContractError as error:
-            yield Diagnostic(error.file or _SCORED_WORKER_POLICY_FILE.as_posix(), error.json_path, error.message)
+            yield Diagnostic(
+                error.file or expected_policy_file.as_posix(),
+                error.json_path,
+                error.message,
+            )
         else:
             actual = canonical_sha256(canonical_policy)
             if policy.get("digest_sha256") != actual:
-                yield Diagnostic(relative.as_posix(), "$.policy.digest_sha256", f"must equal canonical policy SHA-256 {actual}")
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.policy.digest_sha256",
+                    f"must equal canonical policy SHA-256 {actual}",
+                )
 
     assets = task.get("assets")
     public_digest: JSONValue = None
@@ -2676,12 +2703,22 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
                 covered.update(value for value in tags if isinstance(value, str))
             decision = qualification.get("decision")
             if status == "frozen":
-                yield Diagnostic(
-                    relative.as_posix(),
-                    f"$.entries[{index}].qualification",
-                    "v1 qualifications cannot freeze a task pack",
-                )
-            if (
+                if (
+                    qualification.get("schema_version")
+                    == "omp.task-qualification/v1"
+                ):
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.entries[{index}].qualification",
+                        "v1 qualifications cannot freeze a task pack",
+                    )
+                elif decision != "calibration-required":
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.entries[{index}].qualification",
+                        "frozen packs require calibration-required qualifications",
+                    )
+            elif (
                 status == "calibration"
                 and decision != "calibration-required"
             ):
@@ -3020,7 +3057,11 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
             )
         )
     else:
-        policy_schema = schemas.get(_SCORED_WORKER_POLICY_SCHEMA)
+        policy_schema_name = _schema_name_for_artifact(
+            "scored-worker-policy",
+            policy,
+        )
+        policy_schema = schemas.get(f"{policy_schema_name}.schema.json")
         if policy_schema is not None:
             diagnostics.extend(
                 _instance_diagnostics(

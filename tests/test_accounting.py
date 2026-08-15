@@ -770,6 +770,77 @@ class ScoreSummaryTests(AccountingFixture):
                 self.assertFalse(outcome["counts_toward_quality"])
                 self.assert_valid_artifact("attempt-outcome", outcome)
 
+
+    def test_non_scored_admission_and_calibration_model_limits_and_resource_limits_validate_and_exclude(
+        self,
+    ) -> None:
+        for evidence_use in (
+            "admission-only",
+            "calibration-only",
+        ):
+            for kind, oom_scope in (
+                ("model-deadline", "none"),
+                ("resource-limit", "attempt"),
+            ):
+                with self.subTest(evidence_use=evidence_use, kind=kind, oom_scope=oom_scope):
+                    observation = self.stopped_agent(kind, oom_scope=oom_scope)
+                    observation["evidence_use"] = evidence_use
+                    observation["provider"] = {
+                        "request_started": False,
+                        "http_status": None,
+                    }
+                    readiness = observation["readiness"]
+                    self.assertIsInstance(readiness, dict)
+                    readiness["provider"] = "unknown"
+                    digests = observation["digests"]
+                    self.assertIsInstance(digests, dict)
+                    digests.update(
+                        {
+                            "task_public_tree": SHA,
+                            "verifier_private_tree": SHA,
+                            "agent_image_config": SHA,
+                            "runner_image_config": SHA,
+                            "verifier_image_config": SHA,
+                        }
+                    )
+                    if evidence_use == "calibration-only":
+                        digests["qualification"] = SHA
+
+                    self.assert_valid_artifact("attempt-observation", observation)
+                    outcome = classify_attempt(observation)
+                    self.assertEqual(outcome["disposition"], "excluded")
+                    self.assertEqual(outcome["reason_code"], "non-scored-evidence")
+                    self.assertEqual(outcome["model_outcome"], "no-valid-attempt")
+                    self.assertEqual(outcome["verifier_outcome"], "indeterminate")
+                    self.assertFalse(outcome["counts_toward_quality"])
+                    self.assert_valid_artifact("attempt-outcome", outcome)
+
+    def test_scored_model_limit_requires_started_provider_request(self) -> None:
+        for kind, oom_scope in (
+            ("model-deadline", "none"),
+            ("resource-limit", "attempt"),
+        ):
+            with self.subTest(kind=kind, oom_scope=oom_scope):
+                observation = self.stopped_agent(kind, oom_scope=oom_scope)
+                observation["provider"] = {
+                    "request_started": False,
+                    "http_status": None,
+                }
+                result = validate_artifact(
+                    self.root,
+                    "attempt-observation",
+                    self.write_json("unstarted-provider-observation.json", observation),
+                )
+                self.assertFalse(result.valid)
+                messages = "\n".join(item.message for item in result.diagnostics)
+                self.assertIn(
+                    "a scored model limit requires a started provider request",
+                    messages,
+                )
+                outcome = classify_attempt(observation)
+                self.assertEqual(outcome["disposition"], "retryable-invalid")
+                self.assertEqual(outcome["reason_code"], "incomplete-observation")
+                self.assertEqual(outcome["failure_domain"], "provider_api")
     def test_no_decisive_result_has_no_quality_score(self) -> None:
         outcome = classify_attempt(
             self.provider_failure("provider-server-error", 503)
