@@ -2267,22 +2267,55 @@ def _task_qualification_semantics(root: Path, qualification: JSONObject, relativ
     yield from _instance_diagnostics(task, task_schema, task_relative)
     yield from _diagnostic_task_semantics(root, task, task_relative)
     objective = task.get("objective")
-    observation = objective.get("observation") if isinstance(objective, dict) else None
-    artifact_kind = observation.get("artifact_kind") if isinstance(observation, dict) else None
-    if artifact_kind == "executable":
+    observation = (
+        objective.get("observation")
+        if isinstance(objective, dict)
+        else None
+    )
+    if (
+        qualification.get("schema_version")
+        == "omp.task-qualification/v2"
+    ):
+        artifact_kind = (
+            observation.get("artifact_kind")
+            if isinstance(observation, dict)
+            else None
+        )
+        authority = (
+            observation.get("authority")
+            if isinstance(observation, dict)
+            else None
+        )
+        observer_supported = (
+            artifact_kind == "data-only"
+            and authority == "host-process"
+        )
         checks = qualification.get("checks")
-        obs_auth = checks.get("observation_authority") if isinstance(checks, dict) else None
-        if obs_auth != "fail":
+        observation_check = (
+            checks.get("observation_authority")
+            if isinstance(checks, dict)
+            else None
+        )
+        expected_observation_check = (
+            "pass" if observer_supported else "fail"
+        )
+        if observation_check != expected_observation_check:
             yield Diagnostic(
                 relative.as_posix(),
                 "$.checks.observation_authority",
-                "executable artifact tasks must record observation_authority as 'fail' until source-separated observer evidence is supported",
+                "must be 'pass' only for implemented data-only "
+                "host-process observation; unsupported authorities "
+                "must record 'fail'",
             )
-        if qualification.get("decision") != "rejected":
+        if (
+            not observer_supported
+            and qualification.get("decision") != "rejected"
+        ):
             yield Diagnostic(
                 relative.as_posix(),
                 "$.decision",
-                "executable artifact tasks must be rejected until source-separated observer evidence is supported",
+                "tasks without an implemented authoritative observer "
+                "must be rejected",
             )
     for name in ("task_id", "task_version", "content_digest_sha256"):
         if qualification.get(name) != task.get(name):

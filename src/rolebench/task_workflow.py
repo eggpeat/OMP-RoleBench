@@ -777,26 +777,70 @@ def _expected_decision(task: JSONObject, qualification: JSONObject) -> str:
     checks = qualification.get("checks")
     if not isinstance(checks, dict):
         return "rejected"
-    objective = task.get("objective")
-    obs = objective.get("observation") if isinstance(objective, dict) else None
-    artifact_kind = obs.get("artifact_kind") if isinstance(obs, dict) else None
-    authority = obs.get("authority") if isinstance(obs, dict) else None
-    expected_obs_auth = (
-        "pass"
-        if (artifact_kind == "data-only" and authority in ("host-process", "host-filesystem"))
-        else "fail"
+    is_v2 = (
+        qualification.get("schema_version")
+        == "omp.task-qualification/v2"
     )
-    if checks.get("observation_authority") != expected_obs_auth or expected_obs_auth != "pass":
-        return "rejected"
-    simple_mandatory = (
-        "privacy", "license", "runner_isolation", "verifier_isolation", "observation_authority",
-        "determinism", "infrastructure_classification",
-    )
+    if is_v2:
+        objective = task.get("objective")
+        observation = (
+            objective.get("observation")
+            if isinstance(objective, dict)
+            else None
+        )
+        artifact_kind = (
+            observation.get("artifact_kind")
+            if isinstance(observation, dict)
+            else None
+        )
+        authority = (
+            observation.get("authority")
+            if isinstance(observation, dict)
+            else None
+        )
+        expected_observation_authority = (
+            "pass"
+            if (
+                artifact_kind == "data-only"
+                and authority == "host-process"
+            )
+            else "fail"
+        )
+        if (
+            checks.get("observation_authority")
+            != expected_observation_authority
+            or expected_observation_authority != "pass"
+        ):
+            return "rejected"
+        simple_mandatory = (
+            "privacy",
+            "license",
+            "runner_isolation",
+            "verifier_isolation",
+            "observation_authority",
+            "determinism",
+            "infrastructure_classification",
+        )
+    else:
+        simple_mandatory = (
+            "privacy",
+            "license",
+            "verifier_isolation",
+            "determinism",
+            "infrastructure_classification",
+        )
     if any(checks.get(name) != "pass" for name in simple_mandatory):
         return "rejected"
-    for name in ("baseline_fails", "reference_passes", "tamper_resistance"):
+    for name in (
+        "baseline_fails",
+        "reference_passes",
+        "tamper_resistance",
+    ):
         evidence_check = checks.get(name)
-        if not isinstance(evidence_check, dict) or evidence_check.get("result") != "pass":
+        if (
+            not isinstance(evidence_check, dict)
+            or evidence_check.get("result") != "pass"
+        ):
             return "rejected"
     discrimination = checks.get("discrimination")
     if discrimination == "calibration-required":
@@ -961,7 +1005,14 @@ def _check_task_qualification_values(
             diagnostics.append(
                 "qualification probe command digests must differ"
             )
-    provenance = qualification.get("evaluation_provenance")
+    is_v2 = (
+        qualification.get("schema_version")
+        == "omp.task-qualification/v2"
+    )
+    provenance_name = (
+        "evaluation_provenance" if is_v2 else "verifier_provenance"
+    )
+    provenance = qualification.get(provenance_name)
     runner = task.get("runner")
     verifier = task.get("verifier")
     reviews = task.get("reviews")
@@ -970,28 +1021,30 @@ def _check_task_qualification_values(
         if isinstance(reviews, dict)
         else None
     )
-    if (
+    provenance_complete = (
         isinstance(provenance, dict)
-        and isinstance(runner, dict)
         and isinstance(verifier, dict)
         and isinstance(verifier_review, dict)
-    ):
-        if provenance.get("runner_image") != runner.get("image"):
-            diagnostics.append(
-                "qualification runner image does not match task"
-            )
-        if provenance.get(
-            "runner_config_digest_sha256"
-        ) != runner.get("config_digest_sha256"):
-            diagnostics.append(
-                "qualification runner config provenance does not match task"
-            )
-        if provenance.get("runner_platform") != runner.get(
-            "platform"
-        ):
-            diagnostics.append(
-                "qualification runner platform provenance does not match task"
-            )
+        and (not is_v2 or isinstance(runner, dict))
+    )
+    if provenance_complete:
+        if is_v2:
+            if provenance.get("runner_image") != runner.get("image"):
+                diagnostics.append(
+                    "qualification runner image does not match task"
+                )
+            if provenance.get(
+                "runner_config_digest_sha256"
+            ) != runner.get("config_digest_sha256"):
+                diagnostics.append(
+                    "qualification runner config provenance does not match task"
+                )
+            if provenance.get("runner_platform") != runner.get(
+                "platform"
+            ):
+                diagnostics.append(
+                    "qualification runner platform provenance does not match task"
+                )
         if provenance.get("verifier_image") != verifier.get("image"):
             diagnostics.append(
                 "qualification verifier image does not match task"
@@ -1021,21 +1074,30 @@ def _check_task_qualification_values(
                 "qualification verifier review digest does not match task review"
             )
     else:
-        diagnostics.append("qualification evaluation provenance is missing")
+        diagnostics.append(
+            "qualification evaluation provenance is missing"
+            if is_v2
+            else "qualification verifier provenance is missing"
+        )
     observed = qualification.get("observed_mapping")
     assets = task.get("assets")
     agent = task.get("agent")
-    if (
+    mapping_complete = (
         isinstance(observed, dict)
         and isinstance(assets, dict)
         and isinstance(agent, dict)
-        and isinstance(runner, dict)
         and isinstance(verifier, dict)
-    ):
+        and (not is_v2 or isinstance(runner, dict))
+    )
+    if mapping_complete:
         public = assets.get("public")
         private = assets.get("verifier_private")
-        expected_mapping = {
-            "task_digest_sha256": task_execution_sha256(task),
+        expected_mapping: JSONObject = {
+            "task_digest_sha256": (
+                task_execution_sha256(task)
+                if is_v2
+                else canonical_sha256(task)
+            ),
             "public_tree_digest_sha256": (
                 public.get("digest_sha256")
                 if isinstance(public, dict)
@@ -1049,13 +1111,14 @@ def _check_task_qualification_values(
             "agent_config_digest_sha256": agent.get(
                 "config_digest_sha256"
             ),
-            "runner_config_digest_sha256": runner.get(
-                "config_digest_sha256"
-            ),
             "verifier_config_digest_sha256": verifier.get(
                 "config_digest_sha256"
             ),
         }
+        if is_v2:
+            expected_mapping["runner_config_digest_sha256"] = (
+                runner.get("config_digest_sha256")
+            )
         if observed != expected_mapping:
             diagnostics.append(
                 "qualification observed mapping does not match task"
@@ -1245,6 +1308,7 @@ def _inspect_image(
     private_digest: str,
     *,
     stage: str,
+    include_stage_label: bool,
 ) -> JSONObject:
     if stage not in {"agent", "runner", "verifier"}:
         raise TaskAdmissionError("unknown task container stage")
@@ -1303,9 +1367,10 @@ def _inspect_image(
     )
     required = {
         "org.omp.rolebench.task.role": role,
-        "org.omp.rolebench.task.stage": stage,
         content_key: private_digest if verifier else public_digest,
     }
+    if include_stage_label:
+        required["org.omp.rolebench.task.stage"] = stage
     observed = {
         str(key): str(value)
         for key, value in labels.items()
@@ -1553,6 +1618,9 @@ def _qualification_report(
 ) -> tuple[JSONObject, str, str]:
     report_file = _artifact(root, path)
     report, report_digest = _object_with_digest(report_file)
+    is_v2 = (
+        task.get("schema_version") == "omp.diagnostic-task/v2"
+    )
     if report.get("schema_version") != "omp.worker-run-report/v1":
         raise TaskAdmissionError(
             "qualification evidence is not a worker run report"
@@ -1562,6 +1630,16 @@ def _qualification_report(
     if not isinstance(observation, dict) or not isinstance(outcome, dict):
         raise TaskAdmissionError(
             "qualification report lacks normalized evidence"
+        )
+    expected_observation_version = (
+        "omp.attempt-observation/v2"
+        if is_v2
+        else "omp.attempt-observation/v1"
+    )
+    if observation.get("schema_version") != expected_observation_version:
+        raise TaskAdmissionError(
+            "qualification report observation schema version does not match "
+            "the diagnostic task"
         )
     observation_result = validate_value(
         root,
@@ -1595,6 +1673,14 @@ def _qualification_report(
     attempt = observation.get("attempt")
     isolation = report.get("isolation")
     doctor = report.get("doctor")
+    runner_evidence_matches = (
+        not is_v2
+        or (
+            isinstance(digests, dict)
+            and report.get("runner_evidence_digest_sha256")
+            == digests.get("runner_evidence")
+        )
+    )
     if (
         report.get("passed") is not True
         or report.get("external_provider_calls") != 0
@@ -1623,6 +1709,7 @@ def _qualification_report(
         != digests.get("runner_evidence")
         or report.get("policy_digest_sha256")
         != digests.get("runtime_policy")
+        or not runner_evidence_matches
     ):
         raise TaskAdmissionError(
             "qualification report envelope does not match its observation"
@@ -1636,17 +1723,27 @@ def _qualification_report(
         if isinstance(admission_agents, dict)
         else None
     )
-    if (
-        not isinstance(assets, dict)
-        or not isinstance(runner, dict)
-        or not isinstance(verifier, dict)
-        or not isinstance(expected_agent, dict)
-    ):
+    bindings_complete = (
+        isinstance(assets, dict)
+        and isinstance(verifier, dict)
+        and (
+            not is_v2
+            or (
+                isinstance(runner, dict)
+                and isinstance(expected_agent, dict)
+            )
+        )
+    )
+    if not bindings_complete:
         raise TaskAdmissionError("task bindings are incomplete")
     public = assets.get("public")
     private = assets.get("verifier_private")
-    expected = {
-        "task": task_execution_sha256(task),
+    expected: JSONObject = {
+        "task": (
+            task_execution_sha256(task)
+            if is_v2
+            else canonical_sha256(task)
+        ),
         "task_public_tree": (
             public.get("digest_sha256")
             if isinstance(public, dict)
@@ -1657,13 +1754,30 @@ def _qualification_report(
             if isinstance(private, dict)
             else None
         ),
-        "agent_image": _image_digest_suffix(expected_agent.get("image")),
-        "agent_image_config": expected_agent.get("config_digest_sha256"),
-        "runner_image": _image_digest_suffix(runner.get("image")),
-        "runner_image_config": runner.get("config_digest_sha256"),
-        "verifier_image": _image_digest_suffix(verifier.get("image")),
-        "verifier_image_config": verifier.get("config_digest_sha256"),
+        "verifier_image_config": verifier.get(
+            "config_digest_sha256"
+        ),
     }
+    if is_v2:
+        expected.update(
+            {
+                "agent_image": _image_digest_suffix(
+                    expected_agent.get("image")
+                ),
+                "agent_image_config": expected_agent.get(
+                    "config_digest_sha256"
+                ),
+                "runner_image": _image_digest_suffix(
+                    runner.get("image")
+                ),
+                "runner_image_config": runner.get(
+                    "config_digest_sha256"
+                ),
+                "verifier_image": _image_digest_suffix(
+                    verifier.get("image")
+                ),
+            }
+        )
     if any(
         digests.get(name) != value
         for name, value in expected.items()
@@ -1690,12 +1804,20 @@ def _qualification_group(
     probe: str,
     verifier_outcome: str,
 ) -> tuple[list[JSONObject], str, list[JSONObject]]:
-    if (
-        isinstance(paths, (str, bytes, Path))
-        or len(paths) != 2
-    ):
+    is_v2 = (
+        task.get("schema_version") == "omp.diagnostic-task/v2"
+    )
+    requirement = "exactly two" if is_v2 else "two to eight"
+    if isinstance(paths, (str, bytes, Path)):
         raise TaskAdmissionError(
-            "each qualification probe requires exactly two runs"
+            f"each qualification probe requires {requirement} runs"
+        )
+    count_is_valid = (
+        len(paths) == 2 if is_v2 else 2 <= len(paths) <= 8
+    )
+    if not count_is_valid:
+        raise TaskAdmissionError(
+            f"each qualification probe requires {requirement} runs"
         )
     reports: list[JSONObject] = []
     commands: list[str] = []
@@ -1934,7 +2056,7 @@ def generate_task_qualification(
     obs = objective.get("observation") if isinstance(objective, dict) else None
     artifact_kind = obs.get("artifact_kind") if isinstance(obs, dict) else None
     authority = obs.get("authority") if isinstance(obs, dict) else None
-    if artifact_kind == "data-only" and authority in ("host-process", "host-filesystem"):
+    if artifact_kind == "data-only" and authority == "host-process":
         observation_authority = "pass"
         decision = "calibration-required"
     else:
@@ -2042,6 +2164,9 @@ def _prepare_bound_manifest(
     )
     if manifest_output.exists() or manifest_output.is_symlink():
         raise TaskWorkflowError("output already exists")
+    is_v2 = (
+        task.get("schema_version") == "omp.diagnostic-task/v2"
+    )
     if task.get("partition") == "holdout":
         raise TaskAdmissionError("holdout tasks cannot be prepared")
     if task.get("routing_eligible") is not False:
@@ -2051,7 +2176,11 @@ def _prepare_bound_manifest(
     assets = task.get("assets")
     runner = task.get("runner")
     verifier = task.get("verifier")
-    if not isinstance(assets, dict) or not isinstance(runner, dict) or not isinstance(verifier, dict):
+    if (
+        not isinstance(assets, dict)
+        or not isinstance(verifier, dict)
+        or (is_v2 and not isinstance(runner, dict))
+    ):
         raise TaskAdmissionError(
             "task execution bindings are incomplete"
         )
@@ -2074,8 +2203,12 @@ def _prepare_bound_manifest(
             "agent image is not bound to public content"
         )
     if (
-        not isinstance(public_digest, str)
-        or runner.get("asset_tree_digest_sha256") != public_digest
+        is_v2
+        and (
+            not isinstance(public_digest, str)
+            or runner.get("asset_tree_digest_sha256")
+            != public_digest
+        )
     ):
         raise TaskAdmissionError(
             "runner image is not bound to public content"
@@ -2088,14 +2221,21 @@ def _prepare_bound_manifest(
         raise TaskAdmissionError(
             "verifier image is not bound to private content"
         )
-    agent_config = agent.get("config_digest_sha256")
-    runner_config = runner.get("config_digest_sha256")
-    verifier_config = verifier.get("config_digest_sha256")
-    if len({agent_config, runner_config, verifier_config}) != 3:
+    if is_v2 and len(
+        {
+            agent.get("config_digest_sha256"),
+            runner.get("config_digest_sha256"),
+            verifier.get("config_digest_sha256"),
+        }
+    ) != 3:
         raise TaskAdmissionError(
             "manifest container config digests must be pairwise distinct"
         )
-    task_digest = task_execution_sha256(task)
+    task_digest = (
+        task_execution_sha256(task)
+        if is_v2
+        else canonical_sha256(task)
+    )
     agent_manifest = _inspect_image(
         docker,
         agent,
@@ -2103,14 +2243,20 @@ def _prepare_bound_manifest(
         public_digest,
         private_digest,
         stage="agent",
+        include_stage_label=is_v2,
     )
-    runner_manifest = _inspect_image(
-        docker,
-        runner,
-        task["role"],
-        public_digest,
-        private_digest,
-        stage="runner",
+    runner_manifest = (
+        _inspect_image(
+            docker,
+            runner,
+            task["role"],
+            public_digest,
+            private_digest,
+            stage="runner",
+            include_stage_label=True,
+        )
+        if is_v2
+        else None
     )
     verifier_manifest = _inspect_image(
         docker,
@@ -2119,6 +2265,7 @@ def _prepare_bound_manifest(
         public_digest,
         private_digest,
         stage="verifier",
+        include_stage_label=is_v2,
     )
     captured_public_agent = _container_tree_digest(
         docker,
@@ -2132,18 +2279,20 @@ def _prepare_bound_manifest(
         "/opt/rolebench/task/verifier-private",
         must_exist=False,
     )
-    captured_public_runner = _container_tree_digest(
-        docker,
-        str(runner["image"]),
-        "/opt/rolebench/task/public",
-        must_exist=True,
-    )
-    _container_tree_digest(
-        docker,
-        str(runner["image"]),
-        "/opt/rolebench/task/verifier-private",
-        must_exist=False,
-    )
+    captured_public_runner = None
+    if is_v2:
+        captured_public_runner = _container_tree_digest(
+            docker,
+            str(runner["image"]),
+            "/opt/rolebench/task/public",
+            must_exist=True,
+        )
+        _container_tree_digest(
+            docker,
+            str(runner["image"]),
+            "/opt/rolebench/task/verifier-private",
+            must_exist=False,
+        )
     captured_private = _container_tree_digest(
         docker,
         str(verifier["image"]),
@@ -2158,8 +2307,11 @@ def _prepare_bound_manifest(
     )
     if (
         captured_public_agent != public_digest
-        or captured_public_runner != public_digest
         or captured_private != private_digest
+        or (
+            is_v2
+            and captured_public_runner != public_digest
+        )
     ):
         raise TaskAdmissionError(
             "container content does not match task digests"
@@ -2175,16 +2327,21 @@ def _prepare_bound_manifest(
             canonical_sha256(qualification)
         )
     manifest: JSONObject = {
-        "schema_version": "omp.worker-run-manifest/v2",
+        "schema_version": (
+            "omp.worker-run-manifest/v2"
+            if is_v2
+            else "omp.worker-run-manifest/v1"
+        ),
         "run_id": run_id,
         "role": task["role"],
         "task": task_binding,
         "policy": task["policy"],
         "provider": {"enabled": False},
         "agent": agent_manifest,
-        "runner": runner_manifest,
         "verifier": verifier_manifest,
     }
+    if is_v2:
+        manifest["runner"] = runner_manifest
     if not validate_value(
         root,
         "worker-run-manifest",
@@ -2357,7 +2514,11 @@ def verify_task_pack(root: Path, pack_path: Path) -> JSONObject:
             qualification,
         )
         diagnostics.extend(f"entries[{ordinal}]: {message}" for message in checked["diagnostics"])
-        if pack.get("status") == "frozen":
+        if (
+            pack.get("status") == "frozen"
+            and qualification.get("schema_version")
+            == "omp.task-qualification/v1"
+        ):
             diagnostics.append(
                 f"entries[{ordinal}] v1 qualifications cannot freeze a task pack"
             )

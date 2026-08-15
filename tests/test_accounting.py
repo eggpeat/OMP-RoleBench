@@ -690,6 +690,43 @@ class ScoreSummaryTests(AccountingFixture):
                 1,
             )
 
+    def test_v1_admission_evidence_remains_replayable(self) -> None:
+        observation = self.observation()
+        observation["schema_version"] = "omp.attempt-observation/v1"
+        observation["evidence_use"] = "admission-only"
+        lifecycle = observation["lifecycle"]
+        self.assertIsInstance(lifecycle, dict)
+        for field in (
+            "runner_started",
+            "runner_finished",
+            "runner_evidence_frozen",
+        ):
+            lifecycle.pop(field)
+        digests = observation["digests"]
+        self.assertIsInstance(digests, dict)
+        digests.pop("runner_image")
+        digests.pop("runner_evidence")
+        digests.update(
+            {
+                "task_public_tree": SHA,
+                "verifier_private_tree": SHA,
+                "agent_image_config": SHA,
+                "verifier_image_config": SHA,
+            }
+        )
+
+        self.assert_valid_artifact("attempt-observation", observation)
+        outcome = classify_attempt(observation)
+
+        self.assertEqual(
+            outcome["schema_version"],
+            "omp.attempt-outcome/v1",
+        )
+        self.assertEqual(outcome["reason_code"], "non-scored-evidence")
+        self.assertEqual(outcome["disposition"], "excluded")
+        self.assertFalse(outcome["counts_toward_quality"])
+        self.assert_valid_artifact("attempt-outcome", outcome)
+
     def test_provider_disabled_admission_and_calibration_runs_are_excluded(
         self,
     ) -> None:

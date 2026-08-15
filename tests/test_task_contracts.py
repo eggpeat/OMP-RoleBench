@@ -676,6 +676,83 @@ class ArtifactSemanticTests(TaskContractFixture):
         self.assertIn("$.checks.discrimination", self.messages(result))
         self.assertIn("$.decision", self.messages(result))
 
+    def test_v1_task_and_qualification_validate_against_preserved_contracts(
+        self,
+    ) -> None:
+        task, qualification = self.make_task_and_qualification()
+        task["schema_version"] = "omp.diagnostic-task/v1"
+        task.pop("runner")
+        objective = task["objective"]
+        assert isinstance(objective, dict)
+        objective.pop("observation")
+        reviews = task["reviews"]
+        assert isinstance(reviews, dict)
+        for review in reviews.values():
+            assert isinstance(review, dict)
+            review.pop("evidence_path", None)
+        verifier_review = reviews["verifier"]
+        assert isinstance(verifier_review, dict)
+        verifier_review["image"] = verifier_review.pop("verifier_image")
+        verifier_review["config_digest_sha256"] = verifier_review.pop(
+            "verifier_config_digest_sha256"
+        )
+        verifier_review["platform"] = verifier_review.pop("verifier_platform")
+        for field in (
+            "runner_image",
+            "runner_config_digest_sha256",
+            "runner_platform",
+        ):
+            verifier_review.pop(field)
+        self.write_json("contracts/tasks/example/task.json", task)
+
+        qualification["schema_version"] = "omp.task-qualification/v1"
+        source_task = qualification["source_task"]
+        assert isinstance(source_task, dict)
+        source_task["digest_sha256"] = canonical_sha256(task)
+        qualification["reviews"] = deepcopy(reviews)
+        evaluation = qualification.pop("evaluation_provenance")
+        assert isinstance(evaluation, dict)
+        qualification["verifier_provenance"] = {
+            "reviewer_id": evaluation["reviewer_id"],
+            "verifier_image": evaluation["verifier_image"],
+            "verifier_config_digest_sha256": evaluation[
+                "verifier_config_digest_sha256"
+            ],
+            "verifier_platform": evaluation["verifier_platform"],
+            "review_digest_sha256": evaluation["review_digest_sha256"],
+        }
+        observed = qualification["observed_mapping"]
+        assert isinstance(observed, dict)
+        observed["task_digest_sha256"] = canonical_sha256(task)
+        observed.pop("runner_config_digest_sha256")
+        checks = qualification["checks"]
+        assert isinstance(checks, dict)
+        checks.pop("runner_isolation")
+        checks.pop("observation_authority")
+        self.write_json(
+            "contracts/tasks/example/qualification.json",
+            qualification,
+        )
+
+        task_result = validate_value(
+            self.root,
+            "diagnostic-task",
+            task,
+            Path("contracts/tasks/example/task.json"),
+        )
+        qualification_result = validate_value(
+            self.root,
+            "task-qualification",
+            qualification,
+            Path("contracts/tasks/example/qualification.json"),
+        )
+
+        self.assertTrue(task_result.valid, self.messages(task_result))
+        self.assertTrue(
+            qualification_result.valid,
+            self.messages(qualification_result),
+        )
+
     def test_synthetic_fixture_cannot_enter_any_task_pack(self) -> None:
         task, qualification = self.make_task_and_qualification()
         task["source"]["kind"] = "synthetic-fixture"  # type: ignore[index]
@@ -788,6 +865,50 @@ class ArtifactSemanticTests(TaskContractFixture):
         self.assertFalse(trust_result.valid)
         self.assertIn("runner_output_trust", self.messages(trust_result))
 
+    def test_qualification_fails_closed_for_host_filesystem_authority(
+        self,
+    ) -> None:
+        task, qualification = self.make_task_and_qualification()
+        task["objective"]["observation"]["authority"] = (  # type: ignore[index]
+            "host-filesystem"
+        )
+        qualification["source_task"]["digest_sha256"] = (  # type: ignore[index]
+            canonical_sha256(task)
+        )
+        qualification["observed_mapping"]["task_digest_sha256"] = (  # type: ignore[index]
+            task_execution_sha256(task)
+        )
+        self.write_json("contracts/tasks/example/task.json", task)
+
+        passing = validate_value(
+            self.root,
+            "task-qualification",
+            qualification,
+            Path("contracts/tasks/example/qualification.json"),
+        )
+        self.assertFalse(passing.valid)
+        self.assertIn(
+            "unsupported authorities must record 'fail'",
+            self.messages(passing),
+        )
+        self.assertIn(
+            "must be rejected",
+            self.messages(passing),
+        )
+
+        qualification["checks"]["observation_authority"] = "fail"  # type: ignore[index]
+        qualification["decision"] = "rejected"
+        fail_closed = validate_value(
+            self.root,
+            "task-qualification",
+            qualification,
+            Path("contracts/tasks/example/qualification.json"),
+        )
+        self.assertTrue(
+            fail_closed.valid,
+            self.messages(fail_closed),
+        )
+
     def test_executable_tasks_cannot_bypass_admission_or_enter_task_packs(self) -> None:
         task, qualification = self.make_task_and_qualification()
         task["objective"]["observation"]["artifact_kind"] = "executable"  # type: ignore[index]
@@ -800,8 +921,14 @@ class ArtifactSemanticTests(TaskContractFixture):
 
         qual_result = validate_value(self.root, "task-qualification", qualification, Path("contracts/tasks/example/qualification.json"))
         self.assertFalse(qual_result.valid)
-        self.assertIn("executable artifact tasks must record observation_authority as 'fail'", self.messages(qual_result))
-        self.assertIn("executable artifact tasks must be rejected", self.messages(qual_result))
+        self.assertIn(
+            "unsupported authorities must record 'fail'",
+            self.messages(qual_result),
+        )
+        self.assertIn(
+            "must be rejected",
+            self.messages(qual_result),
+        )
 
         contract = json.loads((self.root / "contracts/roles/task.json").read_text(encoding="utf-8"))
         pack = {

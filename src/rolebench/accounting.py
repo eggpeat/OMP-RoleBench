@@ -189,11 +189,11 @@ def classify_attempt(observation: JSONObject) -> JSONObject:
     }:
         raise AccountingError("unsupported attempt observation schema_version")
     evidence_use = observation.get("evidence_use")
-    allowed_evidence_uses = (
-        {None, "admission-only", "calibration-only"}
-        if schema_version == "omp.attempt-observation/v2"
-        else {None}
-    )
+    allowed_evidence_uses = {
+        None,
+        "admission-only",
+        "calibration-only",
+    }
     if evidence_use not in allowed_evidence_uses:
         raise AccountingError("evidence_use is invalid")
 
