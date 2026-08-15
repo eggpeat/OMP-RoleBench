@@ -719,7 +719,12 @@ def _image_binding_facts(
 
 def _load_manifest(
     root: Path,
-    manifest_path: Path,
+    captured_manifest: tuple[
+        JSONObject,
+        Path,
+        tuple[int, int, int, int, int],
+        str,
+    ],
 ) -> tuple[
     JSONObject,
     Path,
@@ -728,11 +733,7 @@ def _load_manifest(
     tuple[Path, tuple[int, int, int, int, int]],
     tuple[Path, tuple[int, int, int, int, int]],
 ]:
-    manifest, relative, identity, _ = _capture_object(
-        root,
-        manifest_path,
-        label="worker run manifest",
-    )
+    manifest, relative, identity, _ = captured_manifest
     validation = validate_value(root, "worker-run-manifest", manifest, relative)
     if not validation.valid:
         raise WorkerError(f"invalid worker run manifest: {_diagnostics(validation)}")
@@ -1279,11 +1280,12 @@ def run_worker(
     """Execute one supported provider-disabled worker manifest."""
     root = Path(root).resolve()
     manifest_path = Path(manifest_path)
-    manifest_probe, _, _, _ = _capture_object(
+    captured_manifest = _capture_object(
         root,
         manifest_path,
         label="worker run manifest",
     )
+    manifest_probe = captured_manifest[0]
     if manifest_probe.get("schema_version") == "omp.worker-run-manifest/v1":
         from . import worker_v1
 
@@ -1294,7 +1296,7 @@ def run_worker(
         )
         return worker_v1.run_worker_v1(
             root,
-            manifest_path,
+            captured_manifest,
             docker=docker,
             adapter_factory=adapter_factory,
         )
@@ -1305,7 +1307,7 @@ def run_worker(
         policy_digest,
         manifest_identity,
         policy_identity,
-    ) = _load_manifest(root, manifest_path)
+    ) = _load_manifest(root, captured_manifest)
     doctor = doctor_worker(root, policy_path, docker=docker)
     adapter = _ADAPTER_FACTORY()
     task_binding = _manifest_task_binding(manifest)

@@ -643,7 +643,12 @@ def _image_binding_facts(
 
 def _load_manifest(
     root: Path,
-    manifest_path: Path,
+    captured_manifest: tuple[
+        JSONObject,
+        Path,
+        tuple[int, int, int, int, int],
+        str,
+    ],
 ) -> tuple[
     JSONObject,
     Path,
@@ -652,11 +657,7 @@ def _load_manifest(
     tuple[Path, tuple[int, int, int, int, int]],
     tuple[Path, tuple[int, int, int, int, int]],
 ]:
-    manifest, relative, identity, _ = _capture_object(
-        root,
-        manifest_path,
-        label="worker run manifest",
-    )
+    manifest, relative, identity, _ = captured_manifest
     validation = validate_value(root, "worker-run-manifest", manifest, relative)
     if not validation.valid:
         raise WorkerError(f"invalid worker run manifest: {_diagnostics(validation)}")
@@ -1125,12 +1126,17 @@ def _creation_issue(stderr: bytes) -> str:
 
 def run_worker_v1(
     root: Path,
-    manifest_path: Path,
+    captured_manifest: tuple[
+        JSONObject,
+        Path,
+        tuple[int, int, int, int, int],
+        str,
+    ],
     *,
     docker: str = "docker",
     adapter_factory: Callable[[], _Adapter] | None = None,
 ) -> JSONObject:
-    """Execute one provider-disabled worker manifest using local rootless Docker/runsc."""
+    """Execute one captured v1 manifest using local rootless Docker/runsc."""
 
     root = Path(root).resolve()
     (
@@ -1140,7 +1146,7 @@ def run_worker_v1(
         policy_digest,
         manifest_identity,
         policy_identity,
-    ) = _load_manifest(root, Path(manifest_path))
+    ) = _load_manifest(root, captured_manifest)
     doctor = doctor_worker(
         root,
         policy_path,

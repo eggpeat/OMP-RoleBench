@@ -22,7 +22,7 @@ from rolebench.runner_protocol import (
     parse_runner_evidence,
     validate_verifier_result,
 )
-from rolebench import worker
+from rolebench import worker, worker_v1
 
 
 PRODUCT_ROOT = Path(__file__).resolve().parents[1]
@@ -549,6 +549,34 @@ class ManifestRuntimeGuardTests(WorkerRuntimeFixture):
             self.run_worker()
         self.assertEqual(self.fake.commands, [])
 
+    def test_v2_manifest_is_captured_once_before_execution(self) -> None:
+        original_capture = worker._capture_object
+        manifest_captures = 0
+
+        def capture_once(
+            root: Path,
+            path: Path,
+            *,
+            label: str,
+        ) -> tuple[
+            dict[str, object],
+            Path,
+            tuple[int, int, int, int, int],
+            str,
+        ]:
+            nonlocal manifest_captures
+            if label == "worker run manifest":
+                manifest_captures += 1
+                if manifest_captures > 1:
+                    raise AssertionError("manifest was captured more than once")
+            return original_capture(root, path, label=label)
+
+        with mock.patch.object(worker, "_capture_object", side_effect=capture_once):
+            report = self.run_worker()
+
+        self.assertTrue(report["passed"], report["diagnostics"])
+        self.assertEqual(manifest_captures, 1)
+
 
 class DoctorTests(WorkerRuntimeFixture):
     def test_doctor_uses_exact_info_argv_and_requires_every_prerequisite(
@@ -572,18 +600,12 @@ class DoctorTests(WorkerRuntimeFixture):
 
 
 class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
-    def test_v1_manifest_executes_without_a_runner_container(self) -> None:
+    def _configure_v1_manifest(self) -> tuple[dict[str, object], str]:
         policy_path = self.root / "contracts/scored-worker-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
-        self.assertEqual(policy["schema_version"], "omp.scored-worker-policy/v1")
-        self.assertEqual(policy["policy_id"], "rolebench-scored-worker-v1")
         expected_digest = hashlib.sha256(
             canonical_json(policy).encode("utf-8")
         ).hexdigest()
-        self.assertEqual(
-            expected_digest,
-            "c773b99f959a64065d0237ac96af2c70f3e3fd6c676c87383645b94f8d1983ac",
-        )
         self.manifest["schema_version"] = "omp.worker-run-manifest/v1"
         self.manifest.pop("runner")
         for container_name in ("agent", "verifier"):
@@ -599,6 +621,16 @@ class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
             b"private verifier log",
         )
         self._write_manifest()
+        return policy, expected_digest
+
+    def test_v1_manifest_executes_without_a_runner_container(self) -> None:
+        policy, expected_digest = self._configure_v1_manifest()
+        self.assertEqual(policy["schema_version"], "omp.scored-worker-policy/v1")
+        self.assertEqual(policy["policy_id"], "rolebench-scored-worker-v1")
+        self.assertEqual(
+            expected_digest,
+            "c773b99f959a64065d0237ac96af2c70f3e3fd6c676c87383645b94f8d1983ac",
+        )
 
         report = self.run_worker()
 
@@ -614,18 +646,43 @@ class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
             "omp.attempt-outcome/v1",
         )
 
+    def test_v1_manifest_is_not_recaptured_after_dispatch(self) -> None:
+        self._configure_v1_manifest()
+        original_capture = worker_v1._capture_object
+        manifest_captures = 0
+
+        def capture_non_manifest(
+            root: Path,
+            path: Path,
+            *,
+            label: str,
+        ) -> tuple[
+            dict[str, object],
+            Path,
+            tuple[int, int, int, int, int],
+            str,
+        ]:
+            nonlocal manifest_captures
+            if label == "worker run manifest":
+                manifest_captures += 1
+                raise AssertionError("legacy runtime recaptured the manifest")
+            return original_capture(root, path, label=label)
+
+        with mock.patch.object(
+            worker_v1,
+            "_capture_object",
+            side_effect=capture_non_manifest,
+        ):
+            report = self.run_worker()
+
+        self.assertTrue(report["passed"], report["diagnostics"])
+        self.assertEqual(manifest_captures, 0)
 
     def test_v1_manifest_with_tampered_policy_digest_fails_closed(self) -> None:
-        self.manifest["schema_version"] = "omp.worker-run-manifest/v1"
-        self.manifest.pop("runner")
-        for container_name in ("agent", "verifier"):
-            self.manifest[container_name].pop("config_digest_sha256")
-            self.manifest[container_name].pop("platform")
-        self.manifest["policy"] = {
-            "path": "contracts/scored-worker-policy.json",
-            "digest_sha256": "0" * 64,
-        }
+        self._configure_v1_manifest()
+        self.manifest["policy"]["digest_sha256"] = "0" * 64
         self._write_manifest()
+
         with self.assertRaises(worker.WorkerError):
             self.run_worker()
 
