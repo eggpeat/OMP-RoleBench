@@ -446,7 +446,7 @@ def _verify_plan(submission: dict[str, Any], expected: dict[str, Any]) -> bool:
     for g in gates:
         if g.get("blocking") is not True:
             return False
-        if g.get("fallback_action") not in {"ABORT_AND_ROLLBACK", "FAIL_CLOSED"}:
+        if g.get("fallback_action") != "ABORT_AND_ROLLBACK":
             return False
 
         eval_step_id = g.get("evaluation_step_id")
