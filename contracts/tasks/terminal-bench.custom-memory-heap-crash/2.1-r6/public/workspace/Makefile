@@ -10,7 +10,8 @@ release: main.cpp user.cpp user.h
 	@if [ -d "$(RELEASE_LIB)" ]; then \
 		$(CXX) $(CXXFLAGS) -o release main.cpp user.cpp -O2 -DNDEBUG -L$(RELEASE_LIB) -Wl,-Bstatic -lstdc++ -Wl,-Bdynamic -lm; \
 	else \
-		$(CXX) $(CXXFLAGS) -o release main.cpp user.cpp -O2 -DNDEBUG -lm; \
+		echo "Error: Required custom release runtime $(RELEASE_LIB) not found." >&2; \
+		exit 1; \
 	fi
 
 debug: main.cpp user.cpp user.h
