@@ -52,8 +52,8 @@ _SINGLE_PLATFORM_MANIFEST_MEDIA_TYPES = frozenset(
     }
 )
 
-# Explicit host-safety ceiling for the fallback Docker image archive.
-_MAX_IMAGE_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
+# Explicit host-safety ceiling for fallback Docker image archives.
+MAX_IMAGE_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 
 
 class _TaskBindingError(RuntimeError):
@@ -230,13 +230,15 @@ def capture_command(
     *,
     timeout: float,
     output_limit: int,
+    output_sink: BinaryIO | None = None,
 ) -> _StreamResult:
-    """Run one argv-only command with bounded captured output."""
+    """Run one argv-only command with bounded output."""
     return _SubprocessAdapter().stream(
         argv,
         input_source=None,
         timeout=timeout,
         output_limit=output_limit,
+        output_sink=output_sink,
     )
 
 
@@ -665,7 +667,7 @@ def _inspect_image(
                         ),
                         input_source=None,
                         timeout=remaining,
-                        output_limit=_MAX_IMAGE_ARCHIVE_BYTES,
+                        output_limit=MAX_IMAGE_ARCHIVE_BYTES,
                         output_sink=archive,
                     )
                     if exported.timed_out:

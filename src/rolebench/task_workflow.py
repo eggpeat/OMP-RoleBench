@@ -18,7 +18,7 @@ import tarfile
 import tempfile
 import tomllib
 import uuid
-from typing import Final, Sequence
+from typing import BinaryIO, Final, Sequence
 
 from .accounting import AccountingError, classify_attempt
 from .contracts import (
@@ -36,7 +36,12 @@ from .image_identity import (
     ImageIdentityError,
     image_config_digest_from_archive,
 )
-from .worker import WorkerError, capture_command, local_docker_argv
+from .worker import (
+    MAX_IMAGE_ARCHIVE_BYTES,
+    WorkerError,
+    capture_command,
+    local_docker_argv,
+)
 
 _MAX_SESSION_BYTES: Final = 32 * 1024 * 1024
 _MAX_LINE_BYTES: Final = 2 * 1024 * 1024
@@ -1200,6 +1205,7 @@ def _docker_result(
     *,
     timeout: float = 60,
     output_limit: int = _MAX_SESSION_BYTES,
+    output_sink: BinaryIO | None = None,
 ):
     try:
         argv = local_docker_argv(docker, *arguments)
@@ -1207,6 +1213,7 @@ def _docker_result(
             argv,
             timeout=timeout,
             output_limit=output_limit,
+            output_sink=output_sink,
         )
     except (
         OSError,
@@ -1269,26 +1276,27 @@ def _effective_image_config_digest(
         prefix="rolebench-image-identity-"
     ) as temporary:
         archive_path = Path(temporary) / "image.tar"
-        result = _docker_result(
-            docker,
-            (
-                "image",
-                "save",
-                "--output",
-                str(archive_path),
-                image,
-            ),
-            timeout=300,
-            output_limit=1024 * 1024,
-        )
-        if (
-            result.timed_out
-            or result.overflowed
-            or result.returncode != 0
-        ):
-            raise TaskAdmissionError(
-                "container config identity export failed"
+        with archive_path.open("w+b") as archive:
+            result = _docker_result(
+                docker,
+                (
+                    "image",
+                    "save",
+                    image,
+                ),
+                timeout=300,
+                output_limit=MAX_IMAGE_ARCHIVE_BYTES,
+                output_sink=archive,
             )
+            if result.overflowed:
+                raise TaskAdmissionError(
+                    "container config identity export exceeded size limit"
+                )
+            if result.timed_out or result.returncode != 0:
+                raise TaskAdmissionError(
+                    "container config identity export failed"
+                )
+            archive.flush()
         try:
             return image_config_digest_from_archive(
                 archive_path,

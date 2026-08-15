@@ -801,7 +801,7 @@ class ImageBindingAndIsolationTests(WorkerRuntimeFixture):
                 (
                     [*DOCKER_PREFIX, "image", "save", AGENT_IMAGE],
                     None,
-                    worker._MAX_IMAGE_ARCHIVE_BYTES,
+                    worker.MAX_IMAGE_ARCHIVE_BYTES,
                 )
             ],
         )

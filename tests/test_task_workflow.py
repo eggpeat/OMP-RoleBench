@@ -1383,10 +1383,17 @@ def test_image_inspection_extracts_distinct_oci_config_digest(
     def export_image(
         _docker: str,
         arguments: tuple[str, ...],
-        **_kwargs: object,
+        **kwargs: object,
     ) -> SimpleNamespace:
-        output = Path(arguments[arguments.index("--output") + 1])
-        shutil.copyfile(archive_path, output)
+        assert arguments == ("image", "save", image)
+        assert kwargs["timeout"] == 300
+        assert (
+            kwargs["output_limit"]
+            == task_workflow.MAX_IMAGE_ARCHIVE_BYTES
+        )
+        output_sink = kwargs["output_sink"]
+        assert hasattr(output_sink, "write")
+        output_sink.write(archive_path.read_bytes())
         return SimpleNamespace(
             returncode=0,
             timed_out=False,
@@ -1406,6 +1413,43 @@ def test_image_inspection_extracts_distinct_oci_config_digest(
     )
 
     assert inspected["config_digest_sha256"] == config_digest
+
+
+def test_image_inspection_rejects_oversized_config_archive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest_digest = "a" * 64
+    image = f"example.invalid/runner@sha256:{manifest_digest}"
+    image_data = {"Id": f"sha256:{manifest_digest}"}
+
+    def export_image(
+        _docker: str,
+        arguments: tuple[str, ...],
+        **kwargs: object,
+    ) -> SimpleNamespace:
+        assert arguments == ("image", "save", image)
+        assert (
+            kwargs["output_limit"]
+            == task_workflow.MAX_IMAGE_ARCHIVE_BYTES
+        )
+        output_sink = kwargs["output_sink"]
+        assert hasattr(output_sink, "write")
+        output_sink.write(b"partial archive")
+        return SimpleNamespace(
+            returncode=-9,
+            timed_out=False,
+            overflowed=True,
+            stdout=b"",
+        )
+
+    monkeypatch.setattr(task_workflow, "_docker_result", export_image)
+    with pytest.raises(TaskAdmissionError, match="exceeded size limit"):
+        task_workflow._effective_image_config_digest(
+            "docker",
+            image,
+            image_data,
+            manifest_digest,
+        )
 
 
 def test_container_tree_capture_hashes_archive_in_fresh_child_directory(
