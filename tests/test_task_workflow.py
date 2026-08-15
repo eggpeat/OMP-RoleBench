@@ -963,92 +963,38 @@ def test_generate_qualification_v2_fail_closed_assertions(
         )
 
 
+@pytest.mark.parametrize("review_name", ["privacy", "verifier"])
 def test_generate_qualification_rejects_task_with_approved_failed_review(
     tmp_path: Path,
+    review_name: str,
 ) -> None:
-    task_path, _, task, _ = _qualification_pair(tmp_path)
-    reports = {
-        name: [
-            tmp_path / f"evidence/{name}-1.json",
-            tmp_path / f"evidence/{name}-2.json",
-        ]
-        for name in ("baseline", "reference", "tamper")
-    }
-
-    privacy_evidence = tmp_path / "reviews/privacy.json"
-    _write_json(
-        privacy_evidence,
-        {
-            "schema_version": "omp.task-review-evidence/v1",
-            "review_kind": "privacy",
-            "decision": "approved",
-            "reviewer": "reviewer",
-            "reviewed_at": "2026-01-01T00:00:00Z",
-            "checks": {
-                "credential_leak_scan": "fail",
-                "pii_scan": "pass",
-            },
-        },
+    shutil.copytree(Path(__file__).parents[1] / "contracts", tmp_path / "contracts")
+    task_path = (
+        tmp_path
+        / "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/task.json"
     )
-    task["reviews"]["privacy"]["evidence_path"] = "reviews/privacy.json"  # type: ignore[index]
-    task["reviews"]["privacy"]["evidence_digest_sha256"] = file_sha256(  # type: ignore[index]
-        privacy_evidence
-    )
+    task = json.loads(task_path.read_text(encoding="utf-8"))
+    review = task["reviews"][review_name]
+    evidence_path = tmp_path / review["evidence_path"]
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    first_check = next(iter(evidence["checks"]))
+    evidence["checks"][first_check] = "fail"
+    _write_json(evidence_path, evidence)
+    review["evidence_digest_sha256"] = file_sha256(evidence_path)
     _write_json(task_path, task)
 
-    output = tmp_path / "qualifications/rejected-privacy-review.json"
-    with pytest.raises(TaskAdmissionError):
+    output = tmp_path / f"qualifications/rejected-{review_name}-review.json"
+    with pytest.raises(TaskAdmissionError, match="diagnostic task is invalid"):
         generate_task_qualification(
             tmp_path,
             task_path,
-            reports["baseline"],
-            reports["reference"],
-            reports["tamper"],
+            [],
+            [],
+            [],
             output,
-            reviewer="reviewer",
+            reviewer=task["reviews"]["verifier"]["reviewer"],
         )
     assert not output.exists()
-
-    verifier_evidence = tmp_path / "reviews/verifier.json"
-    all_digests = [
-        file_sha256(p)
-        for p in (
-            *reports["baseline"],
-            *reports["reference"],
-            *reports["tamper"],
-        )
-    ]
-    _write_json(
-        verifier_evidence,
-        {
-            "schema_version": "omp.task-review-evidence/v1",
-            "review_kind": "verifier",
-            "decision": "approved",
-            "reviewer": "reviewer",
-            "reviewed_at": "2026-01-01T00:00:00Z",
-            "report_digests_sha256": all_digests,
-            "checks": {
-                "execution_isolation": "fail",
-            },
-        },
-    )
-    task["reviews"]["verifier"]["evidence_digest_sha256"] = file_sha256(  # type: ignore[index]
-        verifier_evidence
-    )
-    _write_json(task_path, task)
-
-    output_verifier = tmp_path / "qualifications/rejected-verifier-review.json"
-    with pytest.raises(TaskAdmissionError):
-        generate_task_qualification(
-            tmp_path,
-            task_path,
-            reports["baseline"],
-            reports["reference"],
-            reports["tamper"],
-            output_verifier,
-            reviewer="reviewer",
-        )
-    assert not output_verifier.exists()
 
 def test_host_filesystem_observation_authority_fails_closed(
     tmp_path: Path,
