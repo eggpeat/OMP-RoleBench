@@ -1829,6 +1829,169 @@ class CancelAsyncRunnerTests(unittest.TestCase):
                 with self.assertRaises(self.validation_error):
                     self.validate_source(source)
 
+    def test_accepts_safe_module_typing_aliases(self) -> None:
+        sources = (
+            (
+                "from typing import Awaitable, Callable\n\n"
+                "TaskFactory = Callable[[], Awaitable[None]]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable as C, Awaitable as A\n\n"
+                "TaskFactory = C[[], A[None]]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "import typing as t\n\n"
+                "TaskFactory = t.Callable[[], t.Awaitable[None]]\n"
+                "TaskAlias = TaskFactory | None\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "import typing as t\n"
+                "TaskAlias = t.Callable\n"
+                "import asyncio as t\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                self.validate_source(source)
+
+    def test_rejects_module_assignment_runtime_call_and_non_alias(self) -> None:
+        sources = (
+            (
+                "import asyncio\n\n"
+                "TaskFactory = asyncio.sleep(0)\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable\n\n"
+                "A = B = Callable[[], None]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "import asyncio\n\n"
+                "TaskFactory = asyncio.Queue\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "import asyncio\n\n"
+                "(asyncio.create_task,) = (None,)\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable\n\n"
+                "def poison():\n"
+                "    global Callable\n"
+                '    Callable = {"value": int}\n'
+                "    return {}\n\n"
+                'poison()["x"] = 1\n'
+                'TaskAlias = Callable["value"]\n\n'
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable\n\n"
+                "def poison():\n"
+                "    global Callable\n"
+                '    Callable = {"value": int}\n'
+                "    return {}\n\n"
+                'poison()["x"]: int\n'
+                'TaskAlias = Callable["value"]\n\n'
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                with self.assertRaises(self.validation_error):
+                    self.validate_source(source)
+
+    def test_rejects_type_names_after_unsafe_rebinding(self) -> None:
+        sources = (
+            (
+                'list = {"value": "not-a-type"}\n'
+                'TaskFactory = list["value"]\n\n'
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable\n\n"
+                'Callable = {"value": "not-a-type"}\n'
+                'TaskFactory = Callable["value"]\n\n'
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable\n\n"
+                "TaskFactory = Callable[[], None]\n"
+                'TaskFactory = {"value": "not-a-type"}\n'
+                'TaskAlias = TaskFactory["value"]\n\n'
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "def list(value):\n"
+                "    return value\n\n"
+                "TaskFactory = list[int]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                'TaskFactory = "not-a-type"\n'
+                "TaskAlias = TaskFactory[0]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "TaskFactory = [int]\n"
+                "TaskAlias = TaskFactory[0]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "TaskFactory = (int, str)\n"
+                "TaskAlias = TaskFactory[0]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable\n\n"
+                "TaskFactory = Callable[[], None]\n"
+                "from asyncio import sleep as TaskFactory\n"
+                "TaskAlias = TaskFactory[int]\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "from typing import Callable\n"
+                '*Callable, = ["runtime"]\n'
+                "TaskAlias = Callable\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    pass\n"
+            ),
+            (
+                "import typing as t\n"
+                "TaskAlias = t.Callable\n"
+                "import asyncio as t\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    return t.Callable\n"
+            ),
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                with self.assertRaises(self.validation_error):
+                    self.validate_source(source)
+
 
 if __name__ == "__main__":
     unittest.main()

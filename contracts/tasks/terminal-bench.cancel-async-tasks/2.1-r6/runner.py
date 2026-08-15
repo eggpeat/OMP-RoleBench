@@ -70,6 +70,21 @@ _ALLOWED_TYPING_ATTRIBUTES = frozenset(
         "Union",
     }
 )
+_SAFE_BUILTIN_TYPE_NAMES = frozenset(
+    {
+        "bool",
+        "bytes",
+        "complex",
+        "dict",
+        "float",
+        "int",
+        "list",
+        "object",
+        "set",
+        "str",
+        "tuple",
+    }
+)
 _ALLOWED_IMPORTS = frozenset({"asyncio", "typing"})
 _ALLOWED_FROM_IMPORTS = {
     "__future__": frozenset({"annotations"}),
@@ -216,6 +231,54 @@ def _is_literal(node: ast.AST | None) -> bool:
         )
     return False
 
+def _is_safe_type_expression(
+    node: ast.AST,
+    typing_modules: set[str] | frozenset[str],
+    safe_type_names: set[str] | frozenset[str],
+) -> bool:
+    if isinstance(node, ast.Name):
+        return node.id in safe_type_names
+    if isinstance(node, ast.Attribute):
+        return (
+            isinstance(node.value, ast.Name)
+            and node.value.id in typing_modules
+            and node.attr in _ALLOWED_TYPING_ATTRIBUTES
+        )
+    if isinstance(node, ast.Constant):
+        return (
+            node.value is None
+            or node.value is Ellipsis
+            or isinstance(node.value, str)
+        )
+    if isinstance(node, ast.Subscript):
+        return _is_safe_type_expression(
+            node.value, typing_modules, safe_type_names
+        ) and _is_safe_type_expression(
+            node.slice, typing_modules, safe_type_names
+        )
+    if isinstance(node, (ast.Tuple, ast.List)):
+        return all(
+            _is_safe_type_expression(elt, typing_modules, safe_type_names)
+            for elt in node.elts
+        )
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return _is_safe_type_expression(
+            node.left, typing_modules, safe_type_names
+        ) and _is_safe_type_expression(
+            node.right, typing_modules, safe_type_names
+        )
+    return False
+
+
+def _is_safe_type_alias_value(
+    node: ast.AST,
+    typing_modules: set[str] | frozenset[str],
+    safe_type_names: set[str] | frozenset[str],
+) -> bool:
+    return isinstance(
+        node, (ast.Name, ast.Attribute, ast.Subscript, ast.BinOp)
+    ) and _is_safe_type_expression(node, typing_modules, safe_type_names)
+
 
 def _validate_candidate_source(source: str) -> ast.Module:
     """Reject code that could reach process, filesystem, or introspection APIs."""
@@ -229,7 +292,42 @@ def _validate_candidate_source(source: str) -> ast.Module:
                 raise SourceValidationError("nested import statements are forbidden")
 
     module_aliases: dict[str, frozenset[str]] = {}
+    typing_modules: set[str] = set()
+    safe_type_names: set[str] = set(_SAFE_BUILTIN_TYPE_NAMES)
     run_defs: list[ast.AsyncFunctionDef] = []
+    source_validated_type_nodes: set[ast.AST] = set()
+
+    def clear_name_binding(name: str) -> None:
+        module_aliases.pop(name, None)
+        typing_modules.discard(name)
+        safe_type_names.discard(name)
+
+    def clear_target_bindings(target: ast.AST) -> None:
+        if isinstance(target, ast.Name):
+            clear_name_binding(target.id)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for element in target.elts:
+                clear_target_bindings(element)
+        elif isinstance(target, ast.Starred):
+            clear_target_bindings(target.value)
+
+    def target_mutates_attribute(target: ast.AST) -> bool:
+        if isinstance(target, ast.Attribute):
+            return True
+        if isinstance(target, ast.Starred):
+            return target_mutates_attribute(target.value)
+        if isinstance(target, (ast.Tuple, ast.List)):
+            return any(target_mutates_attribute(element) for element in target.elts)
+        return False
+
+    def target_has_effectful_store(target: ast.AST) -> bool:
+        if isinstance(target, (ast.Attribute, ast.Subscript)):
+            return True
+        if isinstance(target, ast.Starred):
+            return target_has_effectful_store(target.value)
+        if isinstance(target, (ast.Tuple, ast.List)):
+            return any(target_has_effectful_store(element) for element in target.elts)
+        return False
 
     for statement in tree.body:
         if isinstance(statement, ast.Expr):
@@ -244,11 +342,12 @@ def _validate_candidate_source(source: str) -> ast.Module:
                 if alias.name not in _ALLOWED_IMPORTS:
                     raise SourceValidationError(f"import {alias.name!r} is not allowed")
                 bound = alias.asname or alias.name
-                module_aliases[bound] = (
-                    _ALLOWED_ASYNCIO_ATTRIBUTES
-                    if alias.name == "asyncio"
-                    else _ALLOWED_TYPING_ATTRIBUTES
-                )
+                clear_name_binding(bound)
+                if alias.name == "asyncio":
+                    module_aliases[bound] = _ALLOWED_ASYNCIO_ATTRIBUTES
+                else:
+                    module_aliases[bound] = _ALLOWED_TYPING_ATTRIBUTES
+                    typing_modules.add(bound)
         elif isinstance(statement, ast.ImportFrom):
             if statement.level != 0 or statement.module not in _ALLOWED_FROM_IMPORTS:
                 raise SourceValidationError(
@@ -260,6 +359,10 @@ def _validate_candidate_source(source: str) -> ast.Module:
                     raise SourceValidationError(
                         f"import of {alias.name!r} from {statement.module!r} is not allowed"
                     )
+                bound = alias.asname or alias.name
+                clear_name_binding(bound)
+                if statement.module == "typing":
+                    safe_type_names.add(bound)
         elif isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
             if statement.decorator_list:
                 raise SourceValidationError("function decorators are not allowed")
@@ -268,18 +371,59 @@ def _validate_candidate_source(source: str) -> ast.Module:
             ]
             if any(not _is_literal(value) for value in defaults):
                 raise SourceValidationError("function defaults must be literals")
+            clear_name_binding(statement.name)
             if isinstance(statement, ast.AsyncFunctionDef) and statement.name == "run_tasks":
                 run_defs.append(statement)
         elif isinstance(statement, ast.Assign):
-            if not _is_literal(statement.value):
+            if any(target_has_effectful_store(target) for target in statement.targets):
                 raise SourceValidationError(
-                    "module-level assignments must contain only literal values"
+                    "module-level assignment targets must only bind names"
                 )
+            is_literal = _is_literal(statement.value)
+            is_type_alias = (
+                not is_literal
+                and len(statement.targets) == 1
+                and isinstance(statement.targets[0], ast.Name)
+                and _is_safe_type_alias_value(
+                    statement.value,
+                    typing_modules,
+                    safe_type_names,
+                )
+            )
+            if not is_literal and not is_type_alias:
+                raise SourceValidationError(
+                    "module-level assignments must contain only literal values or safe type aliases"
+                )
+            for target in statement.targets:
+                clear_target_bindings(target)
+            if is_type_alias:
+                source_validated_type_nodes.update(ast.walk(statement.value))
+                safe_type_names.add(statement.targets[0].id)
         elif isinstance(statement, ast.AnnAssign):
-            if not _is_literal(statement.value):
+            if target_has_effectful_store(statement.target):
                 raise SourceValidationError(
-                    "module-level assignments must contain only literal values"
+                    "module-level assignment targets must only bind names"
                 )
+            is_literal = _is_literal(statement.value)
+            is_type_alias = (
+                not is_literal
+                and isinstance(statement.target, ast.Name)
+                and statement.value is not None
+                and _is_safe_type_alias_value(
+                    statement.value,
+                    typing_modules,
+                    safe_type_names,
+                )
+            )
+            if not is_literal and not is_type_alias:
+                raise SourceValidationError(
+                    "module-level assignments must contain only literal values or safe type aliases"
+                )
+            if statement.value is not None:
+                clear_target_bindings(statement.target)
+            if is_type_alias:
+                source_validated_type_nodes.update(ast.walk(statement.value))
+                safe_type_names.add(statement.target.id)
         else:
             raise SourceValidationError(
                 f"module-level {type(statement).__name__} statements are not allowed"
@@ -339,7 +483,11 @@ def _validate_candidate_source(source: str) -> ast.Module:
                     )
             if node.id.startswith("__") or node.id in _FORBIDDEN_NAMES:
                 raise SourceValidationError(f"name {node.id!r} is not allowed")
-            if isinstance(node.ctx, ast.Load) and node.id in module_aliases:
+            if (
+                isinstance(node.ctx, ast.Load)
+                and node.id in module_aliases
+                and node not in source_validated_type_nodes
+            ):
                 parent = parents.get(node)
                 if not (isinstance(parent, ast.Attribute) and parent.value is node):
                     raise SourceValidationError(
@@ -353,7 +501,11 @@ def _validate_candidate_source(source: str) -> ast.Module:
                 if base.attr.startswith("_") or base.attr in _FORBIDDEN_ATTRIBUTES:
                     raise SourceValidationError(f"attribute {base.attr!r} is not allowed")
                 base = base.value
-            if isinstance(base, ast.Name) and base.id in module_aliases:
+            if (
+                isinstance(base, ast.Name)
+                and base.id in module_aliases
+                and node not in source_validated_type_nodes
+            ):
                 if node.value is not base or node.attr not in module_aliases[base.id]:
                     raise SourceValidationError(
                         f"attribute {node.attr!r} is not approved for module {base.id!r}"
@@ -364,7 +516,7 @@ def _validate_candidate_source(source: str) -> ast.Module:
                 targets = list(node.targets)
             else:
                 targets = [node.target]
-            if any(isinstance(target, ast.Attribute) for target in targets):
+            if any(target_mutates_attribute(target) for target in targets):
                 raise SourceValidationError("attribute mutation is not allowed")
 
     return tree
