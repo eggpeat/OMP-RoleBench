@@ -267,6 +267,22 @@ class InvalidRepositoryTests(ContractFixture):
             result.diagnostics,
         )
 
+    def test_preserved_v1_policy_file_required(self) -> None:
+        v1_path = self.root / "contracts/scored-worker-policy.json"
+        if v1_path.exists():
+            v1_path.unlink()
+        result = validate_repository(self.root)
+        self.assertFalse(result.valid)
+        self.assertTrue(
+            any(
+                diagnostic.file == "contracts/scored-worker-policy.json"
+                and diagnostic.message
+                == "required legacy policy file is missing or invalid"
+                for diagnostic in result.diagnostics
+            ),
+            result.diagnostics,
+        )
+
 
 
 class ArtifactValidationTests(ContractFixture):

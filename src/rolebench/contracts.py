@@ -3067,16 +3067,20 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
         if isinstance(task_pack_map, dict) and task_pack_map.get(role) != relative.as_posix():
             diagnostics.append(Diagnostic(relative.as_posix(), "$", f"registry must map role {role!r} to this canonical pack"))
 
-    policy = _safe_schema(resolved, _SCORED_WORKER_POLICY_FILE, diagnostics)
-    if policy is None:
-        diagnostics.append(
-            Diagnostic(
-                _SCORED_WORKER_POLICY_FILE.as_posix(),
-                "$",
-                "required canonical policy file is missing or invalid",
+    for policy_file, policy_kind in (
+        (_SCORED_WORKER_POLICY_V1_FILE, "legacy"),
+        (_SCORED_WORKER_POLICY_FILE, "canonical"),
+    ):
+        policy = _safe_schema(resolved, policy_file, diagnostics)
+        if policy is None:
+            diagnostics.append(
+                Diagnostic(
+                    policy_file.as_posix(),
+                    "$",
+                    f"required {policy_kind} policy file is missing or invalid",
+                )
             )
-        )
-    else:
+            continue
         policy_schema_name = _schema_name_for_artifact(
             "scored-worker-policy",
             policy,
@@ -3087,7 +3091,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
                 _instance_diagnostics(
                     policy,
                     policy_schema,
-                    _SCORED_WORKER_POLICY_FILE,
+                    policy_file,
                 )
             )
         diagnostics.extend(
@@ -3095,7 +3099,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
                 resolved,
                 "scored-worker-policy",
                 policy,
-                _SCORED_WORKER_POLICY_FILE,
+                policy_file,
             )
         )
 
