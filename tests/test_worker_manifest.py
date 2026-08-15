@@ -24,27 +24,38 @@ class WorkerManifestTests(unittest.TestCase):
 
     def policy_digest(self) -> str:
         policy = json.loads(
-            (self.root / "contracts/scored-worker-policy.json").read_text(encoding="utf-8")
+            (self.root / "contracts/scored-worker-policy-v2.json").read_text(encoding="utf-8")
         )
         return sha256(canonical_json(policy).encode("utf-8")).hexdigest()
 
     def manifest(self) -> dict[str, object]:
+        platform = {"os": "linux", "architecture": "amd64", "variant": None}
         return {
-            "schema_version": "omp.worker-run-manifest/v1",
+            "schema_version": "omp.worker-run-manifest/v2",
             "run_id": "worker-run_001",
             "role": "task",
             "task": {"digest_sha256": "1" * 64},
             "policy": {
-                "path": "contracts/scored-worker-policy.json",
+                "path": "contracts/scored-worker-policy-v2.json",
                 "digest_sha256": self.policy_digest(),
             },
             "provider": {"enabled": False},
             "agent": {
                 "image": f"example.invalid/rolebench-agent@sha256:{'a' * 64}",
+                "config_digest_sha256": "e" * 64,
+                "platform": platform,
                 "argv": ["/agent.sh", "--fixture"],
+            },
+            "runner": {
+                "image": f"example.invalid/rolebench-runner@sha256:{'c' * 64}",
+                "config_digest_sha256": "7" * 64,
+                "platform": platform,
+                "argv": ["/runner.sh"],
             },
             "verifier": {
                 "image": f"example.invalid/rolebench-verifier@sha256:{'b' * 64}",
+                "config_digest_sha256": "f" * 64,
+                "platform": platform,
                 "argv": ["/verifier.sh"],
             },
         }
@@ -72,16 +83,107 @@ class WorkerManifestTests(unittest.TestCase):
         result = self.validate()
         self.assertTrue(result.valid, self.rendered(result))
 
+    def test_v1_manifest_uses_the_v1_referenced_policy_schema(self) -> None:
+        policy = json.loads(
+            (self.root / "contracts/scored-worker-policy.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(policy["schema_version"], "omp.scored-worker-policy/v1")
+        self.assertEqual(policy["policy_id"], "rolebench-scored-worker-v1")
+
+        manifest = self.manifest()
+        manifest["schema_version"] = "omp.worker-run-manifest/v1"
+        del manifest["runner"]
+        manifest["policy"] = {
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": sha256(
+                canonical_json(policy).encode("utf-8")
+            ).hexdigest(),
+        }
+
+        result = self.validate(manifest)
+        self.assertTrue(result.valid, self.rendered(result))
+
+        manifest["runner"] = self.manifest()["runner"]
+        result = self.validate(manifest)
+        self.assertFalse(result.valid)
+        self.assertTrue(
+            any(
+                item.json_path == "$" and "runner" in item.message
+                for item in result.diagnostics
+            )
+        )
+
+    def test_manifest_rejects_mismatched_policy_schema_version(self) -> None:
+        for manifest_version, policy_name, expected_policy_version in (
+            (
+                "omp.worker-run-manifest/v1",
+                "scored-worker-policy-v2.json",
+                "omp.scored-worker-policy/v1",
+            ),
+            (
+                "omp.worker-run-manifest/v2",
+                "scored-worker-policy.json",
+                "omp.scored-worker-policy/v2",
+            ),
+        ):
+            with self.subTest(manifest_version=manifest_version):
+                policy_path = self.root / "contracts" / policy_name
+                policy = json.loads(policy_path.read_text(encoding="utf-8"))
+                manifest = self.manifest()
+                manifest["schema_version"] = manifest_version
+                if manifest_version == "omp.worker-run-manifest/v1":
+                    del manifest["runner"]
+                manifest["policy"] = {
+                    "path": f"contracts/{policy_name}",
+                    "digest_sha256": sha256(
+                        canonical_json(policy).encode("utf-8")
+                    ).hexdigest(),
+                }
+
+                messages = self.rendered(self.validate(manifest))
+
+                self.assertIn(
+                    "worker-run-manifest.json:$.policy.path: "
+                    f"{manifest_version} requires {expected_policy_version}, "
+                    f"got {policy['schema_version']!r}",
+                    messages,
+                )
+
+    def test_missing_runner_is_rejected(self) -> None:
+        manifest = self.manifest()
+        del manifest["runner"]
+        result = self.validate(manifest)
+        self.assertFalse(result.valid)
+        self.assertTrue(
+            any(
+                "runner" in item.message or item.json_path in ("$", "$.runner")
+                for item in result.diagnostics
+            )
+        )
+
+    def test_missing_config_or_platform_is_rejected_unconditionally(self) -> None:
+        for container_name in ("agent", "runner", "verifier"):
+            for field in ("config_digest_sha256", "platform"):
+                with self.subTest(container=container_name, field=field):
+                    manifest = self.manifest()
+                    del manifest[container_name][field]  # type: ignore[index]
+                    result = self.validate(manifest)
+                    self.assertFalse(result.valid)
+                    self.assertTrue(
+                        any(
+                            item.json_path in (f"$.{container_name}", f"$.{container_name}.{field}")
+                            and (field in item.message or "required" in item.message)
+                            for item in result.diagnostics
+                        )
+                    )
     def test_evidence_use_requires_exact_qualification_binding(
         self,
     ) -> None:
         base = self.manifest()
         task = base["task"]
-        agent = base["agent"]
-        verifier = base["verifier"]
         self.assertIsInstance(task, dict)
-        self.assertIsInstance(agent, dict)
-        self.assertIsInstance(verifier, dict)
         task.update(
             {
                 "public_tree_digest_sha256": "c" * 64,
@@ -89,16 +191,6 @@ class WorkerManifestTests(unittest.TestCase):
                 "evidence_use": "admission-only",
             }
         )
-        for container, digest in (
-            (agent, "e" * 64),
-            (verifier, "f" * 64),
-        ):
-            container["config_digest_sha256"] = digest
-            container["platform"] = {
-                "os": "linux",
-                "architecture": "amd64",
-                "variant": None,
-            }
         self.assertTrue(
             self.validate(base).valid,
             self.rendered(self.validate(base)),
@@ -140,7 +232,7 @@ class WorkerManifestTests(unittest.TestCase):
 
     def test_schema_version_and_role_are_closed_enums(self) -> None:
         manifest = self.manifest()
-        manifest["schema_version"] = "omp.worker-run-manifest/v2"
+        manifest["schema_version"] = "omp.worker-run-manifest/v99"
         manifest["role"] = "unknown-role"
         result = self.validate(manifest)
         paths = {item.json_path for item in result.diagnostics}
@@ -178,14 +270,21 @@ class WorkerManifestTests(unittest.TestCase):
     def test_argv_must_be_nonempty_and_start_with_a_nonempty_string(self) -> None:
         manifest = self.manifest()
         agent = manifest["agent"]
+        runner = manifest["runner"]
         verifier = manifest["verifier"]
         self.assertIsInstance(agent, dict)
+        self.assertIsInstance(runner, dict)
         self.assertIsInstance(verifier, dict)
         agent["argv"] = []
+        runner["argv"] = [""]
         verifier["argv"] = [""]
         messages = self.rendered(self.validate(manifest))
         self.assertIn(
             "worker-run-manifest.json:$.agent.argv: must contain at least one argument",
+            messages,
+        )
+        self.assertIn(
+            "worker-run-manifest.json:$.runner.argv[0]: first argument must be nonempty",
             messages,
         )
         self.assertIn(
@@ -227,17 +326,34 @@ class WorkerManifestTests(unittest.TestCase):
             self.rendered(self.validate(manifest)),
         )
 
-    def test_agent_and_verifier_images_must_differ(self) -> None:
-        manifest = self.manifest()
-        agent = manifest["agent"]
-        verifier = manifest["verifier"]
-        self.assertIsInstance(agent, dict)
-        self.assertIsInstance(verifier, dict)
-        verifier["image"] = agent["image"]
-        self.assertIn(
-            "worker-run-manifest.json:$.verifier.image: must use a different image digest from the agent",
-            self.rendered(self.validate(manifest)),
-        )
+    def test_agent_runner_and_verifier_images_must_differ(self) -> None:
+        for duplicate_target, duplicate_source, error_path, error_source in (
+            ("runner", "agent", "$.runner.image", "agent"),
+            ("verifier", "agent", "$.verifier.image", "agent"),
+            ("verifier", "runner", "$.verifier.image", "runner"),
+        ):
+            with self.subTest(duplicate_target=duplicate_target, duplicate_source=duplicate_source):
+                manifest = self.manifest()
+                manifest[duplicate_target]["image"] = manifest[duplicate_source]["image"]  # type: ignore[index]
+                self.assertIn(
+                    f"worker-run-manifest.json:{error_path}: must use a different image digest from the {error_source}",
+                    self.rendered(self.validate(manifest)),
+                )
+
+    def test_agent_runner_and_verifier_configs_must_differ(self) -> None:
+        base = self.manifest()
+        for duplicate_target, duplicate_source, error_path, error_source in (
+            ("runner", "agent", "$.runner.config_digest_sha256", "agent"),
+            ("verifier", "agent", "$.verifier.config_digest_sha256", "agent"),
+            ("verifier", "runner", "$.verifier.config_digest_sha256", "runner"),
+        ):
+            with self.subTest(duplicate_target=duplicate_target, duplicate_source=duplicate_source):
+                manifest = json.loads(json.dumps(base))
+                manifest[duplicate_target]["config_digest_sha256"] = manifest[duplicate_source]["config_digest_sha256"]
+                self.assertIn(
+                    f"worker-run-manifest.json:{error_path}: must use a different config digest from the {error_source}",
+                    self.rendered(self.validate(manifest)),
+                )
 
     def test_image_aliases_cannot_reuse_the_same_digest(self) -> None:
         manifest = self.manifest()
@@ -266,7 +382,7 @@ class WorkerManifestTests(unittest.TestCase):
         first = self.validate(manifest)
         self.assertTrue(first.valid, self.rendered(first))
 
-        policy_path = self.root / "contracts/scored-worker-policy.json"
+        policy_path = self.root / "contracts/scored-worker-policy-v2.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy_path.write_text(
             json.dumps(dict(reversed(tuple(policy.items()))), indent=4),

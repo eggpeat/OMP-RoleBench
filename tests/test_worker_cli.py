@@ -14,7 +14,7 @@ from rolebench.fault_harness import FaultHarnessError
 
 
 PRODUCT_ROOT = Path(__file__).resolve().parents[1]
-POLICY_PATH = PRODUCT_ROOT / "contracts" / "scored-worker-policy.json"
+POLICY_PATH = PRODUCT_ROOT / "contracts" / "scored-worker-policy-v2.json"
 SHA = "a" * 64
 
 

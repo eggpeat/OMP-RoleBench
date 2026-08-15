@@ -1,0 +1,34 @@
+{
+  "assignment": {
+    "assignment_method": "author-assigned",
+    "confidentiality": "public",
+    "family_id": "terminal-bench.multi-source-data-merger",
+    "partition": "anchor",
+    "role": "default"
+  },
+  "capability_tags": [
+    "terminal-tool-use",
+    "instruction-following",
+    "interactive-reasoning"
+  ],
+  "decision": "approved",
+  "findings": [],
+  "pack_coverage": {
+    "collective_capabilities": [
+      "terminal-tool-use",
+      "code-editing",
+      "repository-navigation",
+      "instruction-following",
+      "interactive-reasoning"
+    ],
+    "companion_task_id": "terminal-bench.sanitize-git-repo",
+    "status": "complete-for-calibration"
+  },
+  "rationale": "Heterogeneous schema mapping, per-field source fallback, conflict reconciliation, and deterministic ordered reporting materially exercise interactive reasoning. Structured JSON is an artifact constraint, not a tiny-role classification.",
+  "review_type": "split",
+  "reviewed_at": "2026-08-14T17:36:49Z",
+  "reviewer": "rolebench/reviewer/role-fit-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "task_id": "terminal-bench.multi-source-data-merger",
+  "task_version": "2.1-r6"
+}

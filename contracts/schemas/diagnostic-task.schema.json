@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:diagnostic-task:v1",
-  "title": "RoleBench Diagnostic Task v1",
+  "$id": "urn:omp-rolebench:schema:diagnostic-task:v2",
+  "title": "RoleBench Diagnostic Task v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "task_id", "task_version", "content_digest_sha256", "routing_eligible", "family", "split", "authorship", "reviews", "role", "role_contract", "task_mix", "capability_tags", "difficulty", "partition", "source", "license", "assets", "policy", "agent", "admission_agents", "verifier", "objective", "unscored_failures"],
+  "required": ["schema_version", "task_id", "task_version", "content_digest_sha256", "routing_eligible", "family", "split", "authorship", "reviews", "role", "role_contract", "task_mix", "capability_tags", "difficulty", "partition", "source", "license", "assets", "policy", "agent", "admission_agents", "runner", "verifier", "objective", "unscored_failures"],
   "properties": {
-    "schema_version": {"const": "omp.diagnostic-task/v1"},
+    "schema_version": {"const": "omp.diagnostic-task/v2"},
     "task_id": {"$ref": "#/$defs/id"},
     "task_version": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"},
     "content_digest_sha256": {"$ref": "#/$defs/sha256"},
@@ -36,25 +36,27 @@
         "privacy": {"$ref": "#/$defs/review"},
         "license": {
           "type": "object", "additionalProperties": false,
-          "required": ["decision", "reviewer", "reviewed_at", "evidence_digest_sha256", "expression", "redistribution"],
+          "required": ["decision", "reviewer", "reviewed_at", "evidence_path", "evidence_digest_sha256", "expression", "redistribution"],
           "properties": {
-            "decision": {"const": "approved"}, "reviewer": {"$ref": "#/$defs/id"}, "reviewed_at": {"type": "string", "format": "date-time"}, "evidence_digest_sha256": {"$ref": "#/$defs/sha256"},
+            "decision": {"const": "approved"}, "reviewer": {"$ref": "#/$defs/id"}, "reviewed_at": {"type": "string", "format": "date-time"}, "evidence_path": {"$ref": "#/$defs/path"}, "evidence_digest_sha256": {"$ref": "#/$defs/sha256"},
             "expression": {"type": "string", "minLength": 1, "maxLength": 256}, "redistribution": {"enum": ["prohibited", "restricted", "permitted"]}
           }
         },
         "verifier": {
           "type": "object", "additionalProperties": false,
-          "required": ["decision", "reviewer", "reviewed_at", "evidence_digest_sha256", "image", "config_digest_sha256", "platform", "private_tree_digest_sha256"],
+          "required": ["decision", "reviewer", "reviewed_at", "evidence_path", "evidence_digest_sha256", "runner_image", "runner_config_digest_sha256", "runner_platform", "verifier_image", "verifier_config_digest_sha256", "verifier_platform", "private_tree_digest_sha256"],
           "properties": {
-            "decision": {"const": "approved"}, "reviewer": {"$ref": "#/$defs/id"}, "reviewed_at": {"type": "string", "format": "date-time"}, "evidence_digest_sha256": {"$ref": "#/$defs/sha256"},
-            "image": {"$ref": "#/$defs/image"}, "config_digest_sha256": {"$ref": "#/$defs/sha256"}, "platform": {"$ref": "#/$defs/platform"}, "private_tree_digest_sha256": {"$ref": "#/$defs/sha256"}
+            "decision": {"const": "approved"}, "reviewer": {"$ref": "#/$defs/id"}, "reviewed_at": {"type": "string", "format": "date-time"}, "evidence_path": {"$ref": "#/$defs/path"}, "evidence_digest_sha256": {"$ref": "#/$defs/sha256"},
+            "runner_image": {"$ref": "#/$defs/image"}, "runner_config_digest_sha256": {"$ref": "#/$defs/sha256"}, "runner_platform": {"$ref": "#/$defs/platform"},
+            "verifier_image": {"$ref": "#/$defs/image"}, "verifier_config_digest_sha256": {"$ref": "#/$defs/sha256"}, "verifier_platform": {"$ref": "#/$defs/platform"},
+            "private_tree_digest_sha256": {"$ref": "#/$defs/sha256"}
           }
         },
         "split": {
           "type": "object", "additionalProperties": false,
-          "required": ["decision", "reviewer", "reviewed_at", "evidence_digest_sha256", "family_id", "partition", "assignment_method", "confidentiality"],
+          "required": ["decision", "reviewer", "reviewed_at", "evidence_path", "evidence_digest_sha256", "family_id", "partition", "assignment_method", "confidentiality"],
           "properties": {
-            "decision": {"const": "approved"}, "reviewer": {"$ref": "#/$defs/id"}, "reviewed_at": {"type": "string", "format": "date-time"}, "evidence_digest_sha256": {"$ref": "#/$defs/sha256"},
+            "decision": {"const": "approved"}, "reviewer": {"$ref": "#/$defs/id"}, "reviewed_at": {"type": "string", "format": "date-time"}, "evidence_path": {"$ref": "#/$defs/path"}, "evidence_digest_sha256": {"$ref": "#/$defs/sha256"},
             "family_id": {"$ref": "#/$defs/id"}, "partition": {"enum": ["anchor", "adaptive", "holdout"]}, "assignment_method": {"enum": ["author-assigned", "deterministic-hash", "independent-review"]}, "confidentiality": {"enum": ["public", "confidential"]}
           }
         }
@@ -67,12 +69,45 @@
     "difficulty": {"enum": ["easy", "medium", "hard", "expert"]},
     "partition": {"enum": ["anchor", "adaptive", "holdout"]},
     "source": {
-      "type": "object", "additionalProperties": false, "required": ["kind", "version", "digest_sha256"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "version", "digest_sha256"],
       "properties": {
-        "kind": {"enum": ["authored", "session-derived", "omp-gym-import", "synthetic-fixture"]},
+        "kind": {"enum": ["authored", "terminal-bench", "session-derived", "omp-gym-import", "synthetic-fixture"]},
         "version": {"type": "string", "minLength": 1, "maxLength": 128},
-        "digest_sha256": {"$ref": "#/$defs/sha256"}
-      }
+        "digest_sha256": {"$ref": "#/$defs/sha256"},
+        "task": {
+          "type": "string",
+          "pattern": "^terminal-bench/[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "not": {"pattern": "\\.\\."}
+        },
+        "dataset_digest_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"kind": {"const": "terminal-bench"}},
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["task", "dataset_digest_sha256"],
+            "properties": {
+              "version": {
+                "pattern": "^terminal-bench/[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+                "not": {"pattern": "\\.\\."}
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {"required": ["task"]},
+                {"required": ["dataset_digest_sha256"]}
+              ]
+            }
+          }
+        }
+      ]
     },
     "license": {
       "type": "object", "additionalProperties": false, "required": ["expression", "redistribution"],
@@ -108,13 +143,25 @@
         "tamper": {"$ref": "#/$defs/container"}
       }
     },
+    "runner": {"$ref": "#/$defs/container"},
     "verifier": {"$ref": "#/$defs/container"},
     "objective": {
-      "type": "object", "additionalProperties": false, "required": ["mode", "scoring", "criteria"],
+      "type": "object", "additionalProperties": false, "required": ["mode", "scoring", "criteria", "observation"],
       "properties": {
         "mode": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9-]*$"},
         "scoring": {"enum": ["binary", "numeric"]},
-        "criteria": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 1024}}
+        "criteria": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 1024}},
+        "observation": {
+          "type": "object", "additionalProperties": false, "required": ["artifact_kind", "authority", "runner_output_trust"],
+          "properties": {
+            "artifact_kind": {"enum": ["data-only", "executable"]},
+            "authority": {
+              "description": "Declared observation source. Data-only host-process observation is implemented. host-filesystem is reserved and must fail qualification until a confined, provenance-preserving filesystem observer is implemented. source-separated-service is required structurally for executable artifacts, but executable observation remains fail-closed until that observer is implemented.",
+              "enum": ["host-process", "host-filesystem", "source-separated-service"]
+            },
+            "runner_output_trust": {"const": "untrusted"}
+          }
+        }
       }
     },
     "unscored_failures": {"type": "array", "minItems": 4, "maxItems": 4, "prefixItems": [{"const": "infrastructure"}, {"const": "provider"}, {"const": "runner"}, {"const": "verifier"}], "items": false}
@@ -127,6 +174,37 @@
     {
       "if": {"properties": {"partition": {"enum": ["anchor", "adaptive"]}}, "required": ["partition"]},
       "then": {"properties": {"split": {"properties": {"confidentiality": {"const": "public"}}}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "objective": {
+            "properties": {
+              "observation": {
+                "properties": {
+                  "artifact_kind": {"const": "executable"}
+                },
+                "required": ["artifact_kind"]
+              }
+            },
+            "required": ["observation"]
+          }
+        },
+        "required": ["objective"]
+      },
+      "then": {
+        "properties": {
+          "objective": {
+            "properties": {
+              "observation": {
+                "properties": {
+                  "authority": {"const": "source-separated-service"}
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -140,11 +218,12 @@
     "role_contract": {"type": "object", "additionalProperties": false, "required": ["contract_id", "digest_sha256"], "properties": {"contract_id": {"$ref": "#/$defs/id"}, "digest_sha256": {"$ref": "#/$defs/sha256"}}},
     "review": {
       "type": "object", "additionalProperties": false,
-      "required": ["decision", "reviewer", "reviewed_at", "evidence_digest_sha256"],
+      "required": ["decision", "reviewer", "reviewed_at", "evidence_path", "evidence_digest_sha256"],
       "properties": {
         "decision": {"const": "approved"},
         "reviewer": {"$ref": "#/$defs/id"},
         "reviewed_at": {"type": "string", "format": "date-time"},
+        "evidence_path": {"$ref": "#/$defs/path"},
         "evidence_digest_sha256": {"$ref": "#/$defs/sha256"}
       }
     },

@@ -1,17 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:attempt-outcome:v1",
-  "title": "RoleBench Attempt Outcome v1",
+  "$id": "urn:omp-rolebench:schema:attempt-outcome:v2",
+  "title": "RoleBench Attempt Outcome v2",
   "$comment": "Deterministic accounting decision for one attempt. Only valid, scored accepted or rejected outcomes affect model quality.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "observation_id", "observation_digest_sha256", "attempt", "stage", "model_outcome", "verifier_outcome", "failure_domain", "disposition", "valid_attempt", "counts_toward_quality", "reason_code", "termination", "digests"],
   "properties": {
-    "schema_version": {"const": "omp.attempt-outcome/v1"},
+    "schema_version": {"const": "omp.attempt-outcome/v2"},
     "observation_id": {"type": "string", "minLength": 1},
     "observation_digest_sha256": {"$ref": "#/$defs/sha256"},
     "attempt": {"$ref": "#/$defs/attempt"},
-    "stage": {"enum": ["queued", "environment", "agent", "artifact", "verifier", "complete"]},
+    "stage": {"enum": ["queued", "environment", "agent", "artifact", "runner", "runner-evidence", "verifier", "complete"]},
     "model_outcome": {"enum": ["accepted", "rejected", "no-valid-attempt"]},
     "verifier_outcome": {"enum": ["accepted", "rejected", "indeterminate", "error"]},
     "failure_domain": {
@@ -87,6 +87,7 @@
               "task_public_tree",
               "verifier_private_tree",
               "agent_image_config",
+              "runner_image_config",
               "verifier_image_config"
             ],
             "not": {"required": ["qualification"]}
@@ -109,6 +110,7 @@
               "task_public_tree",
               "verifier_private_tree",
               "agent_image_config",
+              "runner_image_config",
               "verifier_image_config"
             ]
           }
@@ -148,19 +150,22 @@
     "digests": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["task", "config", "agent_image", "verifier_image", "runtime_policy", "artifact", "trajectory"],
+      "required": ["task", "config", "agent_image", "runner_image", "verifier_image", "runtime_policy", "artifact", "runner_evidence", "trajectory"],
       "properties": {
         "task": {"$ref": "#/$defs/sha256"},
         "config": {"$ref": "#/$defs/sha256"},
         "agent_image": {"$ref": "#/$defs/sha256"},
+        "runner_image": {"$ref": "#/$defs/sha256"},
         "verifier_image": {"$ref": "#/$defs/sha256"},
         "runtime_policy": {"$ref": "#/$defs/sha256"},
         "artifact": {"$ref": "#/$defs/nullableSha256"},
+        "runner_evidence": {"$ref": "#/$defs/nullableSha256"},
         "trajectory": {"$ref": "#/$defs/nullableSha256"},
         "qualification": {"$ref": "#/$defs/sha256"},
         "task_public_tree": {"$ref": "#/$defs/sha256"},
         "verifier_private_tree": {"$ref": "#/$defs/sha256"},
         "agent_image_config": {"$ref": "#/$defs/sha256"},
+        "runner_image_config": {"$ref": "#/$defs/sha256"},
         "verifier_image_config": {"$ref": "#/$defs/sha256"}
       }
     }

@@ -1,0 +1,31 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Imported production-shaped token and cloud/history metadata were unsafe to publish.",
+      "resolution": "Replaced all imported content with minimal manifestly synthetic EXAMPLE fixtures; regenerated probes, oracle, images, and evidence."
+    }
+  ],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-14T17:36:49Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "7b6576b6b89ba6cc264a2426cd2bc8e894387d898a9f89137983ca58e683de83",
+    "public_tree_digest_sha256": "8ec5ca848187328046ed9c0617092fdb3c6ece7c16cff88555d655487551f389",
+    "verifier_digest_sha256": "f08e1743ab48d21baf587f94eb5dee23975db2b347cdf6156553413ef9b6cb35",
+    "verifier_private_tree_digest_sha256": "bba4905d65622fbd093b035f1d171c113250f35a5bd8f646dcbb8e13a37cefa1",
+    "workspace_digest_sha256": "354a910add31377a53fbbf6608e6568b7ee2305923e8a43ec007f4d1c25479ad"
+  },
+  "task_id": "terminal-bench.sanitize-git-repo",
+  "task_version": "2.1-r6"
+}

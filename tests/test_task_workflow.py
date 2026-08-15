@@ -13,6 +13,7 @@ import pytest
 from rolebench.contracts import (
     canonical_sha256,
     file_sha256,
+    task_execution_sha256,
     tree_sha256,
     validate_value,
 )
@@ -239,7 +240,7 @@ def _admission_report(
     run_id = f"{probe}-{trial}"
     reward = 1 if verifier_outcome == "accepted" else 0
     observation = {
-        "schema_version": "omp.attempt-observation/v1",
+        "schema_version": "omp.attempt-observation/v2",
         "observation_id": f"{run_id}-observation",
         "observed_at": "2026-08-13T00:00:00Z",
         "attempt": {
@@ -253,6 +254,9 @@ def _admission_report(
             "agent_started": True,
             "agent_finished": True,
             "artifact_frozen": True,
+            "runner_started": True,
+            "runner_finished": True,
+            "runner_evidence_frozen": True,
             "verifier_started": True,
             "verifier_finished": True,
         },
@@ -280,17 +284,20 @@ def _admission_report(
         "integrity": {"state": "verified"},
         "evidence_use": "admission-only",
         "digests": {
-            "task": canonical_sha256(task),
+            "task": task_execution_sha256(task),
             "config": "2" * 64,
-            "agent_image": command_digest,
-            "verifier_image": "7" * 64,
+            "agent_image": str(task["admission_agents"][probe]["image"]).rpartition("@sha256:")[2],
+            "runner_image": str(task["runner"]["image"]).rpartition("@sha256:")[2],
+            "verifier_image": str(task["verifier"]["image"]).rpartition("@sha256:")[2],
             "runtime_policy": "2" * 64,
             "artifact": artifact_digest,
+            "runner_evidence": "e" * 64,
             "trajectory": sha256(run_id.encode()).hexdigest(),
             "task_public_tree": "3" * 64,
             "verifier_private_tree": "4" * 64,
             "agent_image_config": command_digest,
-            "verifier_image_config": "8" * 64,
+            "runner_image_config": task["runner"]["config_digest_sha256"],
+            "verifier_image_config": task["verifier"]["config_digest_sha256"],
         },
     }
     report = {
@@ -300,17 +307,22 @@ def _admission_report(
         "external_provider_calls": 0,
         "policy_digest_sha256": "2" * 64,
         "artifact_digest_sha256": artifact_digest,
+        "runner_evidence_digest_sha256": "e" * 64,
         "observation": observation,
         "outcome": classify_attempt(observation),
         "doctor": {"ready": True},
         "isolation": {
             "agent": {"verified": True},
+            "runner": {"verified": True},
             "verifier": {"verified": True},
             "distinct_images": True,
             "resource_enforcement": True,
-            "task_image_binding_verified": True,
+            "image_binding": {"agent": True, "runner": True, "verifier": True},
+            "image_binding_verified": True,
             "artifact_frozen_after_agent_exit": True,
-            "immutable_handoff": True,
+            "runner_evidence_frozen_after_runner_exit": True,
+            "immutable_agent_runner_handoff": True,
+            "immutable_runner_verifier_handoff": True,
         },
         "diagnostics": [],
     }
@@ -318,17 +330,57 @@ def _admission_report(
     _write_json(path, report)
     return path
 
+def _bind_verifier_review_reports(
+    root: Path,
+    task: dict[str, object],
+    report_paths: list[Path],
+) -> None:
+    evidence_path = root / "reviews/verifier.json"
+    _write_json(
+        evidence_path,
+        {
+            "report_digests_sha256": [
+                file_sha256(path)
+                for path in report_paths
+            ]
+        },
+    )
+    verifier_review = task["reviews"]["verifier"]  # type: ignore[index]
+    verifier_review["evidence_path"] = "reviews/verifier.json"  # type: ignore[index]
+    verifier_review["evidence_digest_sha256"] = file_sha256(  # type: ignore[index]
+        evidence_path
+    )
+    _write_json(root / "tasks/task.json", task)
 
-def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict[str, object]]:
+
+def _qualification_pair(
+    root: Path,
+    *,
+    observation_authority: str = "host-process",
+) -> tuple[Path, Path, dict[str, object], dict[str, object]]:
     task_path = root / "tasks/task.json"
     task = {
+        "schema_version": "omp.diagnostic-task/v2",
         "task_id": "fixture", "task_version": "1", "content_digest_sha256": "1" * 64,
         "role": "task", "partition": "anchor", "routing_eligible": False,
         "authorship": {"author": "author"},
         "reviews": {
             "privacy": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "c" * 64},
             "license": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "d" * 64},
-            "verifier": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "e" * 64},
+            "verifier": {
+                "decision": "approved",
+                "reviewer": "reviewer",
+                "reviewed_at": "2026-01-01T00:00:00Z",
+                "evidence_digest_sha256": "e" * 64,
+                "evidence_path": "reviews/verifier.json",
+                "runner_image": "runner.example/task@sha256:" + "f" * 64,
+                "runner_config_digest_sha256": "d" * 64,
+                "runner_platform": {"os": "linux", "architecture": "amd64", "variant": None},
+                "verifier_image": "verifier.example/task@sha256:" + "7" * 64,
+                "verifier_config_digest_sha256": "8" * 64,
+                "verifier_platform": {"os": "linux", "architecture": "amd64", "variant": None},
+                "private_tree_digest_sha256": "4" * 64,
+            },
             "split": {"decision": "approved", "reviewer": "reviewer", "reviewed_at": "2026-01-01T00:00:00Z", "evidence_digest_sha256": "f" * 64},
         },
         "policy": {"path": "contracts/policy.json", "digest_sha256": "2" * 64},
@@ -365,11 +417,28 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
                 "argv": ["tamper"],
             },
         },
+        "runner": {
+            "image": "runner.example/task@sha256:" + "f" * 64,
+            "config_digest_sha256": "d" * 64,
+            "platform": {"os": "linux", "architecture": "amd64", "variant": None},
+            "asset_tree_digest_sha256": "3" * 64,
+            "argv": ["runner"],
+        },
         "verifier": {
             "image": "verifier.example/task@sha256:" + "7" * 64,
             "config_digest_sha256": "8" * 64,
             "platform": {"os": "linux", "architecture": "amd64", "variant": None},
             "asset_tree_digest_sha256": "4" * 64, "argv": ["verify"],
+        },
+        "objective": {
+            "mode": "file",
+            "scoring": "binary",
+            "criteria": ["return exact contents of workspace/input.txt"],
+            "observation": {
+                "artifact_kind": "data-only",
+                "authority": observation_authority,
+                "runner_output_trust": "untrusted",
+            },
         },
     }
     _write_json(task_path, task)
@@ -427,26 +496,45 @@ def _qualification_pair(root: Path) -> tuple[Path, Path, dict[str, object], dict
         command_digest="e" * 64,
         artifact_digest="9" * 64,
     )
+    _bind_verifier_review_reports(
+        root,
+        task,
+        [
+            baseline,
+            baseline_repeat,
+            reference,
+            reference_repeat,
+            tamper,
+            tamper_repeat,
+        ],
+    )
     qualification_path = root / "qualifications/task.json"
     qualification = {
+        "schema_version": "omp.task-qualification/v2",
         "task_id": "fixture", "task_version": "1", "content_digest_sha256": "1" * 64,
         "source_task": {"path": "tasks/task.json", "digest_sha256": canonical_sha256(task)},
         "reviews": task["reviews"],
-        "verifier_provenance": {
-            "reviewer_id": "reviewer", "verifier_image": task["verifier"]["image"],
+        "evaluation_provenance": {
+            "reviewer_id": "reviewer",
+            "runner_image": task["runner"]["image"],
+            "runner_config_digest_sha256": task["runner"]["config_digest_sha256"],
+            "runner_platform": task["runner"]["platform"],
+            "verifier_image": task["verifier"]["image"],
             "verifier_config_digest_sha256": task["verifier"]["config_digest_sha256"],
             "verifier_platform": task["verifier"]["platform"],
-            "review_digest_sha256": "e" * 64,
+            "review_digest_sha256": task["reviews"]["verifier"]["evidence_digest_sha256"],
         },
         "observed_mapping": {
-            "task_digest_sha256": canonical_sha256(task),
+            "task_digest_sha256": task_execution_sha256(task),
             "public_tree_digest_sha256": "3" * 64,
             "verifier_private_tree_digest_sha256": "4" * 64,
             "agent_config_digest_sha256": "6" * 64,
+            "runner_config_digest_sha256": "d" * 64,
             "verifier_config_digest_sha256": "8" * 64,
         },
         "checks": {
-            "privacy": "pass", "license": "pass", "verifier_isolation": "pass",
+            "privacy": "pass", "license": "pass", "runner_isolation": "pass", "verifier_isolation": "pass",
+            "observation_authority": "pass",
             "tamper_resistance": {
                 "result": "pass",
                 "command_digest_sha256": "e" * 64,
@@ -659,6 +747,374 @@ def test_generate_qualification_uses_repeated_distinct_bound_reports(
         )
 
 
+def test_generate_task_qualification_v1_legacy_preserves_qualification_behavior(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    task["schema_version"] = "omp.diagnostic-task/v1"
+    task.pop("runner")
+    objective = task["objective"]  # type: ignore[assignment]
+    objective.pop("observation")  # type: ignore[union-attr]
+    reviews = task["reviews"]
+    for review in reviews.values():  # type: ignore[union-attr]
+        review.pop("evidence_path", None)
+    verifier_review = reviews["verifier"]  # type: ignore[index]
+    verifier_review["image"] = verifier_review.pop("verifier_image")  # type: ignore[union-attr]
+    verifier_review["config_digest_sha256"] = verifier_review.pop(  # type: ignore[union-attr]
+        "verifier_config_digest_sha256"
+    )
+    verifier_review["platform"] = verifier_review.pop("verifier_platform")  # type: ignore[union-attr]
+    for field in (
+        "runner_image",
+        "runner_config_digest_sha256",
+        "runner_platform",
+    ):
+        verifier_review.pop(field)  # type: ignore[union-attr]
+    _write_json(task_path, task)
+
+    def _v1_report(probe: str, trial: int, verifier_outcome: str, cmd_digest: str, art_digest: str) -> Path:
+        run_id = f"v1-{probe}-{trial}"
+        reward = 1 if verifier_outcome == "accepted" else 0
+        obs = {
+            "schema_version": "omp.attempt-observation/v1",
+            "observation_id": f"{run_id}-obs",
+            "observed_at": "2026-08-13T00:00:00Z",
+            "attempt": {"attempt_id": run_id, "number": 1, "previous_attempt_id": None},
+            "stage": "complete",
+            "lifecycle": {
+                "environment_started": True, "agent_started": True, "agent_finished": True,
+                "artifact_frozen": True, "verifier_started": True, "verifier_finished": True,
+            },
+            "readiness": {"environment": "ready", "runner": "healthy", "provider": "failed"},
+            "issues": [],
+            "provider": {"request_started": False, "http_status": None},
+            "termination": {"kind": "completed", "exit_code": 0, "signal": None, "oom_scope": "none"},
+            "verifier": {"outcome": verifier_outcome, "result_valid": True, "reward": reward},
+            "integrity": {"state": "verified"},
+            "evidence_use": "admission-only",
+            "digests": {
+                "task": canonical_sha256(task),
+                "config": "2" * 64,
+                "agent_image": "9" * 64 if probe == "baseline" else ("b" * 64 if probe == "reference" else "d" * 64),
+                "agent_image_config": cmd_digest,
+                "verifier_image": "7" * 64,
+                "verifier_image_config": "8" * 64,
+                "runtime_policy": "2" * 64,
+                "artifact": art_digest,
+                "trajectory": sha256(run_id.encode()).hexdigest(),
+                "task_public_tree": "3" * 64,
+                "verifier_private_tree": "4" * 64,
+            },
+        }
+        rep = {
+            "schema_version": "omp.worker-run-report/v1",
+            "run_id": run_id,
+            "passed": True,
+            "external_provider_calls": 0,
+            "policy_digest_sha256": "2" * 64,
+            "artifact_digest_sha256": art_digest,
+            "observation": obs,
+            "outcome": classify_attempt(obs),
+            "doctor": {"ready": True},
+            "isolation": {
+                "agent": {"verified": True}, "verifier": {"verified": True},
+                "distinct_images": True, "resource_enforcement": True,
+                "task_image_binding_verified": True, "artifact_frozen_after_agent_exit": True,
+                "immutable_handoff": True,
+            },
+            "diagnostics": [],
+        }
+        p = tmp_path / f"evidence/{run_id}.json"
+        _write_json(p, rep)
+        return p
+
+    v1_reports = {
+        "baseline": [
+            _v1_report("baseline", 1, "rejected", "a" * 64, "1" * 64),
+            _v1_report("baseline", 2, "rejected", "a" * 64, "1" * 64),
+            _v1_report("baseline", 3, "rejected", "a" * 64, "1" * 64),
+        ],
+        "reference": [
+            _v1_report("reference", 1, "accepted", "c" * 64, "5" * 64),
+            _v1_report("reference", 2, "accepted", "c" * 64, "5" * 64),
+            _v1_report("reference", 3, "accepted", "c" * 64, "5" * 64),
+        ],
+        "tamper": [
+            _v1_report("tamper", 1, "rejected", "e" * 64, "9" * 64),
+            _v1_report("tamper", 2, "rejected", "e" * 64, "9" * 64),
+            _v1_report("tamper", 3, "rejected", "e" * 64, "9" * 64),
+        ],
+    }
+
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+
+    out = tmp_path / "qualifications/v1-generated.json"
+    qualification = generate_task_qualification(
+        tmp_path,
+        task_path,
+        v1_reports["baseline"],
+        v1_reports["reference"],
+        v1_reports["tamper"],
+        out,
+        reviewer="reviewer",
+    )
+    assert qualification["schema_version"] == "omp.task-qualification/v1"
+    assert qualification["decision"] == "calibration-required"
+    assert "verifier_provenance" in qualification
+    assert "evaluation_provenance" not in qualification
+    assert qualification["verifier_provenance"]["reviewer_id"] == "reviewer"
+    assert qualification["verifier_provenance"]["verifier_image"] == task["verifier"]["image"]
+    assert "runner_image" not in qualification["verifier_provenance"]
+    assert qualification["observed_mapping"]["task_digest_sha256"] == canonical_sha256(task)
+    assert "runner_config_digest_sha256" not in qualification["observed_mapping"]
+    assert "runner_isolation" not in qualification["checks"]
+    assert "observation_authority" not in qualification["checks"]
+    assert len(qualification["checks"]["baseline_fails"]["evidence"]) == 3
+    assert len(qualification["checks"]["reference_passes"]["evidence"]) == 3
+    assert len(qualification["checks"]["tamper_resistance"]["evidence"]) == 3
+
+    checked = check_task_qualification(tmp_path, task_path, out)
+    assert checked["valid"] is True
+    assert checked["decision"] == "calibration-required"
+
+    with pytest.raises(TaskAdmissionError, match="two to eight runs"):
+        generate_task_qualification(
+            tmp_path,
+            task_path,
+            v1_reports["baseline"][:1],
+            v1_reports["reference"][:1],
+            v1_reports["tamper"][:1],
+            tmp_path / "qualifications/v1-too-few.json",
+            reviewer="reviewer",
+        )
+
+
+def test_generate_qualification_v2_fail_closed_assertions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+
+    # Fail-closed: missing evidence_path in v2 verifier review
+    no_ev_task = json.loads(json.dumps(task))
+    no_ev_task["reviews"]["verifier"].pop("evidence_path")
+    no_ev_path = tmp_path / "tasks/no-evidence-task.json"
+    _write_json(no_ev_path, no_ev_task)
+    with pytest.raises(TaskAdmissionError, match="verifier review evidence path is missing"):
+        generate_task_qualification(
+            tmp_path,
+            no_ev_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/no-ev.json",
+            reviewer="reviewer",
+        )
+
+    # Fail-closed: forged / mismatched report digests in verifier review
+    forged_ev_file = tmp_path / "reviews/forged-evidence.json"
+    _write_json(forged_ev_file, {"report_digests_sha256": ["0" * 64] * 6})
+    forged_task = json.loads(json.dumps(task))
+    forged_task["reviews"]["verifier"]["evidence_path"] = "reviews/forged-evidence.json"
+    forged_task_path = tmp_path / "tasks/forged-task.json"
+    _write_json(forged_task_path, forged_task)
+    with pytest.raises(TaskAdmissionError, match="verifier review does not attest the exact qualification reports"):
+        generate_task_qualification(
+            tmp_path,
+            forged_task_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/forged.json",
+            reviewer="reviewer",
+        )
+
+    # Fail-closed: missing runner in v2 task
+    no_runner_task = json.loads(json.dumps(task))
+    no_runner_task.pop("runner")
+    no_runner_path = tmp_path / "tasks/no-runner-task.json"
+    _write_json(no_runner_path, no_runner_task)
+    with pytest.raises(TaskAdmissionError, match="task bindings are incomplete"):
+        generate_task_qualification(
+            tmp_path,
+            no_runner_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/no-runner.json",
+            reviewer="reviewer",
+        )
+
+
+@pytest.mark.parametrize("review_name", ["privacy", "verifier"])
+def test_generate_qualification_rejects_task_with_approved_failed_review(
+    tmp_path: Path,
+    review_name: str,
+) -> None:
+    shutil.copytree(Path(__file__).parents[1] / "contracts", tmp_path / "contracts")
+    task_path = (
+        tmp_path
+        / "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/task.json"
+    )
+    task = json.loads(task_path.read_text(encoding="utf-8"))
+    review = task["reviews"][review_name]
+    evidence_path = tmp_path / review["evidence_path"]
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    first_check = next(iter(evidence["checks"]))
+    evidence["checks"][first_check] = "fail"
+    _write_json(evidence_path, evidence)
+    review["evidence_digest_sha256"] = file_sha256(evidence_path)
+    _write_json(task_path, task)
+
+    output = tmp_path / f"qualifications/rejected-{review_name}-review.json"
+    with pytest.raises(TaskAdmissionError, match="diagnostic task is invalid"):
+        generate_task_qualification(
+            tmp_path,
+            task_path,
+            [],
+            [],
+            [],
+            output,
+            reviewer=task["reviews"]["verifier"]["reviewer"],
+        )
+    assert not output.exists()
+
+def test_host_filesystem_observation_authority_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, qualification_path, _, _ = _qualification_pair(
+        tmp_path,
+        observation_authority="host-filesystem",
+    )
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+
+    checked = check_task_qualification(
+        tmp_path,
+        task_path,
+        qualification_path,
+    )
+
+    assert checked["valid"] is False
+    assert (
+        "qualification decision must be rejected"
+        in checked["diagnostics"]
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+    generated = generate_task_qualification(
+        tmp_path,
+        task_path,
+        reports["baseline"],
+        reports["reference"],
+        reports["tamper"],
+        tmp_path / "qualifications/host-filesystem.json",
+        reviewer="reviewer",
+    )
+    assert generated["checks"]["observation_authority"] == "fail"
+    assert generated["decision"] == "rejected"
+
+
+def test_generate_qualification_rejects_extra_attested_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+    extra = tmp_path / "evidence/baseline-3.json"
+    extra_report = json.loads(reports["baseline"][1].read_text())
+    extra_report["run_id"] = "baseline-run-3"
+    _write_json(extra, extra_report)
+    reports["baseline"].append(extra)
+    _bind_verifier_review_reports(
+        tmp_path,
+        task,
+        [
+            *reports["baseline"],
+            *reports["reference"],
+            *reports["tamper"],
+        ],
+    )
+
+    with pytest.raises(
+        TaskAdmissionError,
+        match="each qualification probe requires exactly two runs",
+    ):
+        generate_task_qualification(
+            tmp_path,
+            task_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/extra-report.json",
+            reviewer="reviewer",
+        )
+
+
+def test_generate_qualification_rejects_scalar_probe_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, _, _ = _qualification_pair(tmp_path)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    report = tmp_path / "evidence/baseline-1.json"
+
+    with pytest.raises(
+        TaskAdmissionError,
+        match="each qualification probe requires exactly two runs",
+    ):
+        generate_task_qualification(
+            tmp_path,
+            task_path,
+            report,  # type: ignore[arg-type]
+            [report, report],
+            [report, report],
+            tmp_path / "qualifications/scalar-probe.json",
+            reviewer="reviewer",
+        )
+
+
 def test_generate_qualification_rejects_nondeterministic_probe_artifacts(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -697,6 +1153,302 @@ def test_generate_qualification_rejects_nondeterministic_probe_artifacts(
             reports["tamper"],
             tmp_path / "qualifications/nondeterministic.json",
             reviewer="reviewer",
+        )
+
+
+def test_qualification_revalidation_rejects_mismatched_runner_binding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, qualification_path, task, qualification = _qualification_pair(tmp_path)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    task["runner"]["config_digest_sha256"] = "9" * 64
+    _write_json(task_path, task)
+    result = check_task_qualification(tmp_path, task_path, qualification_path)
+    assert result["valid"] is False
+    assert any(
+        "evidence is invalid" in diag
+        or "runner config provenance does not match" in diag
+        or "observed mapping does not match" in diag
+        for diag in result["diagnostics"]
+    )
+
+
+def test_generate_qualification_executable_task_is_rejected(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    task["objective"]["observation"] = {
+        "artifact_kind": "executable",
+        "authority": "source-separated-service",
+        "runner_output_trust": "untrusted",
+    }
+    _write_json(task_path, task)
+    new_task_digest = task_execution_sha256(task)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+    for report_list in reports.values():
+        for rpath in report_list:
+            rep = json.loads(rpath.read_text())
+            rep["observation"]["digests"]["task"] = new_task_digest
+            rep["outcome"] = classify_attempt(rep["observation"])
+            _write_json(rpath, rep)
+    _bind_verifier_review_reports(
+        tmp_path,
+        task,
+        [
+            *reports["baseline"],
+            *reports["reference"],
+            *reports["tamper"],
+        ],
+    )
+    output = tmp_path / "qualifications/executable_rejected.json"
+    qualification = generate_task_qualification(
+        tmp_path,
+        task_path,
+        reports["baseline"],
+        reports["reference"],
+        reports["tamper"],
+        output,
+        reviewer="reviewer",
+    )
+    assert qualification["checks"]["observation_authority"] == "fail"
+    assert qualification["decision"] == "rejected"
+
+
+def test_image_inspection_binds_exact_stage_label(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    image = "example.invalid/runner@sha256:" + "a" * 64
+    container = {
+        "image": image,
+        "config_digest_sha256": "b" * 64,
+        "platform": {
+            "os": "linux",
+            "architecture": "amd64",
+            "variant": None,
+        },
+        "argv": ["/runner.py"],
+    }
+    labels = {
+        "org.omp.rolebench.task.role": "task",
+        "org.omp.rolebench.task.stage": "runner",
+        "org.omp.rolebench.task.public-tree-sha256": "c" * 64,
+    }
+    image_data = {
+        "Id": "sha256:" + "b" * 64,
+        "RepoDigests": [image],
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:" + "a" * 64,
+        },
+        "Os": "linux",
+        "Architecture": "amd64",
+        "Variant": None,
+        "Config": {"Labels": labels},
+    }
+    monkeypatch.setattr(
+        task_workflow,
+        "_docker_json",
+        lambda *args: image_data,
+    )
+
+    observed = task_workflow._inspect_image(
+        "docker",
+        container,
+        "task",
+        "c" * 64,
+        "d" * 64,
+        stage="runner",
+        include_stage_label=True,
+    )
+    assert observed["image"] == image
+
+    labels["org.omp.rolebench.task.stage"] = "agent"
+    with pytest.raises(
+        TaskAdmissionError,
+        match="labels do not match",
+    ):
+        task_workflow._inspect_image(
+            "docker",
+            container,
+            "task",
+            "c" * 64,
+            "d" * 64,
+            stage="runner",
+            include_stage_label=True,
+        )
+
+
+def test_image_inspection_extracts_distinct_oci_config_digest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_data = b'{"architecture":"amd64","os":"linux"}'
+    config_digest = sha256(config_data).hexdigest()
+    manifest_data = json.dumps(
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "digest": f"sha256:{config_digest}",
+                "size": len(config_data),
+            },
+            "layers": [],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    manifest_digest = sha256(manifest_data).hexdigest()
+    index_data = json.dumps(
+        {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": f"sha256:{manifest_digest}",
+                    "size": len(manifest_data),
+                }
+            ],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    archive_path = tmp_path / "image.tar"
+    with tarfile.open(archive_path, "w") as archive:
+        for name, data in (
+            ("index.json", index_data),
+            (
+                f"blobs/sha256/{manifest_digest}",
+                manifest_data,
+            ),
+            (f"blobs/sha256/{config_digest}", config_data),
+        ):
+            entry = tarfile.TarInfo(name)
+            entry.size = len(data)
+            archive.addfile(entry, io.BytesIO(data))
+
+    image = f"example.invalid/runner@sha256:{manifest_digest}"
+    container = {
+        "image": image,
+        "config_digest_sha256": config_digest,
+        "argv": ["--rolebench-run"],
+        "platform": {
+            "os": "linux",
+            "architecture": "amd64",
+            "variant": None,
+        },
+    }
+    image_data = {
+        "Id": f"sha256:{manifest_digest}",
+        "RepoDigests": [image],
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": f"sha256:{manifest_digest}",
+        },
+        "Os": "linux",
+        "Architecture": "amd64",
+        "Variant": None,
+        "Config": {
+            "Labels": {
+                "org.omp.rolebench.task.role": "task",
+                "org.omp.rolebench.task.stage": "runner",
+                "org.omp.rolebench.task.public-tree-sha256": "c" * 64,
+            }
+        },
+    }
+
+    monkeypatch.setattr(
+        task_workflow,
+        "_docker_json",
+        lambda *_args: image_data,
+    )
+
+    def export_image(
+        _docker: str,
+        arguments: tuple[str, ...],
+        **kwargs: object,
+    ) -> SimpleNamespace:
+        assert arguments == ("image", "save", image)
+        assert kwargs["timeout"] == 300
+        assert (
+            kwargs["output_limit"]
+            == task_workflow.MAX_IMAGE_ARCHIVE_BYTES
+        )
+        output_sink = kwargs["output_sink"]
+        assert hasattr(output_sink, "write")
+        output_sink.write(archive_path.read_bytes())
+        return SimpleNamespace(
+            returncode=0,
+            timed_out=False,
+            overflowed=False,
+            stdout=b"",
+        )
+
+    monkeypatch.setattr(task_workflow, "_docker_result", export_image)
+    inspected = task_workflow._inspect_image(
+        "docker",
+        container,
+        "task",
+        "c" * 64,
+        "d" * 64,
+        stage="runner",
+        include_stage_label=True,
+    )
+
+    assert inspected["config_digest_sha256"] == config_digest
+
+
+def test_image_inspection_rejects_oversized_config_archive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest_digest = "a" * 64
+    image = f"example.invalid/runner@sha256:{manifest_digest}"
+    image_data = {"Id": f"sha256:{manifest_digest}"}
+
+    def export_image(
+        _docker: str,
+        arguments: tuple[str, ...],
+        **kwargs: object,
+    ) -> SimpleNamespace:
+        assert arguments == ("image", "save", image)
+        assert (
+            kwargs["output_limit"]
+            == task_workflow.MAX_IMAGE_ARCHIVE_BYTES
+        )
+        output_sink = kwargs["output_sink"]
+        assert hasattr(output_sink, "write")
+        output_sink.write(b"partial archive")
+        return SimpleNamespace(
+            returncode=-9,
+            timed_out=False,
+            overflowed=True,
+            stdout=b"",
+        )
+
+    monkeypatch.setattr(task_workflow, "_docker_result", export_image)
+    with pytest.raises(TaskAdmissionError, match="exceeded size limit"):
+        task_workflow._effective_image_config_digest(
+            "docker",
+            image,
+            image_data,
+            manifest_digest,
         )
 
 
@@ -810,7 +1562,7 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
         admission_output,
     )
     assert admission_manifest["task"] == {
-        "digest_sha256": canonical_sha256(task),
+        "digest_sha256": task_execution_sha256(task),
         "public_tree_digest_sha256": "3" * 64,
         "verifier_private_tree_digest_sha256": "4" * 64,
         "evidence_use": "admission-only",
@@ -823,9 +1575,9 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
     output = tmp_path / ".rolebench/runs/run.json"
     manifest = prepare_worker_manifest(tmp_path, task_path, qualification_path, "run-1", output)
     assert manifest == {
-        "schema_version": "omp.worker-run-manifest/v1", "run_id": "run-1", "role": "task",
+        "schema_version": "omp.worker-run-manifest/v2", "run_id": "run-1", "role": "task",
         "task": {
-            "digest_sha256": canonical_sha256(task),
+            "digest_sha256": task_execution_sha256(task),
             "qualification_digest_sha256": canonical_sha256(qualification),
             "public_tree_digest_sha256": "3" * 64,
             "verifier_private_tree_digest_sha256": "4" * 64,
@@ -833,6 +1585,7 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
         },
         "policy": task["policy"], "provider": {"enabled": False},
         "agent": {key: task["agent"][key] for key in ("image", "config_digest_sha256", "platform", "argv")},
+        "runner": {key: task["runner"][key] for key in ("image", "config_digest_sha256", "platform", "argv")},
         "verifier": {key: task["verifier"][key] for key in ("image", "config_digest_sha256", "platform", "argv")},
     }
     with pytest.raises(TaskWorkflowError):
@@ -841,7 +1594,237 @@ def test_prepare_manifest_exact_mapping_holdout_and_no_overwrite(tmp_path: Path,
     task["partition"] = "holdout"
     _write_json(task_path, task)
     qualification["source_task"]["digest_sha256"] = canonical_sha256(task)
-    qualification["observed_mapping"]["task_digest_sha256"] = canonical_sha256(task)
+    qualification["observed_mapping"]["task_digest_sha256"] = task_execution_sha256(task)
     _write_json(qualification_path, qualification)
     with pytest.raises(TaskAdmissionError):
         prepare_worker_manifest(tmp_path, task_path, qualification_path, "run-2", tmp_path / ".rolebench/runs/holdout.json")
+
+
+def test_v1_qualification_check_and_manifest_replay(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, qualification_path, task, qualification = (
+        _qualification_pair(tmp_path)
+    )
+    task["schema_version"] = "omp.diagnostic-task/v1"
+    task.pop("runner")
+    objective = task["objective"]  # type: ignore[assignment]
+    objective.pop("observation")  # type: ignore[union-attr]
+    reviews = task["reviews"]
+    for review in reviews.values():  # type: ignore[union-attr]
+        review.pop("evidence_path", None)
+    verifier_review = reviews["verifier"]  # type: ignore[index]
+    verifier_review["image"] = verifier_review.pop("verifier_image")  # type: ignore[union-attr]
+    verifier_review["config_digest_sha256"] = verifier_review.pop(  # type: ignore[union-attr]
+        "verifier_config_digest_sha256"
+    )
+    verifier_review["platform"] = verifier_review.pop("verifier_platform")  # type: ignore[union-attr]
+    for field in (
+        "runner_image",
+        "runner_config_digest_sha256",
+        "runner_platform",
+    ):
+        verifier_review.pop(field)  # type: ignore[union-attr]
+    _write_json(task_path, task)
+
+    report_paths = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+    for paths in report_paths.values():
+        for path in paths:
+            report = json.loads(path.read_text(encoding="utf-8"))
+            observation = report["observation"]
+            observation["schema_version"] = (
+                "omp.attempt-observation/v1"
+            )
+            for field in (
+                "runner_started",
+                "runner_finished",
+                "runner_evidence_frozen",
+            ):
+                observation["lifecycle"].pop(field)
+            for field in (
+                "runner_image",
+                "runner_evidence",
+                "runner_image_config",
+            ):
+                observation["digests"].pop(field)
+            observation["digests"]["task"] = canonical_sha256(task)
+            report.pop("runner_evidence_digest_sha256")
+            report["outcome"] = classify_attempt(observation)
+            _write_json(path, report)
+
+    qualification["schema_version"] = "omp.task-qualification/v1"
+    qualification["source_task"]["digest_sha256"] = canonical_sha256(  # type: ignore[index]
+        task
+    )
+    qualification["reviews"] = task["reviews"]
+    qualification["verifier_provenance"] = {
+        "reviewer_id": verifier_review["reviewer"],  # type: ignore[index]
+        "verifier_image": task["verifier"]["image"],  # type: ignore[index]
+        "verifier_config_digest_sha256": task["verifier"][  # type: ignore[index]
+            "config_digest_sha256"
+        ],
+        "verifier_platform": task["verifier"]["platform"],  # type: ignore[index]
+        "review_digest_sha256": verifier_review[  # type: ignore[index]
+            "evidence_digest_sha256"
+        ],
+    }
+    qualification.pop("evaluation_provenance")
+    observed = qualification["observed_mapping"]  # type: ignore[assignment]
+    observed["task_digest_sha256"] = canonical_sha256(task)  # type: ignore[index]
+    observed.pop("runner_config_digest_sha256")  # type: ignore[union-attr]
+    checks = qualification["checks"]  # type: ignore[assignment]
+    checks.pop("runner_isolation")  # type: ignore[union-attr]
+    checks.pop("observation_authority")  # type: ignore[union-attr]
+    for probe, check_name in (
+        ("baseline", "baseline_fails"),
+        ("reference", "reference_passes"),
+        ("tamper", "tamper_resistance"),
+    ):
+        evidence = checks[check_name]["evidence"]  # type: ignore[index]
+        for reference, path in zip(
+            evidence,
+            report_paths[probe],
+            strict=True,
+        ):
+            reference["digest_sha256"] = file_sha256(path)
+    _write_json(qualification_path, qualification)
+
+    def validate_legacy_report_artifacts(
+        root: Path,
+        schema_name: str,
+        value: object,
+        relative: Path,
+    ) -> object:
+        if schema_name in {"attempt-observation", "attempt-outcome"}:
+            return validate_value(
+                Path(__file__).parents[1],
+                schema_name,
+                value,
+                relative,
+            )
+        return _Valid()
+
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        validate_legacy_report_artifacts,
+    )
+    checked = check_task_qualification(
+        tmp_path,
+        task_path,
+        qualification_path,
+    )
+    assert checked == {
+        "valid": True,
+        "decision": "calibration-required",
+        "diagnostics": [],
+    }
+
+    inspected: list[tuple[str, bool]] = []
+
+    def inspect(
+        docker: str,
+        container: dict[str, object],
+        *args: object,
+        **kwargs: object,
+    ) -> dict[str, object]:
+        del docker, args
+        inspected.append(
+            (
+                str(kwargs["stage"]),
+                bool(kwargs["include_stage_label"]),
+            )
+        )
+        return {
+            key: container[key]
+            for key in (
+                "image",
+                "config_digest_sha256",
+                "platform",
+                "argv",
+            )
+        }
+
+    monkeypatch.setattr(task_workflow, "_inspect_image", inspect)
+    monkeypatch.setattr(
+        task_workflow,
+        "_container_tree_digest",
+        lambda docker, image, path, must_exist: (
+            None
+            if not must_exist
+            else (
+                "4" * 64
+                if "verifier-private" in path
+                else "3" * 64
+            )
+        ),
+    )
+    manifest = prepare_worker_manifest(
+        tmp_path,
+        task_path,
+        qualification_path,
+        "legacy-run",
+        tmp_path / ".rolebench/runs/legacy.json",
+    )
+
+    assert manifest["schema_version"] == "omp.worker-run-manifest/v1"
+    assert manifest["task"]["digest_sha256"] == canonical_sha256(task)  # type: ignore[index]
+    assert "runner" not in manifest
+    assert inspected == [
+        ("agent", False),
+        ("verifier", False),
+    ]
+
+    mismatched_report_path = report_paths["baseline"][0]
+    mismatched_report = json.loads(
+        mismatched_report_path.read_text(encoding="utf-8")
+    )
+    mismatched_observation = mismatched_report["observation"]
+    mismatched_observation["schema_version"] = (
+        "omp.attempt-observation/v2"
+    )
+    mismatched_observation["lifecycle"].update(
+        {
+            "runner_started": True,
+            "runner_finished": True,
+            "runner_evidence_frozen": True,
+        }
+    )
+    mismatched_observation["digests"].update(
+        {
+            "runner_image": "f" * 64,
+            "runner_evidence": "e" * 64,
+            "runner_image_config": "d" * 64,
+        }
+    )
+    mismatched_report["runner_evidence_digest_sha256"] = "e" * 64
+    mismatched_report["outcome"] = classify_attempt(
+        mismatched_observation
+    )
+    _write_json(mismatched_report_path, mismatched_report)
+    baseline_evidence = qualification["checks"]["baseline_fails"][  # type: ignore[index]
+        "evidence"
+    ]
+    baseline_evidence[0]["digest_sha256"] = file_sha256(  # type: ignore[index]
+        mismatched_report_path
+    )
+    _write_json(qualification_path, qualification)
+
+    mismatched = check_task_qualification(
+        tmp_path,
+        task_path,
+        qualification_path,
+    )
+
+    assert mismatched["valid"] is False
+    assert any(
+        "observation schema version does not match" in diagnostic
+        for diagnostic in mismatched["diagnostics"]
+    )

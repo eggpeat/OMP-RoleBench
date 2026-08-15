@@ -1,0 +1,13 @@
+FROM busybox@sha256:7a3ebe5bfd1a4a19797d20b0c0bb39d44393e9a03fd852c0865b0f540d868df0
+
+RUN mkdir -p /etc /usr/local/bin /workspace \
+    && printf '%s\n' 'rolebench:x:1000:1000:RoleBench runner:/:/bin/sh' >> /etc/passwd \
+    && printf '%s\n' 'rolebench:x:1000:' >> /etc/group \
+    && chown 1000:1000 /workspace \
+    && chmod 0700 /workspace
+COPY runner.sh /usr/local/bin/rolebench-runner
+RUN chmod 0555 /usr/local/bin/rolebench-runner
+
+USER 1000:1000
+WORKDIR /workspace
+CMD ["/usr/local/bin/rolebench-runner"]

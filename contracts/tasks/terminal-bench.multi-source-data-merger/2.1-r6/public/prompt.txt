@@ -1,0 +1,47 @@
+Merge the synthetic user records from three differently formatted sources:
+
+- `data/source_a/users.json` (highest priority)
+- `data/source_b/users.csv`
+- `data/source_c/users.toml` (lowest priority)
+
+The records and `example.test` addresses are fictional test data.
+
+Normalize source fields as follows:
+
+- `id`, `user_id`, `userId` -> `user_id`
+- `full_name`, `name`, `userName` -> `name`
+- `email`, `email_address` -> `email`
+- `registration_date`, `created_at`, `joined` -> `created_date`
+- string `status`, boolean `is_active`, boolean `active` -> `status` (`active` or `inactive`)
+
+Merge one record per `user_id`. For each field independently, choose the first present, non-null value in priority order A, then B, then C. A conflict exists when at least two present normalized values for the same user and field differ. Record every conflict, including all present source values and the selected value.
+
+Return exactly one UTF-8 JSON object—no Markdown or commentary—with this shape:
+
+```
+{
+  "schema_version": "rolebench.multi-source-submission/v1",
+  "merged_users": [
+    {
+      "user_id": 101,
+      "name": "...",
+      "email": "...",
+      "created_date": "YYYY-MM-DD",
+      "status": "active"
+    }
+  ],
+  "conflict_report": {
+    "total_conflicts": 0,
+    "conflicts": [
+      {
+        "user_id": 101,
+        "field": "name",
+        "values": {"source_a": "...", "source_b": "..."},
+        "selected": "..."
+      }
+    ]
+  }
+}
+```
+
+Sort `merged_users` by `user_id`. Sort conflicts by `user_id`, then field order `name`, `email`, `created_date`, `status`. Within `values`, include only sources where the field is present and non-null. Preserve strings exactly except for the required field and status normalization. `total_conflicts` must equal the conflict-list length.

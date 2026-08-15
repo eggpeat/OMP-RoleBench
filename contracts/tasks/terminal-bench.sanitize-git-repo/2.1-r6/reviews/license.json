@@ -1,0 +1,43 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "expression": "Apache-2.0",
+      "kind": "official-license",
+      "url": "https://github.com/harbor-framework/terminal-bench/blob/main/LICENSE"
+    },
+    {
+      "copyright": "Copyright (c) 2024 mlfoundations",
+      "expression": "MIT",
+      "kind": "official-source-license",
+      "url": "https://github.com/jeffreywpli/test-secret-removal/blob/main/LICENSE"
+    },
+    {
+      "digest_sha256": "7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a",
+      "kind": "dataset-release",
+      "reference": "terminal-bench/terminal-bench-2-1@6"
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "Apache-2.0 AND MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain Terminal-Bench Apache-2.0 attribution and modified-work notice.",
+    "Retain the full mlfoundations MIT notice for the upstream workspace provenance.",
+    "Identify the synthetic fixture and passive harness as RoleBench modifications."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-14T17:36:49Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "8ec5ca848187328046ed9c0617092fdb3c6ece7c16cff88555d655487551f389",
+    "source_digest_sha256": "6e86297715fae62cd499fbdd27013e11a38d05d7e05b7f661cb50b4ecead128f",
+    "source_task": "terminal-bench/sanitize-git-repo",
+    "verifier_private_tree_digest_sha256": "bba4905d65622fbd093b035f1d171c113250f35a5bd8f646dcbb8e13a37cefa1"
+  },
+  "task_id": "terminal-bench.sanitize-git-repo",
+  "task_version": "2.1-r6"
+}

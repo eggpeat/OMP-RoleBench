@@ -4,6 +4,7 @@ ARG PUBLIC_TREE_SHA256
 ARG PROBE_MODE
 
 LABEL org.omp.rolebench.task.role="task" \
+      org.omp.rolebench.task.stage="agent" \
       org.omp.rolebench.task.public-tree-sha256="${PUBLIC_TREE_SHA256}"
 
 COPY public/ /opt/rolebench/task/public/

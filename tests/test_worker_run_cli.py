@@ -12,7 +12,7 @@ from rolebench.worker import WorkerError
 
 
 PRODUCT_ROOT = Path(__file__).resolve().parents[1]
-POLICY_PATH = Path("contracts/scored-worker-policy.json")
+POLICY_PATH = Path("contracts/scored-worker-policy-v2.json")
 MANIFEST_PATH = Path("fixtures/docker-runsc/worker-run-manifest.json")
 POLICY_SHA = "a" * 64
 ARTIFACT_SHA = "b" * 64
@@ -53,13 +53,15 @@ def worker_run_report(*, passed: bool = True) -> JSONObject:
         "external_provider_calls": 0,
         "policy_digest_sha256": POLICY_SHA,
         "artifact_digest_sha256": ARTIFACT_SHA if passed else None,
-        "observation": {"schema_version": "omp.attempt-observation/v1"},
+        "runner_evidence_digest_sha256": ARTIFACT_SHA if passed else None,
+        "observation": {"schema_version": "omp.attempt-observation/v2"},
         "outcome": outcome,
         "doctor": doctor_report(ready=passed),
         "isolation": {
             "agent_runtime_runsc": passed,
             "distinct_images": True,
-            "immutable_handoff": passed,
+            "immutable_agent_runner_handoff": passed,
+            "immutable_runner_verifier_handoff": passed,
             "network_mode": "none",
         },
         "diagnostics": [] if passed else ["agent container did not start"],
@@ -269,7 +271,8 @@ class WorkerRunCliTests(unittest.TestCase):
             "Isolation:\n"
             "  agent_runtime_runsc: true\n"
             "  distinct_images: true\n"
-            "  immutable_handoff: true\n"
+            "  immutable_agent_runner_handoff: true\n"
+            "  immutable_runner_verifier_handoff: true\n"
             "  network_mode: none\n"
             "Diagnostics:\n"
             "  none\n",

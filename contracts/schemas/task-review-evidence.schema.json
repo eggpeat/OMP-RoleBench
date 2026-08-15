@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:task-review-evidence:v1",
+  "title": "RoleBench Task Review Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "task_version", "review_type", "decision", "reviewer", "reviewed_at", "findings"],
+  "properties": {
+    "schema_version": {"const": "omp.task-review-evidence/v1"},
+    "task_id": {"$ref": "#/$defs/id"},
+    "task_version": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"},
+    "review_type": {"enum": ["privacy", "license", "verifier", "split"]},
+    "decision": {"enum": ["approved", "rejected"]},
+    "reviewer": {"$ref": "#/$defs/id"},
+    "reviewed_at": {"type": "string", "format": "date-time"},
+    "findings": {"type": "array", "maxItems": 256, "items": {"type": ["object", "string"]}},
+    "remediation": {"type": "array", "maxItems": 256, "items": {"type": "object"}},
+    "checks": {"type": "object", "minProperties": 1, "maxProperties": 128, "additionalProperties": {"enum": ["pass", "fail"]}},
+    "scope": {"type": "object"},
+    "evidence": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"type": "object"}},
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expression", "redistribution"],
+      "properties": {
+        "expression": {"type": "string", "minLength": 1, "maxLength": 512},
+        "redistribution": {"enum": ["permitted", "prohibited", "unknown"]}
+      }
+    },
+    "requirements": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"type": "string", "minLength": 1, "maxLength": 2048}},
+    "assignment": {"type": "object"},
+    "capability_tags": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "rationale": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "pack_condition": {"type": "object"},
+    "pack_coverage": {"type": "object"},
+    "report_digests_sha256": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"$ref": "#/$defs/sha256"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"review_type": {"const": "privacy"}}, "required": ["review_type"]},
+      "then": {
+        "required": ["checks", "scope"],
+        "properties": {
+          "scope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["prompt_digest_sha256", "public_tree_digest_sha256", "workspace_digest_sha256", "verifier_private_tree_digest_sha256", "verifier_digest_sha256"],
+            "properties": {
+              "prompt_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "public_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "workspace_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "verifier_private_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "verifier_digest_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"review_type": {"const": "license"}}, "required": ["review_type"]},
+      "then": {
+        "required": ["evidence", "license", "requirements", "scope"],
+        "properties": {
+          "scope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_task", "source_digest_sha256", "public_tree_digest_sha256", "verifier_private_tree_digest_sha256"],
+            "properties": {
+              "source_task": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
+              "source_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "public_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "verifier_private_tree_digest_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"review_type": {"const": "verifier"}}, "required": ["review_type"]},
+      "then": {
+        "required": ["checks", "scope", "report_digests_sha256"],
+        "properties": {
+          "scope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["public_tree_digest_sha256", "runner_image", "runner_config_digest_sha256", "verifier_image", "verifier_config_digest_sha256", "verifier_private_tree_digest_sha256"],
+            "properties": {
+              "public_tree_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "runner_image": {"$ref": "#/$defs/image"},
+              "runner_config_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "verifier_image": {"$ref": "#/$defs/image"},
+              "verifier_config_digest_sha256": {"$ref": "#/$defs/sha256"},
+              "verifier_private_tree_digest_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"review_type": {"const": "split"}}, "required": ["review_type"]},
+      "then": {
+        "required": ["assignment", "capability_tags", "rationale"],
+        "properties": {
+          "assignment": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["family_id", "partition", "assignment_method", "confidentiality", "role"],
+            "properties": {
+              "family_id": {"$ref": "#/$defs/id"},
+              "partition": {"enum": ["anchor", "adaptive", "holdout"]},
+              "assignment_method": {"enum": ["author-assigned", "deterministic-hash", "independent-review"]},
+              "confidentiality": {"enum": ["public", "confidential"]},
+              "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "image": {"type": "string", "pattern": "^[^-\\s@][^\\s@]*@sha256:[0-9a-f]{64}$"}
+  }
+}

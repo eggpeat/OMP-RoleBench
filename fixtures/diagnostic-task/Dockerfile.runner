@@ -1,0 +1,14 @@
+FROM busybox@sha256:7a3ebe5bfd1a4a19797d20b0c0bb39d44393e9a03fd852c0865b0f540d868df0
+
+ARG PUBLIC_TREE_SHA256
+
+LABEL org.omp.rolebench.task.role="task" \
+      org.omp.rolebench.task.stage="runner" \
+      org.omp.rolebench.task.public-tree-sha256="${PUBLIC_TREE_SHA256}"
+
+COPY public/ /opt/rolebench/task/public/
+COPY runner.sh /usr/local/bin/rolebench-task-runner
+RUN chmod 0555 /usr/local/bin/rolebench-task-runner
+
+USER 1000:1000
+ENTRYPOINT ["/usr/local/bin/rolebench-task-runner"]

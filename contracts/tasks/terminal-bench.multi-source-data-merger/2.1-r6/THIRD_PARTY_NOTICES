@@ -1,0 +1,9 @@
+Terminal-Bench 2.1 — terminal-bench/multi-source-data-merger
+
+Source: terminal-bench/terminal-bench-2-1@6
+Task content digest: 70367c38732e1beda7b229968a48d60242277c2fa4db91339c3f064c4c230d49
+Original task author: Xin Lan
+Upstream project: https://github.com/harbor-framework/terminal-bench
+License: Apache License 2.0; see ../../../../LICENSES/Apache-2.0.txt from this task directory.
+
+RoleBench modification notice: the Parquet-based environment was adapted into a bounded data-only evaluation using independently synthesized JSON, CSV, and TOML inputs with fictional `example.test` identities. RoleBench added a strict canonicalizing runner, passive exact-result verifier, expected-output oracle, isolation recipes, and admission probes. These modifications are covered by the repository MIT license.

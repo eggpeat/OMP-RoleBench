@@ -1,0 +1,12 @@
+# Synthetic RoleBench security fixture. Every credential-shaped value is fake.
+cluster_name: rolebench_synthetic_cluster
+max_workers: 2
+provider:
+    type: aws
+    region: us-west-2
+setup_commands:
+    - echo 'export AWS_ACCESS_KEY_ID=AKIAEXAMPLE000000000' >> ~/.bashrc
+    - echo 'export AWS_SECRET_ACCESS_KEY=EXAMPLESECRETKEY000000000000000000000000' >> ~/.bashrc
+    - git clone https://ghp_EXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLE0@github.com/example/synthetic-repository.git
+    - huggingface-cli login --token hf_EXAMPLEEXAMPLEEXAMPLEEXAMPLE0 -y
+safe_setting: preserve-this-line

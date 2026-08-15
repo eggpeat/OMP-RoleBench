@@ -143,7 +143,7 @@ class TaskWorkflowCliTests(unittest.TestCase):
     ) -> None:
         qualification = {
             "decision": "admitted",
-            "schema_version": "omp.task-qualification/v1",
+            "schema_version": "omp.task-qualification/v2",
         }
         qualify.return_value = qualification
         output = StringIO()
@@ -258,7 +258,7 @@ class TaskWorkflowCliTests(unittest.TestCase):
         prepare: object,
     ) -> None:
         manifest = {
-            "schema_version": "omp.worker-run-manifest/v1",
+            "schema_version": "omp.worker-run-manifest/v2",
             "run_id": "baseline-1",
         }
         prepare.return_value = manifest
@@ -299,7 +299,7 @@ class TaskWorkflowCliTests(unittest.TestCase):
 
     @patch("rolebench.cli.prepare_worker_manifest")
     def test_prepare_run_maps_docker_run_id_and_output(self, prepare: object) -> None:
-        manifest = {"schema_version": "omp.worker-run-manifest/v1", "run_id": "run-17"}
+        manifest = {"schema_version": "omp.worker-run-manifest/v2", "run_id": "run-17"}
         prepare.return_value = manifest
         output = StringIO()
 

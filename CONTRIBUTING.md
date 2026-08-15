@@ -2,7 +2,7 @@
 
 RoleBench turns a fixed OMP role benchmark profile and exact candidate model routes into reviewable evidence and ranked model-to-role recommendations. Optional capacity inputs can extend qualified recommendations into allocation policies; optional session-derived tasks can extend the default benchmark profile. Contributions must preserve four properties: **measured quality**, **reproducibility**, **canonical defaults**, and **data minimization**.
 
-The project is currently building its contract, worker, and diagnostic-authoring layers. It does not yet ship a default benchmark corpus, provider-backed evaluation, model-route recommendations, session-to-task synthesis, an optimizer, or OMP runtime integration. Read the [target architecture](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, benchmark-profile, estimator, optimizer, or OMP integration change, and keep planned behavior distinct from implemented behavior in user-facing documentation.
+The project is currently building its contract, worker, and diagnostic-authoring layers. It ships one reviewed, routing-ineligible `default` calibration pack, but not a complete ten-role benchmark corpus, provider-backed evaluation, model-route recommendations, session-to-task synthesis, an optimizer, or OMP runtime integration. Read the [target architecture](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, benchmark-profile, estimator, optimizer, or OMP integration change, and keep planned behavior distinct from implemented behavior in user-facing documentation.
 
 ## License of contributions
 
@@ -34,7 +34,7 @@ python -m unittest discover -s tests -v
 Worker contributors must also follow the [rootless Docker/`runsc` setup](README.md#rootless-dockerrunsc-worker-setup). Install the repository's `scripts/rolebench-runsc-wrapper` beside the real `runsc`, register that absolute wrapper path as Docker's `runsc` runtime, and verify the host before any runtime scenario:
 
 ```bash
-rolebench worker doctor contracts/scored-worker-policy.json
+rolebench worker doctor contracts/scored-worker-policy-v2.json
 ```
 
 The doctor must report every prerequisite as `PASS`, including the local rootless Docker socket and `runsc resource enforcement`. The worker always targets `/run/user/$(id -u)/docker.sock` explicitly. Do not weaken the policy, omit OCI resource flags, switch to privileged/rootful or remote Docker, or use raw `runsc` to make a failing host pass. Runtime manifests must use immutable repository digests for distinct agent and verifier images; never commit local manifests or runtime artifacts.
@@ -134,17 +134,17 @@ The classifier in `src/rolebench/accounting.py` is deterministic. New failure si
 
 ### Scored worker policy and runtime
 
-`omp.scored-worker-policy/v1` is the fail-closed contract for the scored worker. Keep the canonical policy and schema synchronized. Changes must retain rootless Docker with `runsc`, non-root and non-privileged execution, dropped capabilities, no host namespaces/devices/mounts, a read-only root filesystem, ephemeral bounded scratch, provider-proxy-only networking without credentials, immutable artifact handoff, an isolated networkless verifier, and accounting that excludes infrastructure and verifier failures from model quality.
+`omp.scored-worker-policy/v2` is the current fail-closed contract for the scored worker; `v1` is preserved only for replaying legacy two-container manifests. Keep the canonical policy and schema synchronized. Changes must retain rootless Docker with `runsc`, non-root and non-privileged execution, dropped capabilities, no host namespaces/devices/mounts, a read-only root filesystem, ephemeral bounded scratch, provider-proxy-only networking without credentials, the three-container isolation pipeline (agent -> candidate runner -> passive verifier) with immutable artifact and evidence handoffs, candidate artifact execution prevention inside the verifier, an isolated networkless verifier, and accounting that excludes infrastructure, runner, and verifier failures from model quality. The artifact is supplied only to and may execute only in the runner. Runner output may reflect artifact bytes, but the verifier receives them only as bounded inert untrusted data inside host-framed evidence and may score them only as observable output under declared authority. Candidate execution semantics remain untrusted unless externally observable; runner stdout/events/clocks are untrusted payloads and internally self-reported semantics remain inadmissible without source-separated observation. Tasks requiring semantic observation like cancel-async remain inadmissible until such observation is available.
 
 Run the deterministic no-model gate after changing the worker policy or accounting:
 
 ```bash
-rolebench worker fault-check contracts/scored-worker-policy.json
+rolebench worker fault-check contracts/scored-worker-policy-v2.json
 ```
 
 A clean result covers all 29 accounting reason codes with 4 scored controls, 18 retryable system failures, 5 quarantined controls, 1 cancellation, 1 excluded-evidence control, and zero external calls. The gate is synthetic: it validates policy and accounting behavior but does not prove installed runtime behavior.
 
-Changes to `worker.py`, `scripts/rolebench-runsc-wrapper`, the manifest contract, or the fixture images must also run the focused worker tests, a clean doctor, the provider-disabled fixture manifest, and representative observed failure probes. Persist each exercised report with `rolebench worker run MANIFEST --report .rolebench/REPORT.json`; report creation is exclusive and never overwrites prior evidence. The runtime result must show `external_provider_calls: 0`, `resource_enforcement: true`, distinct images, immutable handoff, and the expected unscored accounting result. Provider-proxy integration and representative live model-task compatibility remain required before this worker can execute scored provider-backed benchmarks.
+Changes to `worker.py`, `scripts/rolebench-runsc-wrapper`, the manifest contract, or the fixture images must also run the focused worker tests, a clean doctor, the provider-disabled fixture manifest, and representative observed failure probes. Persist each exercised report with `rolebench worker run MANIFEST --report .rolebench/REPORT.json`; report creation is exclusive and never overwrites prior evidence. The runtime result must show `external_provider_calls: 0`, `resource_enforcement: true`, three distinct images, immutable agent-runner and runner-verifier handoffs, and the expected unscored accounting result. Provider-proxy integration and representative live model-task compatibility remain required before this worker can execute scored provider-backed benchmarks.
 
 ## Role contracts and the default profile
 
@@ -187,9 +187,11 @@ Every current `omp.diagnostic-task/v1` artifact must declare:
 - its role contract, task mix, capability tags, difficulty, and partition;
 - task and source versions plus content and source digests;
 - separately content-addressed public and verifier-private assets;
-- the policy reference and exact agent, admission-agent, and verifier image, config, platform, and asset-tree identities;
+- the policy reference and exact agent, admission-agent, runner, and verifier image, config, platform, and asset-tree identities;
 - objective criteria, scoring mode, and the fixed unscored failure classes; and
 - authorship, independent reviews, license expression, and redistribution status.
+
+For `source.kind: "terminal-bench"`, `source.version` is the immutable Harbor dataset package reference with a numeric revision, `source.task` is the exact Harbor task package name, `source.digest_sha256` is that task version's Harbor content hash, and `source.dataset_digest_sha256` is the dataset version's Harbor content hash. Store both hashes as lowercase hexadecimal without the `sha256:` prefix. Mutable references such as `@latest` are invalid.
 
 A future default-profile or evidence contract should additionally bind the benchmark harness, runner, and verifier software versions used to produce a result. Do not add those undeclared fields to the closed v1 diagnostic-task object; version the schema and its consumers first.
 
@@ -203,11 +205,11 @@ The implemented `rolebench tasks scan-session` command returns a versioned priva
 
 The planned local session-to-task generator is optional and may inspect only sessions the operator explicitly selects. It may read selected content only inside the operator-controlled private authoring boundary, where it should identify recurring goals, tool patterns, constraints, and failure modes and synthesize minimal self-contained drafts with proposed canonical role and capability tags. It must remove user-specific text, paths, secrets, account data, and proprietary artifacts rather than replay or lightly paraphrase a session. Generated drafts supplement the fixed profile and remain private and non-authoritative until the normal independent reviews approve a versioned task. This generator is not implemented in v1.
 
-A versioned task may proceed only after explicit, independent privacy, license, verifier, and split reviews. The author cannot perform those reviews. Redistribution must be permitted before a license review can approve the task. Public and verifier-private trees are separately content-addressed; the agent image must contain the exact public tree and no verifier-private root, while the verifier image must contain the exact private tree and no public root. Every image reference, OCI manifest/config digest, platform, fixed role/content label, task digest, policy digest, and review binding is re-observed before run preparation.
+A versioned task may proceed only after explicit, independent privacy, license, verifier, and split reviews. The author cannot perform those reviews. Redistribution must be permitted before a license review can approve the task. Public and verifier-private trees are separately content-addressed; agent and runner images must contain the exact public tree and no verifier-private root, while the verifier image must contain the exact private tree and no public root. Every image reference, OCI manifest/config digest, platform, fixed role/content/stage label, task digest, policy digest, and review binding is re-observed before run preparation.
 
-Admission uses at least two healthy reports for each distinct baseline, reference, and tamper image. Baseline and tamper probes must reject with identical artifacts/rewards across repeats; reference probes must accept with identical artifacts/rewards. Qualification reparses every report, recomputes its outcome, and checks exact run, isolation, task, policy, and probe-image mappings. V1 qualifications remain `calibration-required`; V1 deliberately cannot claim `admitted` or freeze a routing-eligible pack because no reviewed cross-model discrimination-evidence contract exists yet. They permit only `calibration-only` preparation, and those outcomes are excluded from normal model-quality scoring. Holdout tasks cannot be prepared through this path. `synthetic-fixture` tasks are smoke inputs only and semantic validation rejects them from every pack.
+Admission uses at least two healthy reports for each distinct baseline, reference, and tamper image. Baseline and tamper probes must reject with identical artifacts/rewards across repeats; reference probes must accept with identical artifacts/rewards. Qualification reparses every report, recomputes its outcome, and checks exact run, isolation, task, policy, and probe-image mappings, emitting `evaluation_provenance` and `runner_isolation`. V1 qualifications remain `calibration-required`; V1 deliberately cannot claim `admitted` or freeze a routing-eligible pack because no reviewed cross-model discrimination-evidence contract exists yet. They permit only `calibration-only` preparation, and those outcomes are excluded from normal model-quality scoring. Holdout tasks cannot be prepared through this path. `synthetic-fixture` sources remain smoke-only and cannot enter any pack.
 
-The append-only experiment ledger is a local, hash-chained journal. It is never admission, calibration, or routing authority. Pack verification and every later evidence consumer must independently reload and validate task, qualification, image, and report artifacts. Do not commit local manifests, qualifications, reports, journals, image archives, or private verifier assets except for small intentionally curated source fixtures whose licensing and privacy reviews are explicit.
+The append-only experiment ledger is a local, hash-chained journal. It is never admission, calibration, or routing authority. Pack verification and every later evidence consumer must independently reload and validate task, qualification, image, and report artifacts. Do not commit local manifests, qualifications, reports, journals, image archives, or private verifier assets. A public pack may reference small normalized admission reports, qualifications, and verifier fixtures promoted under `contracts/tasks/` only when they are intentionally curated, independently reviewed, license-compatible, scrubbed of private content, content-addressed, and required for deterministic pack verification.
 
 Verifier guidance by role:
 

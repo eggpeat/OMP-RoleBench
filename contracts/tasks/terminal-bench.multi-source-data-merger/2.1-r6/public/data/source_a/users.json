@@ -1,0 +1,22 @@
+[
+  {
+    "id": 101,
+    "full_name": "Example Alpha",
+    "email": "alpha-primary@example.test",
+    "registration_date": "2024-01-15",
+    "status": "active"
+  },
+  {
+    "id": 102,
+    "full_name": "Example Beta",
+    "registration_date": "2024-02-20",
+    "status": "inactive"
+  },
+  {
+    "id": 105,
+    "full_name": "Example Epsilon",
+    "email": "epsilon-primary@example.test",
+    "registration_date": "2024-05-01",
+    "status": "active"
+  }
+]

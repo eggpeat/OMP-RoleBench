@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:worker-run-manifest:v1",
-  "title": "RoleBench Worker Run Manifest v1",
+  "$id": "urn:omp-rolebench:schema:worker-run-manifest:v2",
+  "title": "RoleBench Worker Run Manifest v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "run_id", "role", "task", "policy", "provider", "agent", "verifier"],
+  "required": ["schema_version", "run_id", "role", "task", "policy", "provider", "agent", "runner", "verifier"],
   "properties": {
-    "schema_version": {"const": "omp.worker-run-manifest/v1"},
+    "schema_version": {"const": "omp.worker-run-manifest/v2"},
     "run_id": {
       "type": "string",
       "minLength": 1,
@@ -52,6 +52,7 @@
       }
     },
     "agent": {"$ref": "#/$defs/container"},
+    "runner": {"$ref": "#/$defs/container"},
     "verifier": {"$ref": "#/$defs/container"}
   },
   "allOf": [
@@ -112,17 +113,9 @@
     "container": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["image", "argv"],
+      "required": ["image", "config_digest_sha256", "platform", "argv"],
       "properties": {
         "image": {"$ref": "#/$defs/image"},
-        "argv": {
-          "type": "array",
-          "minItems": 1,
-          "prefixItems": [
-            {"allOf": [{"$ref": "#/$defs/argument"}, {"minLength": 1}]}
-          ],
-          "items": {"$ref": "#/$defs/argument"}
-        },
         "config_digest_sha256": {"$ref": "#/$defs/sha256"},
         "platform": {
           "type": "object",
@@ -133,11 +126,15 @@
             "architecture": {"enum": ["amd64", "arm64"]},
             "variant": {"type": ["string", "null"], "minLength": 1}
           }
+        },
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "prefixItems": [
+            {"allOf": [{"$ref": "#/$defs/argument"}, {"minLength": 1}]}
+          ],
+          "items": {"$ref": "#/$defs/argument"}
         }
-      },
-      "dependentRequired": {
-        "config_digest_sha256": ["platform"],
-        "platform": ["config_digest_sha256"]
       }
     }
   }

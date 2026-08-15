@@ -1,0 +1,27 @@
+[[users]]
+userId = 101
+userName = "Example A"
+email = "alpha-tertiary@example.test"
+joined = "2024-01-20"
+active = true
+
+[[users]]
+userId = 102
+userName = "Example Beta Tertiary"
+email = "beta-tertiary@example.test"
+joined = "2024-02-18"
+active = true
+
+[[users]]
+userId = 104
+userName = "Example Delta"
+email = "delta-tertiary@example.test"
+joined = "2024-04-01"
+active = true
+
+[[users]]
+userId = 105
+userName = "Example Epsilon"
+email = "epsilon-tertiary@example.test"
+joined = "2024-05-02"
+active = false

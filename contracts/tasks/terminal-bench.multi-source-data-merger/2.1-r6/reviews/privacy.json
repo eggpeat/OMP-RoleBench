@@ -1,0 +1,33 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "reserved_test_domain": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_identities": "pass",
+    "upstream_metadata": "pass"
+  },
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "reserved-domain",
+      "url": "https://www.rfc-editor.org/rfc/rfc2606#section-2",
+      "value": ".test"
+    }
+  ],
+  "findings": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-14T17:36:49Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "5af29f02c45f5381e3806a4f2f8a611b46443184cf40a5de2c95e97169eac8fc",
+    "public_tree_digest_sha256": "b92d6f0ba64e00ff02edc03bf62155c5eb21bec6446d130493ba13ff40363bf8",
+    "verifier_digest_sha256": "e19e55b4996ae0f3b9350d56f475ab0d6cf0eec466d3ac7d74e7e12d33686d21",
+    "verifier_private_tree_digest_sha256": "edca1f40cd2322327f8aaa55ecd786bfcd32d1842fe1b7f56452fe293021b394",
+    "workspace_digest_sha256": "085e475813a7f29afde1b675ddd10b28de57d1fdd93b600265473512db8a418f"
+  },
+  "task_id": "terminal-bench.multi-source-data-merger",
+  "task_version": "2.1-r6"
+}

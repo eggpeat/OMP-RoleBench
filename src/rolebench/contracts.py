@@ -40,16 +40,78 @@ _SCHEMA_DIRECTORY = Path("contracts/schemas")
 _REGISTRY_FILE = Path("contracts/role-registry.json")
 _ROLE_DIRECTORY = Path("contracts/roles")
 _ROLE_SCHEMA = "role-contract.schema.json"
-_REGISTRY_SCHEMA = "role-registry.schema.json"
-_SCORED_WORKER_POLICY_FILE = Path("contracts/scored-worker-policy.json")
+_SCORED_WORKER_POLICY_V1_FILE = Path("contracts/scored-worker-policy.json")
+_SCORED_WORKER_POLICY_V2_FILE = Path("contracts/scored-worker-policy-v2.json")
+_SCORED_WORKER_POLICY_FILE = _SCORED_WORKER_POLICY_V2_FILE
 _SCORED_WORKER_POLICY_SCHEMA = "scored-worker-policy.schema.json"
 _WORKER_RUN_MANIFEST_SCHEMA = "worker-run-manifest"
 _TASK_PACK_DIRECTORY = Path("contracts/task-packs")
 _TASK_PACK_SCHEMA = "task-pack.schema.json"
 _DIAGNOSTIC_TASK_SCHEMA = "diagnostic-task.schema.json"
 _TASK_QUALIFICATION_SCHEMA = "task-qualification.schema.json"
+_TASK_REVIEW_EVIDENCE_SCHEMA = "task-review-evidence.schema.json"
 _EXPERIMENT_LEDGER_ENTRY_SCHEMA = "experiment-ledger-entry.schema.json"
-_PILOT_TASK_PACKS: tuple[str, ...] = ("task", "smol", "slow")
+_V1_TASK_PACKS: tuple[str, ...] = ("task", "smol", "slow")
+_PILOT_TASK_PACKS: tuple[str, ...] = ("default", "task", "smol", "slow")
+_VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
+    "attempt-observation": {
+        "omp.attempt-observation/v1": "attempt-observation-v1",
+        "omp.attempt-observation/v2": "attempt-observation",
+    },
+    "attempt-outcome": {
+        "omp.attempt-outcome/v1": "attempt-outcome-v1",
+        "omp.attempt-outcome/v2": "attempt-outcome",
+    },
+    "diagnostic-task": {
+        "omp.diagnostic-task/v1": "diagnostic-task-v1",
+        "omp.diagnostic-task/v2": "diagnostic-task",
+    },
+    "role-registry": {
+        "omp.role-registry/v1": "role-registry-v1",
+        "omp.role-registry/v2": "role-registry",
+    },
+    "task-qualification": {
+        "omp.task-qualification/v1": "task-qualification-v1",
+        "omp.task-qualification/v2": "task-qualification",
+    },
+    "scored-worker-policy": {
+        "omp.scored-worker-policy/v1": "scored-worker-policy-v1",
+        "omp.scored-worker-policy/v2": "scored-worker-policy",
+    },
+    "worker-run-manifest": {
+        "omp.worker-run-manifest/v1": "worker-run-manifest-v1",
+        "omp.worker-run-manifest/v2": "worker-run-manifest",
+    },
+}
+_REQUIRED_SCHEMAS: tuple[str, ...] = (
+    "attempt-observation-v1.schema.json",
+    "attempt-observation.schema.json",
+    "attempt-outcome-v1.schema.json",
+    "attempt-outcome.schema.json",
+    "capability-snapshot.schema.json",
+    "capacity-snapshot.schema.json",
+    "demand-snapshot.schema.json",
+    "diagnostic-task-v1.schema.json",
+    "diagnostic-task.schema.json",
+    "evidence-row.schema.json",
+    "experiment-ledger-entry.schema.json",
+    "role-contract.schema.json",
+    "role-registry-v1.schema.json",
+    "role-registry.schema.json",
+    "route-policy.schema.json",
+    "route.schema.json",
+    "routing-decision.schema.json",
+    "scored-worker-policy-v1.schema.json",
+    "scored-worker-policy.schema.json",
+    "task-candidate.schema.json",
+    "task-pack.schema.json",
+    "task-qualification-v1.schema.json",
+    "task-qualification.schema.json",
+    "task-review-evidence.schema.json",
+    "verifier-result.schema.json",
+    "worker-run-manifest-v1.schema.json",
+    "worker-run-manifest.schema.json",
+)
 _DIGEST_CHUNK_SIZE = 1024 * 1024
 _MAX_DIGEST_FILE_BYTES = 64 * 1024 * 1024
 _MAX_DIGEST_TREE_FILES = 10_000
@@ -195,6 +257,12 @@ def _load_object(root: Path, relative: Path) -> JSONObject:
     return value
 
 
+def _task_pack_roles(registry: JSONObject) -> tuple[str, ...]:
+    if registry.get("schema_version") == "omp.role-registry/v1":
+        return _V1_TASK_PACKS
+    return _PILOT_TASK_PACKS
+
+
 def load_repository(root: Path | None = None) -> Repository:
     """Load the registry, canonical role manifests, mapped task packs, and worker policy."""
 
@@ -219,7 +287,7 @@ def load_repository(root: Path | None = None) -> Repository:
     if not isinstance(pack_map, dict):
         raise ContractError("task_packs must be an object", _REGISTRY_FILE.as_posix(), "$.task_packs")
     task_packs: list[tuple[str, JSONObject]] = []
-    for role in _PILOT_TASK_PACKS:
+    for role in _task_pack_roles(registry):
         relative_value = pack_map.get(role)
         if not isinstance(relative_value, str):
             raise ContractError(
@@ -242,6 +310,21 @@ def canonical_sha256(value: JSONValue) -> str:
     """Return the SHA-256 of a value's canonical UTF-8 JSON encoding."""
 
     return sha256(canonical_json(value).encode("utf-8")).hexdigest()
+
+def task_execution_sha256(task: JSONObject) -> str:
+    """Hash executable task semantics without mutable review attestations."""
+
+    if task.get("schema_version") != "omp.diagnostic-task/v2":
+        return canonical_sha256(task)
+    execution_task = dict(task)
+    execution_task.pop("reviews", None)
+    split = execution_task.get("split")
+    if isinstance(split, dict):
+        execution_split = dict(split)
+        execution_split.pop("reviewer_id", None)
+        execution_split.pop("provenance_digest_sha256", None)
+        execution_task["split"] = execution_split
+    return canonical_sha256(execution_task)
 
 
 def task_content_sha256(
@@ -626,17 +709,18 @@ def _duplicate_diagnostics(value: JSONValue, relative: Path, parts: tuple[object
 
 def _registry_semantics(registry: JSONObject) -> Iterator[Diagnostic]:
     relative = _REGISTRY_FILE
+    task_pack_roles = _task_pack_roles(registry)
     task_packs = registry.get("task_packs")
     if isinstance(task_packs, dict):
         actual = set(task_packs)
-        expected = set(_PILOT_TASK_PACKS)
+        expected = set(task_pack_roles)
         if actual != expected:
             yield Diagnostic(
                 relative.as_posix(),
                 "$.task_packs",
                 f"task pack coverage mismatch; missing={sorted(expected - actual)!r}, extra={sorted(actual - expected)!r}",
             )
-        for role in _PILOT_TASK_PACKS:
+        for role in task_pack_roles:
             expected_path = (_TASK_PACK_DIRECTORY / f"{role}-v1.json").as_posix()
             actual_path = task_packs.get(role)
             if actual_path is not None and actual_path != expected_path:
@@ -916,14 +1000,31 @@ def _attempt_observation_semantics(
     observation: JSONObject,
     relative: Path,
 ) -> Iterator[Diagnostic]:
+    version_v2 = (
+        observation.get("schema_version")
+        == "omp.attempt-observation/v2"
+    )
     lifecycle = observation.get("lifecycle")
     if isinstance(lifecycle, dict):
         implications = (
-            ("agent_started", "environment_started"),
-            ("agent_finished", "agent_started"),
-            ("artifact_frozen", "agent_finished"),
-            ("verifier_started", "artifact_frozen"),
-            ("verifier_finished", "verifier_started"),
+            (
+                ("agent_started", "environment_started"),
+                ("agent_finished", "agent_started"),
+                ("artifact_frozen", "agent_finished"),
+                ("runner_started", "artifact_frozen"),
+                ("runner_finished", "runner_started"),
+                ("runner_evidence_frozen", "runner_finished"),
+                ("verifier_started", "runner_evidence_frozen"),
+                ("verifier_finished", "verifier_started"),
+            )
+            if version_v2
+            else (
+                ("agent_started", "environment_started"),
+                ("agent_finished", "agent_started"),
+                ("artifact_frozen", "agent_finished"),
+                ("verifier_started", "artifact_frozen"),
+                ("verifier_finished", "verifier_started"),
+            )
         )
         for later, earlier in implications:
             if lifecycle.get(later) is True and lifecycle.get(earlier) is not True:
@@ -932,7 +1033,6 @@ def _attempt_observation_semantics(
                     _json_path(("lifecycle", later)),
                     f"{later} requires {earlier}",
                 )
-
         verifier = observation.get("verifier")
         if isinstance(verifier, dict):
             verifier_outcome = verifier.get("outcome")
@@ -964,7 +1064,16 @@ def _attempt_observation_semantics(
                     "$.digests.artifact",
                     "a frozen artifact requires its digest",
                 )
-
+            if (
+                version_v2
+                and lifecycle.get("runner_evidence_frozen") is True
+                and not isinstance(digests.get("runner_evidence"), str)
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.digests.runner_evidence",
+                    "a frozen runner evidence requires its digest",
+                )
     readiness = observation.get("readiness")
     if (
         isinstance(readiness, dict)
@@ -1030,10 +1139,14 @@ def _attempt_observation_semantics(
                 "$.verifier.outcome",
                 "a decisive verifier outcome requires completed termination",
             )
-        is_model_limit = kind == "model-deadline" or (
-            kind == "resource-limit"
-            and oom_scope == "attempt"
-            and "runner-failure" not in issue_set
+        evidence_use = observation.get("evidence_use")
+        is_model_limit = evidence_use is None and (
+            kind == "model-deadline"
+            or (
+                kind == "resource-limit"
+                and oom_scope == "attempt"
+                and "runner-failure" not in issue_set
+            )
         )
         if is_model_limit and (
             not isinstance(provider, dict)
@@ -1222,6 +1335,10 @@ def _scored_worker_policy_semantics(
     policy: JSONObject,
     relative: Path,
 ) -> Iterator[Diagnostic]:
+    version_v2 = (
+        policy.get("schema_version")
+        == "omp.scored-worker-policy/v2"
+    )
     executor = policy.get("executor")
     verifier = policy.get("verifier")
     resources = policy.get("resources")
@@ -1263,10 +1380,20 @@ def _scored_worker_policy_semantics(
                 )
 
     phase_fields = (
-        "setup_seconds",
-        "agent_seconds",
-        "artifact_seconds",
-        "verifier_seconds",
+        (
+            "setup_seconds",
+            "agent_seconds",
+            "artifact_seconds",
+            "runner_seconds",
+            "verifier_seconds",
+        )
+        if version_v2
+        else (
+            "setup_seconds",
+            "agent_seconds",
+            "artifact_seconds",
+            "verifier_seconds",
+        )
     )
     timeout_fields = (*phase_fields, "termination_grace_seconds", "total_seconds")
     if isinstance(timeouts, dict):
@@ -1305,7 +1432,7 @@ def _scored_worker_policy_semantics(
                 yield Diagnostic(
                     relative.as_posix(),
                     "$.timeouts.total_seconds",
-                    "must be at least the sum of setup, agent, artifact, verifier, and termination grace timeouts",
+                    "must be at least the sum of setup, agent, artifact, runner, verifier, and termination grace timeouts",
                 )
 
     scratch = executor.get("scratch") if isinstance(executor, dict) else None
@@ -1339,27 +1466,64 @@ def _worker_run_manifest_semantics(
         )
 
     agent = manifest.get("agent")
+    runner = manifest.get("runner")
     verifier = manifest.get("verifier")
-    agent_image = agent.get("image") if isinstance(agent, dict) else None
-    verifier_image = verifier.get("image") if isinstance(verifier, dict) else None
-    agent_digest = (
-        agent_image.rsplit("@sha256:", 1)[1]
-        if isinstance(agent_image, str) and "@sha256:" in agent_image
-        else None
-    )
-    verifier_digest = (
-        verifier_image.rsplit("@sha256:", 1)[1]
-        if isinstance(verifier_image, str) and "@sha256:" in verifier_image
-        else None
-    )
-    if agent_digest is not None and agent_digest == verifier_digest:
+
+    def _image_digest(container: JSONObject | None) -> str | None:
+        if not isinstance(container, dict):
+            return None
+        image = container.get("image")
+        if isinstance(image, str) and "@sha256:" in image:
+            return image.rsplit("@sha256:", 1)[1]
+        return None
+
+    agent_digest = _image_digest(agent)
+    runner_digest = _image_digest(runner)
+    verifier_digest = _image_digest(verifier)
+
+    if runner_digest is not None and runner_digest == agent_digest:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.runner.image",
+            "must use a different image digest from the agent",
+        )
+    if verifier_digest is not None and verifier_digest == agent_digest:
         yield Diagnostic(
             relative.as_posix(),
             "$.verifier.image",
             "must use a different image digest from the agent",
         )
+    if verifier_digest is not None and runner_digest is not None and verifier_digest == runner_digest:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.verifier.image",
+            "must use a different image digest from the runner",
+        )
 
-    for container_name, container in (("agent", agent), ("verifier", verifier)):
+    agent_config = agent.get("config_digest_sha256") if isinstance(agent, dict) else None
+    runner_config = runner.get("config_digest_sha256") if isinstance(runner, dict) else None
+    verifier_config = verifier.get("config_digest_sha256") if isinstance(verifier, dict) else None
+
+    if isinstance(runner_config, str) and isinstance(agent_config, str) and runner_config == agent_config:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.runner.config_digest_sha256",
+            "must use a different config digest from the agent",
+        )
+    if isinstance(verifier_config, str) and isinstance(agent_config, str) and verifier_config == agent_config:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.verifier.config_digest_sha256",
+            "must use a different config digest from the agent",
+        )
+    if isinstance(verifier_config, str) and isinstance(runner_config, str) and verifier_config == runner_config:
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.verifier.config_digest_sha256",
+            "must use a different config digest from the runner",
+        )
+
+    for container_name, container in (("agent", agent), ("runner", runner), ("verifier", verifier)):
         if not isinstance(container, dict):
             continue
         argv = container.get("argv")
@@ -1385,7 +1549,6 @@ def _worker_run_manifest_semantics(
                     f"$.{container_name}.argv[{index}]",
                     "must not contain NUL",
                 )
-
     policy_reference = manifest.get("policy")
     if not isinstance(policy_reference, dict):
         return
@@ -1421,7 +1584,30 @@ def _worker_run_manifest_semantics(
         )
         return
 
-    policy_schema_relative = _SCHEMA_DIRECTORY / _SCORED_WORKER_POLICY_SCHEMA
+    manifest_schema_version = manifest.get("schema_version")
+    expected_policy_schema_version = {
+        "omp.worker-run-manifest/v1": "omp.scored-worker-policy/v1",
+        "omp.worker-run-manifest/v2": "omp.scored-worker-policy/v2",
+    }.get(manifest_schema_version)
+    policy_schema_version = policy.get("schema_version")
+    if (
+        expected_policy_schema_version is not None
+        and policy_schema_version != expected_policy_schema_version
+    ):
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.policy.path",
+            f"{manifest_schema_version} requires "
+            f"{expected_policy_schema_version}, got {policy_schema_version!r}",
+        )
+
+    policy_schema_name = _schema_name_for_artifact(
+        "scored-worker-policy",
+        policy,
+    )
+    policy_schema_relative = (
+        _SCHEMA_DIRECTORY / f"{policy_schema_name}.schema.json"
+    )
     policy_schema_diagnostics: list[Diagnostic] = []
     policy_schema = _safe_schema(
         resolved_root,
@@ -1556,7 +1742,240 @@ def _task_candidate_semantics(root: Path, candidate: JSONObject, relative: Path)
                 )
 
 
+def _task_review_evidence_semantics(
+    root: Path,
+    task: JSONObject,
+    relative: Path,
+    review_name: str,
+    review: JSONObject,
+) -> Iterator[Diagnostic]:
+    json_path = f"$.reviews.{review_name}"
+    reference = {
+        "path": review.get("evidence_path"),
+        "digest_sha256": review.get("evidence_digest_sha256"),
+    }
+    captured = _reference_object(
+        root,
+        reference,
+        owner=relative,
+        json_path=f"{json_path}.evidence",
+    )
+    if isinstance(captured, Diagnostic):
+        yield captured
+        return
+    evidence_path, evidence = captured
+    evidence_relative = evidence_path.relative_to(root)
+    expected_relative = (
+        relative.parent / "reviews" / f"{review_name}.json"
+    )
+    if evidence_relative != expected_relative:
+        yield Diagnostic(
+            relative.as_posix(),
+            f"{json_path}.evidence_path",
+            f"must be the owning task review path {expected_relative.as_posix()!r}",
+        )
+
+    evidence_schema_relative = (
+        _SCHEMA_DIRECTORY / _TASK_REVIEW_EVIDENCE_SCHEMA
+    )
+    try:
+        evidence_schema = _load_object(root, evidence_schema_relative)
+    except ContractError as error:
+        yield Diagnostic(
+            error.file or evidence_schema_relative.as_posix(),
+            error.json_path,
+            error.message,
+        )
+    else:
+        yield from _instance_diagnostics(
+            evidence,
+            evidence_schema,
+            evidence_relative,
+        )
+
+    expected_common = {
+        "task_id": task.get("task_id"),
+        "task_version": task.get("task_version"),
+        "review_type": review_name,
+        "decision": review.get("decision"),
+        "reviewer": review.get("reviewer"),
+        "reviewed_at": review.get("reviewed_at"),
+    }
+    for field, expected in expected_common.items():
+        if evidence.get(field) != expected:
+            yield Diagnostic(
+                evidence_relative.as_posix(),
+                f"$.{field}",
+                f"must match {json_path}.{field}",
+            )
+
+    checks = evidence.get("checks")
+    if evidence.get("decision") == "approved" and isinstance(checks, dict):
+        for check_name, check_result in checks.items():
+            if check_result != "pass":
+                yield Diagnostic(
+                    evidence_relative.as_posix(),
+                    f"$.checks.{check_name}",
+                    "must be 'pass' for approved review evidence",
+                )
+
+    scope = evidence.get("scope")
+    assets = task.get("assets")
+    public = assets.get("public") if isinstance(assets, dict) else None
+    private = (
+        assets.get("verifier_private")
+        if isinstance(assets, dict)
+        else None
+    )
+    source = task.get("source")
+    runner = task.get("runner")
+    verifier = task.get("verifier")
+    split = task.get("split")
+    family = task.get("family")
+
+    expected_scope: dict[str, JSONValue] = {}
+    if review_name == "privacy":
+        prompt = public.get("prompt") if isinstance(public, dict) else None
+        workspace = (
+            public.get("workspace") if isinstance(public, dict) else None
+        )
+        verifier_asset = (
+            private.get("verifier") if isinstance(private, dict) else None
+        )
+        expected_scope = {
+            "prompt_digest_sha256": (
+                prompt.get("digest_sha256")
+                if isinstance(prompt, dict)
+                else None
+            ),
+            "public_tree_digest_sha256": (
+                public.get("digest_sha256")
+                if isinstance(public, dict)
+                else None
+            ),
+            "workspace_digest_sha256": (
+                workspace.get("digest_sha256")
+                if isinstance(workspace, dict)
+                else None
+            ),
+            "verifier_private_tree_digest_sha256": (
+                private.get("digest_sha256")
+                if isinstance(private, dict)
+                else None
+            ),
+            "verifier_digest_sha256": (
+                verifier_asset.get("digest_sha256")
+                if isinstance(verifier_asset, dict)
+                else None
+            ),
+        }
+    elif review_name == "license":
+        expected_scope = {
+            "source_task": (
+                source.get("task") if isinstance(source, dict) else None
+            ),
+            "source_digest_sha256": (
+                source.get("digest_sha256")
+                if isinstance(source, dict)
+                else None
+            ),
+            "public_tree_digest_sha256": (
+                public.get("digest_sha256")
+                if isinstance(public, dict)
+                else None
+            ),
+            "verifier_private_tree_digest_sha256": (
+                private.get("digest_sha256")
+                if isinstance(private, dict)
+                else None
+            ),
+        }
+        if evidence.get("license") != task.get("license"):
+            yield Diagnostic(
+                evidence_relative.as_posix(),
+                "$.license",
+                "must match the owning task license",
+            )
+    elif review_name == "verifier":
+        expected_scope = {
+            "public_tree_digest_sha256": (
+                public.get("digest_sha256")
+                if isinstance(public, dict)
+                else None
+            ),
+            "runner_image": (
+                runner.get("image") if isinstance(runner, dict) else None
+            ),
+            "runner_config_digest_sha256": (
+                runner.get("config_digest_sha256")
+                if isinstance(runner, dict)
+                else None
+            ),
+            "verifier_image": (
+                verifier.get("image")
+                if isinstance(verifier, dict)
+                else None
+            ),
+            "verifier_config_digest_sha256": (
+                verifier.get("config_digest_sha256")
+                if isinstance(verifier, dict)
+                else None
+            ),
+            "verifier_private_tree_digest_sha256": (
+                private.get("digest_sha256")
+                if isinstance(private, dict)
+                else None
+            ),
+        }
+    elif review_name == "split":
+        assignment = evidence.get("assignment")
+        expected_assignment = {
+            "family_id": (
+                family.get("family_id")
+                if isinstance(family, dict)
+                else None
+            ),
+            "partition": task.get("partition"),
+            "assignment_method": (
+                split.get("assignment_method")
+                if isinstance(split, dict)
+                else None
+            ),
+            "confidentiality": (
+                split.get("confidentiality")
+                if isinstance(split, dict)
+                else None
+            ),
+            "role": task.get("role"),
+        }
+        if assignment != expected_assignment:
+            yield Diagnostic(
+                evidence_relative.as_posix(),
+                "$.assignment",
+                "must match the owning task split assignment",
+            )
+        if evidence.get("capability_tags") != task.get("capability_tags"):
+            yield Diagnostic(
+                evidence_relative.as_posix(),
+                "$.capability_tags",
+                "must match the owning task capability tags",
+            )
+
+    if isinstance(scope, dict):
+        for field, expected in expected_scope.items():
+            if scope.get(field) != expected:
+                yield Diagnostic(
+                    evidence_relative.as_posix(),
+                    f"$.scope.{field}",
+                    f"must match the owning task {review_name} scope",
+                )
+
+
 def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> Iterator[Diagnostic]:
+    version_v2 = (
+        task.get("schema_version")
+        == "omp.diagnostic-task/v2"
+    )
     if (
         task.get("partition") == "holdout"
         and (not relative.parts or relative.parts[0] != ".rolebench")
@@ -1586,15 +2005,44 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
             required = contract.get("required_capabilities")
             tags = task.get("capability_tags")
             if isinstance(required, list) and isinstance(tags, list):
-                missing = sorted(set(required) - set(tags))
-                if missing:
-                    yield Diagnostic(relative.as_posix(), "$.capability_tags", f"missing role-required capabilities {missing!r}")
+                outside_contract = sorted(set(tags) - set(required))
+                if outside_contract:
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        "$.capability_tags",
+                        f"contains capabilities outside the role contract {outside_contract!r}",
+                    )
             verifier_contract = contract.get("verifier")
             objective = task.get("objective")
             modes = verifier_contract.get("modes") if isinstance(verifier_contract, dict) else None
-            if isinstance(objective, dict) and isinstance(modes, list) and objective.get("mode") not in modes:
-                yield Diagnostic(relative.as_posix(), "$.objective.mode", "must be one of the canonical role verifier modes")
-
+            if (
+                isinstance(objective, dict)
+                and isinstance(modes, list)
+                and objective.get("mode") not in modes
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.objective.mode",
+                    "must be one of the canonical role verifier modes",
+                )
+            if isinstance(objective, dict):
+                observation = objective.get("observation")
+                if isinstance(observation, dict):
+                    artifact_kind = observation.get("artifact_kind")
+                    authority = observation.get("authority")
+                    runner_output_trust = observation.get("runner_output_trust")
+                    if artifact_kind == "executable" and authority != "source-separated-service":
+                        yield Diagnostic(
+                            relative.as_posix(),
+                            "$.objective.observation.authority",
+                            "executable artifacts require source-separated-service observation authority",
+                        )
+                    if runner_output_trust != "untrusted":
+                        yield Diagnostic(
+                            relative.as_posix(),
+                            "$.objective.observation.runner_output_trust",
+                            "runner_output_trust must be 'untrusted'",
+                        )
     split = task.get("split")
     authorship = task.get("authorship")
     author = authorship.get("author") if isinstance(authorship, dict) else None
@@ -1609,6 +2057,14 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
             review = reviews.get(name)
             if isinstance(review, dict) and review.get("reviewer") == author:
                 yield Diagnostic(relative.as_posix(), f"$.reviews.{name}.reviewer", "reviewer must be independent from the author")
+            if version_v2 and isinstance(review, dict):
+                yield from _task_review_evidence_semantics(
+                    root,
+                    task,
+                    relative,
+                    name,
+                    review,
+                )
         license_review = reviews.get("license")
         license_value = task.get("license")
         if isinstance(license_review, dict) and isinstance(license_value, dict):
@@ -1618,19 +2074,53 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
             if license_value.get("expression") == "NOASSERTION" or license_value.get("redistribution") != "permitted":
                 yield Diagnostic(relative.as_posix(), "$.reviews.license.decision", "cannot approve NOASSERTION or non-permitted redistribution")
         verifier_review = reviews.get("verifier")
+        runner = task.get("runner")
         verifier = task.get("verifier")
         assets = task.get("assets")
         private = assets.get("verifier_private") if isinstance(assets, dict) else None
         if isinstance(verifier_review, dict) and isinstance(verifier, dict):
             expected_verifier = {
-                "image": verifier.get("image"),
-                "config_digest_sha256": verifier.get("config_digest_sha256"),
-                "platform": verifier.get("platform"),
-                "private_tree_digest_sha256": private.get("digest_sha256") if isinstance(private, dict) else None,
+                "verifier_image": verifier.get("image"),
+                "verifier_config_digest_sha256": verifier.get(
+                    "config_digest_sha256"
+                ),
+                "verifier_platform": verifier.get("platform"),
+                "private_tree_digest_sha256": (
+                    private.get("digest_sha256")
+                    if isinstance(private, dict)
+                    else None
+                ),
             }
+            if version_v2 and isinstance(runner, dict):
+                expected_verifier.update(
+                    {
+                        "runner_image": runner.get("image"),
+                        "runner_config_digest_sha256": runner.get(
+                            "config_digest_sha256"
+                        ),
+                        "runner_platform": runner.get("platform"),
+                    }
+                )
+            elif not version_v2:
+                expected_verifier = {
+                    "image": verifier.get("image"),
+                    "config_digest_sha256": verifier.get(
+                        "config_digest_sha256"
+                    ),
+                    "platform": verifier.get("platform"),
+                    "private_tree_digest_sha256": (
+                        private.get("digest_sha256")
+                        if isinstance(private, dict)
+                        else None
+                    ),
+                }
             for name, value in expected_verifier.items():
                 if verifier_review.get(name) != value:
-                    yield Diagnostic(relative.as_posix(), f"$.reviews.verifier.{name}", "must bind the exact verifier execution mapping")
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.reviews.verifier.{name}",
+                        "must bind the exact verifier execution mapping",
+                    )
         split_review = reviews.get("split")
         family = task.get("family")
         if isinstance(split_review, dict) and isinstance(split, dict):
@@ -1650,16 +2140,37 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
 
     policy = task.get("policy")
     if isinstance(policy, dict):
-        if policy.get("path") != _SCORED_WORKER_POLICY_FILE.as_posix():
-            yield Diagnostic(relative.as_posix(), "$.policy.path", f"must be {_SCORED_WORKER_POLICY_FILE.as_posix()!r}")
+        version_v2 = (
+            task.get("schema_version")
+            == "omp.diagnostic-task/v2"
+        )
+        expected_policy_file = (
+            _SCORED_WORKER_POLICY_V2_FILE
+            if version_v2
+            else _SCORED_WORKER_POLICY_V1_FILE
+        )
+        if policy.get("path") != expected_policy_file.as_posix():
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.policy.path",
+                f"must be {expected_policy_file.as_posix()!r}",
+            )
         try:
-            canonical_policy = _load_object(root, _SCORED_WORKER_POLICY_FILE)
+            canonical_policy = _load_object(root, expected_policy_file)
         except ContractError as error:
-            yield Diagnostic(error.file or _SCORED_WORKER_POLICY_FILE.as_posix(), error.json_path, error.message)
+            yield Diagnostic(
+                error.file or expected_policy_file.as_posix(),
+                error.json_path,
+                error.message,
+            )
         else:
             actual = canonical_sha256(canonical_policy)
             if policy.get("digest_sha256") != actual:
-                yield Diagnostic(relative.as_posix(), "$.policy.digest_sha256", f"must equal canonical policy SHA-256 {actual}")
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.policy.digest_sha256",
+                    f"must equal canonical policy SHA-256 {actual}",
+                )
 
     assets = task.get("assets")
     public_digest: JSONValue = None
@@ -1720,20 +2231,42 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
                 )
 
     agent = task.get("agent")
+    runner = task.get("runner")
     verifier = task.get("verifier")
+    objective = task.get("objective")
+
+    if version_v2 and not isinstance(runner, dict):
+        yield Diagnostic(relative.as_posix(), "$.runner", "diagnostic task must specify a runner container")
+
     if isinstance(agent, dict) and agent.get("asset_tree_digest_sha256") != public_digest:
         yield Diagnostic(relative.as_posix(), "$.agent.asset_tree_digest_sha256", "must bind the public asset tree")
+    if isinstance(runner, dict) and runner.get("asset_tree_digest_sha256") != public_digest:
+        yield Diagnostic(relative.as_posix(), "$.runner.asset_tree_digest_sha256", "must bind the public asset tree")
     if isinstance(verifier, dict) and verifier.get("asset_tree_digest_sha256") != private_digest:
         yield Diagnostic(relative.as_posix(), "$.verifier.asset_tree_digest_sha256", "must bind the verifier-private asset tree")
+
+    if isinstance(agent, dict) and isinstance(runner, dict):
+        if agent.get("image") == runner.get("image"):
+            yield Diagnostic(relative.as_posix(), "$.runner.image", "must differ from the agent image manifest")
+        if agent.get("config_digest_sha256") == runner.get("config_digest_sha256"):
+            yield Diagnostic(relative.as_posix(), "$.runner.config_digest_sha256", "must differ from the agent image config")
     if isinstance(agent, dict) and isinstance(verifier, dict):
         if agent.get("image") == verifier.get("image"):
             yield Diagnostic(relative.as_posix(), "$.verifier.image", "must differ from the agent image manifest")
         if agent.get("config_digest_sha256") == verifier.get("config_digest_sha256"):
             yield Diagnostic(relative.as_posix(), "$.verifier.config_digest_sha256", "must differ from the agent image config")
+    if isinstance(runner, dict) and isinstance(verifier, dict):
+        if runner.get("image") == verifier.get("image"):
+            yield Diagnostic(relative.as_posix(), "$.verifier.image", "must differ from the runner image manifest")
+        if runner.get("config_digest_sha256") == verifier.get("config_digest_sha256"):
+            yield Diagnostic(relative.as_posix(), "$.verifier.config_digest_sha256", "must differ from the runner image config")
+
     admission_agents = task.get("admission_agents")
     mappings: list[tuple[str, JSONObject]] = []
     if isinstance(agent, dict):
         mappings.append(("agent", agent))
+    if isinstance(runner, dict):
+        mappings.append(("runner", runner))
     if isinstance(verifier, dict):
         mappings.append(("verifier", verifier))
     if isinstance(admission_agents, dict):
@@ -1776,7 +2309,21 @@ def _qualification_decision(qualification: JSONObject) -> str | None:
     checks = qualification.get("checks")
     if not isinstance(checks, dict):
         return None
-    mandatory = ("privacy", "license", "baseline_fails", "reference_passes", "verifier_isolation", "tamper_resistance", "determinism", "infrastructure_classification")
+    mandatory = [
+        "privacy",
+        "license",
+        "baseline_fails",
+        "reference_passes",
+        "verifier_isolation",
+        "tamper_resistance",
+        "determinism",
+        "infrastructure_classification",
+    ]
+    if (
+        qualification.get("schema_version")
+        == "omp.task-qualification/v2"
+    ):
+        mandatory.extend(("runner_isolation", "observation_authority"))
     values: list[JSONValue] = []
     for name in mandatory:
         value = checks.get(name)
@@ -1803,63 +2350,215 @@ def _task_qualification_semantics(root: Path, qualification: JSONObject, relativ
         return
     task_path, task = reference
     task_relative = task_path.relative_to(root)
-    task_schema = _load_object(root, _SCHEMA_DIRECTORY / _DIAGNOSTIC_TASK_SCHEMA)
-    yield from _instance_diagnostics(task, task_schema, task_relative)
+    task_schema_name = _schema_name_for_artifact(
+        "diagnostic-task",
+        task,
+    )
+    try:
+        task_schema = _load_object(
+            root,
+            _SCHEMA_DIRECTORY / f"{task_schema_name}.schema.json",
+        )
+    except ContractError as error:
+        yield Diagnostic(
+            error.file or relative.as_posix(),
+            error.json_path,
+            error.message,
+        )
+    else:
+        yield from _instance_diagnostics(task, task_schema, task_relative)
     yield from _diagnostic_task_semantics(root, task, task_relative)
+    objective = task.get("objective")
+    observation = (
+        objective.get("observation")
+        if isinstance(objective, dict)
+        else None
+    )
+    if (
+        qualification.get("schema_version")
+        == "omp.task-qualification/v2"
+    ):
+        artifact_kind = (
+            observation.get("artifact_kind")
+            if isinstance(observation, dict)
+            else None
+        )
+        authority = (
+            observation.get("authority")
+            if isinstance(observation, dict)
+            else None
+        )
+        observer_supported = (
+            artifact_kind == "data-only"
+            and authority == "host-process"
+        )
+        checks = qualification.get("checks")
+        observation_check = (
+            checks.get("observation_authority")
+            if isinstance(checks, dict)
+            else None
+        )
+        expected_observation_check = (
+            "pass" if observer_supported else "fail"
+        )
+        if observation_check != expected_observation_check:
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.checks.observation_authority",
+                "must be 'pass' only for implemented data-only "
+                "host-process observation; unsupported authorities "
+                "must record 'fail'",
+            )
+        if (
+            not observer_supported
+            and qualification.get("decision") != "rejected"
+        ):
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.decision",
+                "tasks without an implemented authoritative observer "
+                "must be rejected",
+            )
     for name in ("task_id", "task_version", "content_digest_sha256"):
         if qualification.get(name) != task.get(name):
             yield Diagnostic(relative.as_posix(), f"$.{name}", "must match the source diagnostic task")
     observed = qualification.get("observed_mapping")
     if isinstance(observed, dict):
-        expected_task_digest = canonical_sha256(task)
+        expected_task_digest = task_execution_sha256(task)
         if observed.get("task_digest_sha256") != expected_task_digest:
             yield Diagnostic(
                 relative.as_posix(),
                 "$.observed_mapping.task_digest_sha256",
-                "must recapture the canonical source task digest",
+                "must recapture the canonical task execution digest",
             )
         assets = task.get("assets")
         public = assets.get("public") if isinstance(assets, dict) else None
         private = assets.get("verifier_private") if isinstance(assets, dict) else None
         agent = task.get("agent")
+        runner = task.get("runner")
         verifier = task.get("verifier")
         expected_fields = {
             "public_tree_digest_sha256": public.get("digest_sha256") if isinstance(public, dict) else None,
             "verifier_private_tree_digest_sha256": private.get("digest_sha256") if isinstance(private, dict) else None,
             "agent_config_digest_sha256": agent.get("config_digest_sha256") if isinstance(agent, dict) else None,
+            "runner_config_digest_sha256": runner.get("config_digest_sha256") if isinstance(runner, dict) else None,
             "verifier_config_digest_sha256": verifier.get("config_digest_sha256") if isinstance(verifier, dict) else None,
         }
         for name, value in expected_fields.items():
             if observed.get(name) != value:
                 yield Diagnostic(relative.as_posix(), f"$.observed_mapping.{name}", "must match the source task execution mapping")
-    provenance = qualification.get("verifier_provenance")
+    version_v2 = (
+        qualification.get("schema_version")
+        == "omp.task-qualification/v2"
+    )
+    provenance_name = (
+        "evaluation_provenance"
+        if version_v2
+        else "verifier_provenance"
+    )
+    provenance = qualification.get(provenance_name)
+    runner = task.get("runner")
     verifier = task.get("verifier")
-    if isinstance(provenance, dict) and isinstance(verifier, dict):
-        if provenance.get("verifier_image") != verifier.get("image"):
-            yield Diagnostic(relative.as_posix(), "$.verifier_provenance.verifier_image", "must match the source task verifier")
-        if provenance.get("verifier_config_digest_sha256") != verifier.get("config_digest_sha256"):
-            yield Diagnostic(relative.as_posix(), "$.verifier_provenance.verifier_config_digest_sha256", "must match the source task verifier")
-        if provenance.get("verifier_platform") != verifier.get("platform"):
-            yield Diagnostic(relative.as_posix(), "$.verifier_provenance.verifier_platform", "must match the source task verifier")
-    split = task.get("split")
-    if isinstance(provenance, dict) and isinstance(split, dict) and provenance.get("reviewer_id") == split.get("author_id"):
-        yield Diagnostic(relative.as_posix(), "$.verifier_provenance.reviewer_id", "qualification reviewer must be independent from the task author")
+    if isinstance(provenance, dict):
+        if version_v2 and isinstance(runner, dict):
+            if provenance.get("runner_image") != runner.get("image"):
+                yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.runner_image", "must match the source task runner")
+            if provenance.get("runner_config_digest_sha256") != runner.get("config_digest_sha256"):
+                yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.runner_config_digest_sha256", "must match the source task runner")
+            if provenance.get("runner_platform") != runner.get("platform"):
+                yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.runner_platform", "must match the source task runner")
+        if isinstance(verifier, dict):
+            if provenance.get("verifier_image") != verifier.get("image"):
+                yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.verifier_image", "must match the source task verifier")
+            if provenance.get("verifier_config_digest_sha256") != verifier.get("config_digest_sha256"):
+                yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.verifier_config_digest_sha256", "must match the source task verifier")
+            if provenance.get("verifier_platform") != verifier.get("platform"):
+                yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.verifier_platform", "must match the source task verifier")
+        split = task.get("split")
+        if isinstance(split, dict) and provenance.get("reviewer_id") == split.get("author_id"):
+            yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.reviewer_id", "qualification reviewer must be independent from the task author")
+        task_reviews = task.get("reviews")
+        if isinstance(task_reviews, dict):
+            verifier_review = task_reviews.get("verifier")
+            if isinstance(verifier_review, dict):
+                if provenance.get("reviewer_id") != verifier_review.get("reviewer"):
+                    yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.reviewer_id", "must recapture the verifier reviewer")
+                if provenance.get("review_digest_sha256") != verifier_review.get("evidence_digest_sha256"):
+                    yield Diagnostic(relative.as_posix(), f"$.{provenance_name}.review_digest_sha256", "must recapture the verifier review evidence digest")
     task_reviews = task.get("reviews")
     qualification_reviews = qualification.get("reviews")
     if qualification_reviews != task_reviews:
         yield Diagnostic(relative.as_posix(), "$.reviews", "must exactly recapture all source task human review attestations")
-    if isinstance(provenance, dict) and isinstance(task_reviews, dict):
-        verifier_review = task_reviews.get("verifier")
-        if isinstance(verifier_review, dict):
-            if provenance.get("reviewer_id") != verifier_review.get("reviewer"):
-                yield Diagnostic(relative.as_posix(), "$.verifier_provenance.reviewer_id", "must recapture the verifier reviewer")
-            if provenance.get("review_digest_sha256") != verifier_review.get("evidence_digest_sha256"):
-                yield Diagnostic(relative.as_posix(), "$.verifier_provenance.review_digest_sha256", "must recapture the verifier review evidence digest")
+    checks = qualification.get("checks")
+    verifier_review = (
+        task_reviews.get("verifier")
+        if isinstance(task_reviews, dict)
+        else None
+    )
+    verifier_evidence_path = (
+        verifier_review.get("evidence_path")
+        if isinstance(verifier_review, dict)
+        else None
+    )
+    verifier_evidence_file = _repository_path(
+        root,
+        verifier_evidence_path,
+    )
+    qualification_report_digests: list[str] = []
+    complete_report_set = isinstance(checks, dict)
+    if isinstance(checks, dict):
+        for name in (
+            "baseline_fails",
+            "reference_passes",
+            "tamper_resistance",
+        ):
+            check = checks.get(name)
+            references = (
+                check.get("evidence")
+                if isinstance(check, dict)
+                else None
+            )
+            if not isinstance(references, list):
+                complete_report_set = False
+                continue
+            for reference in references:
+                digest = (
+                    reference.get("digest_sha256")
+                    if isinstance(reference, dict)
+                    else None
+                )
+                if not isinstance(digest, str):
+                    complete_report_set = False
+                    continue
+                qualification_report_digests.append(digest)
+    if (
+        complete_report_set
+        and verifier_evidence_file is not None
+    ):
+        verifier_evidence_relative = (
+            verifier_evidence_file.relative_to(root)
+        )
+        try:
+            verifier_evidence = _load_object(
+                root,
+                verifier_evidence_relative,
+            )
+        except ContractError:
+            pass
+        else:
+            if (
+                verifier_evidence.get("report_digests_sha256")
+                != qualification_report_digests
+            ):
+                yield Diagnostic(
+                    verifier_evidence_relative.as_posix(),
+                    "$.report_digests_sha256",
+                    "must exactly match the qualification report file digests",
+                )
     license_value = task.get("license")
     if qualification.get("decision") != "rejected" and isinstance(license_value, dict):
         if license_value.get("expression") == "NOASSERTION" or license_value.get("redistribution") != "permitted":
             yield Diagnostic(relative.as_posix(), "$.decision", "cannot admit or calibrate a task without approved redistribution")
-    checks = qualification.get("checks")
     if isinstance(checks, dict):
         for name in (
             "baseline_fails",
@@ -1952,9 +2651,35 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
                 continue
             task_path, task = task_ref
             qualification_path, qualification = qualification_ref
-            task_schema = _load_object(root, _SCHEMA_DIRECTORY / _DIAGNOSTIC_TASK_SCHEMA)
-            qualification_schema = _load_object(root, _SCHEMA_DIRECTORY / _TASK_QUALIFICATION_SCHEMA)
-            yield from _instance_diagnostics(task, task_schema, task_path.relative_to(root))
+            task_schema_name = _schema_name_for_artifact(
+                "diagnostic-task",
+                task,
+            )
+            qualification_schema_name = _schema_name_for_artifact(
+                "task-qualification",
+                qualification,
+            )
+            try:
+                task_schema = _load_object(
+                    root,
+                    _SCHEMA_DIRECTORY / f"{task_schema_name}.schema.json",
+                )
+                qualification_schema = _load_object(
+                    root,
+                    _SCHEMA_DIRECTORY / f"{qualification_schema_name}.schema.json",
+                )
+            except ContractError as error:
+                yield Diagnostic(
+                    error.file or relative.as_posix(),
+                    error.json_path,
+                    error.message,
+                )
+                continue
+            yield from _instance_diagnostics(
+                task,
+                task_schema,
+                task_path.relative_to(root),
+            )
             yield from _diagnostic_task_semantics(root, task, task_path.relative_to(root))
             source = task.get("source")
             if (
@@ -1965,6 +2690,17 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
                     relative.as_posix(),
                     f"$.entries[{index}].task",
                     "synthetic fixtures cannot enter task packs",
+                )
+            objective = task.get("objective")
+            observation = objective.get("observation") if isinstance(objective, dict) else None
+            if (
+                isinstance(observation, dict)
+                and observation.get("artifact_kind") == "executable"
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    f"$.entries[{index}].task",
+                    "task packs must reject executable artifact tasks until source-separated observer evidence is supported",
                 )
             yield from _instance_diagnostics(qualification, qualification_schema, qualification_path.relative_to(root))
             yield from _task_qualification_semantics(root, qualification, qualification_path.relative_to(root))
@@ -1994,12 +2730,22 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
                 covered.update(value for value in tags if isinstance(value, str))
             decision = qualification.get("decision")
             if status == "frozen":
-                yield Diagnostic(
-                    relative.as_posix(),
-                    f"$.entries[{index}].qualification",
-                    "v1 qualifications cannot freeze a task pack",
-                )
-            if (
+                if (
+                    qualification.get("schema_version")
+                    == "omp.task-qualification/v1"
+                ):
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.entries[{index}].qualification",
+                        "v1 qualifications cannot freeze a task pack",
+                    )
+                elif decision != "calibration-required":
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.entries[{index}].qualification",
+                        "frozen packs require calibration-required qualifications",
+                    )
+            elif (
                 status == "calibration"
                 and decision != "calibration-required"
             ):
@@ -2018,6 +2764,19 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
         yield Diagnostic(relative.as_posix(), "$.required_capabilities", f"entries do not cover required capabilities {missing!r}")
 
 
+def _schema_name_for_artifact(
+    schema_name: str,
+    artifact: JSONObject,
+) -> str:
+    versions = _VERSIONED_ARTIFACT_SCHEMAS.get(schema_name)
+    if versions is None:
+        return schema_name
+    version = artifact.get("schema_version")
+    if isinstance(version, str):
+        return versions.get(version, schema_name)
+    return schema_name
+
+
 def _ledger_entry_semantics(root: Path, entry: JSONObject, relative: Path) -> Iterator[Diagnostic]:
     payload = entry.get("payload")
     schema_name = entry.get("payload_schema")
@@ -2025,7 +2784,13 @@ def _ledger_entry_semantics(root: Path, entry: JSONObject, relative: Path) -> It
         actual = canonical_sha256(payload)
         if entry.get("payload_digest_sha256") != actual:
             yield Diagnostic(relative.as_posix(), "$.payload_digest_sha256", f"must equal canonical payload SHA-256 {actual}")
-        schema_relative = _SCHEMA_DIRECTORY / f"{schema_name}.schema.json"
+        effective_schema_name = _schema_name_for_artifact(
+            schema_name,
+            payload,
+        )
+        schema_relative = (
+            _SCHEMA_DIRECTORY / f"{effective_schema_name}.schema.json"
+        )
         try:
             schema = _load_object(root, schema_relative)
         except ContractError as error:
@@ -2063,6 +2828,16 @@ def _artifact_semantics(
         yield from _task_pack_semantics(root, artifact, relative)
     elif schema_name == "experiment-ledger-entry":
         yield from _ledger_entry_semantics(root, artifact, relative)
+    elif schema_name == "task-review-evidence":
+        checks = artifact.get("checks")
+        if artifact.get("decision") == "approved" and isinstance(checks, dict):
+            for check_name, check_result in checks.items():
+                if check_result != "pass":
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.checks.{check_name}",
+                        "must be 'pass' for approved review evidence",
+                    )
 
 
 def _safe_schema(root: Path, relative: Path, diagnostics: list[Diagnostic]) -> JSONObject | None:
@@ -2112,15 +2887,6 @@ def validate_artifact(
             f"unknown schema {schema_name!r}; expected one of {list(names)!r}"
         )
 
-    schema_relative = _SCHEMA_DIRECTORY / f"{schema_name}.schema.json"
-    diagnostics: list[Diagnostic] = []
-    schema = _safe_schema(resolved, schema_relative, diagnostics)
-    if schema is None:
-        return ValidationResult(tuple(sorted(set(diagnostics))))
-    diagnostics.extend(_schema_diagnostics(schema, schema_relative))
-    if diagnostics:
-        return ValidationResult(tuple(sorted(set(diagnostics))))
-
     path = artifact_path.expanduser()
     if not path.is_absolute():
         path = resolved / path
@@ -2129,16 +2895,45 @@ def validate_artifact(
         display_path = path.relative_to(resolved)
     except ValueError:
         display_path = path
+
+    diagnostics: list[Diagnostic] = []
     try:
         artifact = _load_artifact(path, display_path)
     except ContractError as error:
         diagnostics.append(
-            Diagnostic(error.file or display_path.as_posix(), error.json_path, error.message)
+            Diagnostic(
+                error.file or display_path.as_posix(),
+                error.json_path,
+                error.message,
+            )
         )
         return ValidationResult(tuple(sorted(set(diagnostics))))
 
-    diagnostics.extend(_instance_diagnostics(artifact, schema, display_path))
-    diagnostics.extend(_artifact_semantics(resolved, schema_name, artifact, display_path))
+    effective_schema_name = _schema_name_for_artifact(
+        schema_name,
+        artifact,
+    )
+    schema_relative = (
+        _SCHEMA_DIRECTORY / f"{effective_schema_name}.schema.json"
+    )
+    schema = _safe_schema(resolved, schema_relative, diagnostics)
+    if schema is None:
+        return ValidationResult(tuple(sorted(set(diagnostics))))
+    diagnostics.extend(_schema_diagnostics(schema, schema_relative))
+    if diagnostics:
+        return ValidationResult(tuple(sorted(set(diagnostics))))
+
+    diagnostics.extend(
+        _instance_diagnostics(artifact, schema, display_path)
+    )
+    diagnostics.extend(
+        _artifact_semantics(
+            resolved,
+            schema_name,
+            artifact,
+            display_path,
+        )
+    )
     return ValidationResult(tuple(sorted(set(diagnostics))))
 
 def validate_value(
@@ -2155,12 +2950,20 @@ def validate_value(
         raise ContractError(
             f"unknown schema {schema_name!r}; expected one of {list(names)!r}"
         )
-    schema_relative = _SCHEMA_DIRECTORY / f"{schema_name}.schema.json"
+    effective_schema_name = _schema_name_for_artifact(
+        schema_name,
+        artifact,
+    )
+    schema_relative = (
+        _SCHEMA_DIRECTORY / f"{effective_schema_name}.schema.json"
+    )
     diagnostics: list[Diagnostic] = []
     schema = _safe_schema(resolved, schema_relative, diagnostics)
     if schema is not None:
         diagnostics.extend(_schema_diagnostics(schema, schema_relative))
-        diagnostics.extend(_instance_diagnostics(artifact, schema, display_path))
+        diagnostics.extend(
+            _instance_diagnostics(artifact, schema, display_path)
+        )
         diagnostics.extend(
             _artifact_semantics(
                 resolved,
@@ -2189,16 +2992,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
             if not schema_errors:
                 schemas[schema_path.name] = schema
 
-    for required_schema in (
-        _REGISTRY_SCHEMA,
-        _ROLE_SCHEMA,
-        _SCORED_WORKER_POLICY_SCHEMA,
-        "task-candidate.schema.json",
-        _DIAGNOSTIC_TASK_SCHEMA,
-        _TASK_QUALIFICATION_SCHEMA,
-        _TASK_PACK_SCHEMA,
-        _EXPERIMENT_LEDGER_ENTRY_SCHEMA,
-    ):
+    for required_schema in _REQUIRED_SCHEMAS:
         if required_schema not in schemas:
             diagnostics.append(
                 Diagnostic(
@@ -2212,7 +3006,8 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
     if registry is None:
         return ValidationResult(tuple(sorted(set(diagnostics))))
 
-    registry_schema = schemas.get(_REGISTRY_SCHEMA)
+    registry_schema_name = _schema_name_for_artifact("role-registry", registry)
+    registry_schema = schemas.get(f"{registry_schema_name}.schema.json")
     if registry_schema is not None:
         diagnostics.extend(_instance_diagnostics(registry, registry_schema, _REGISTRY_FILE))
     diagnostics.extend(_registry_semantics(registry))
@@ -2263,7 +3058,8 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
                 )
 
     task_pack_map = registry.get("task_packs")
-    expected_pack_files = {f"{role}-v1.json" for role in _PILOT_TASK_PACKS}
+    task_pack_roles = _task_pack_roles(registry)
+    expected_pack_files = {f"{role}-v1.json" for role in task_pack_roles}
     pack_directory = resolved / _TASK_PACK_DIRECTORY
     actual_pack_files = (
         {path.relative_to(pack_directory).as_posix() for path in pack_directory.rglob("*.json")}
@@ -2275,7 +3071,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
     for name in sorted(actual_pack_files - expected_pack_files):
         diagnostics.append(Diagnostic((_TASK_PACK_DIRECTORY / name).as_posix(), "$", "unexpected public task pack"))
     task_pack_schema = schemas.get(_TASK_PACK_SCHEMA)
-    for role in _PILOT_TASK_PACKS:
+    for role in task_pack_roles:
         relative = _TASK_PACK_DIRECTORY / f"{role}-v1.json"
         if not (resolved / relative).is_file():
             continue
@@ -2288,23 +3084,31 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
         if isinstance(task_pack_map, dict) and task_pack_map.get(role) != relative.as_posix():
             diagnostics.append(Diagnostic(relative.as_posix(), "$", f"registry must map role {role!r} to this canonical pack"))
 
-    policy = _safe_schema(resolved, _SCORED_WORKER_POLICY_FILE, diagnostics)
-    if policy is None:
-        diagnostics.append(
-            Diagnostic(
-                _SCORED_WORKER_POLICY_FILE.as_posix(),
-                "$",
-                "required canonical policy file is missing or invalid",
+    for policy_file, policy_kind in (
+        (_SCORED_WORKER_POLICY_V1_FILE, "legacy"),
+        (_SCORED_WORKER_POLICY_FILE, "canonical"),
+    ):
+        policy = _safe_schema(resolved, policy_file, diagnostics)
+        if policy is None:
+            diagnostics.append(
+                Diagnostic(
+                    policy_file.as_posix(),
+                    "$",
+                    f"required {policy_kind} policy file is missing or invalid",
+                )
             )
+            continue
+        policy_schema_name = _schema_name_for_artifact(
+            "scored-worker-policy",
+            policy,
         )
-    else:
-        policy_schema = schemas.get(_SCORED_WORKER_POLICY_SCHEMA)
+        policy_schema = schemas.get(f"{policy_schema_name}.schema.json")
         if policy_schema is not None:
             diagnostics.extend(
                 _instance_diagnostics(
                     policy,
                     policy_schema,
-                    _SCORED_WORKER_POLICY_FILE,
+                    policy_file,
                 )
             )
         diagnostics.extend(
@@ -2312,7 +3116,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
                 resolved,
                 "scored-worker-policy",
                 policy,
-                _SCORED_WORKER_POLICY_FILE,
+                policy_file,
             )
         )
 

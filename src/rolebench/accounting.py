@@ -70,8 +70,15 @@ def _outcome(
     termination = _object(observation.get("termination"), "termination")
     digests = _object(observation.get("digests"), "digests")
     scored = disposition == "scored"
+    observation_version = observation.get("schema_version")
+    if observation_version == "omp.attempt-observation/v1":
+        outcome_version = "omp.attempt-outcome/v1"
+    elif observation_version == "omp.attempt-observation/v2":
+        outcome_version = "omp.attempt-outcome/v2"
+    else:
+        raise AccountingError("unsupported attempt observation schema_version")
     outcome: JSONObject = {
-        "schema_version": "omp.attempt-outcome/v1",
+        "schema_version": outcome_version,
         "observation_id": _string(observation.get("observation_id"), "observation_id"),
         "observation_digest_sha256": sha256(
             canonical_json(observation).encode("utf-8")
@@ -130,12 +137,14 @@ def _model_lifecycle_complete(
     lifecycle: JSONObject,
     provider: JSONObject,
     digests: JSONObject,
+    *,
+    evidence_use: str | None = None,
 ) -> bool:
     return (
         lifecycle.get("environment_started") is True
         and lifecycle.get("agent_started") is True
         and lifecycle.get("agent_finished") is True
-        and provider.get("request_started") is True
+        and (provider.get("request_started") is True if evidence_use is None else True)
         and isinstance(digests.get("trajectory"), str)
     )
 
@@ -144,27 +153,48 @@ def _verifier_lifecycle_complete(
     lifecycle: JSONObject,
     provider: JSONObject,
     digests: JSONObject,
+    *,
+    evidence_use: str | None = None,
+    schema_version: str,
 ) -> bool:
-    return (
-        _model_lifecycle_complete(lifecycle, provider, digests)
+    common_complete = (
+        _model_lifecycle_complete(
+            lifecycle,
+            provider,
+            digests,
+            evidence_use=evidence_use,
+        )
         and lifecycle.get("artifact_frozen") is True
         and lifecycle.get("verifier_started") is True
         and lifecycle.get("verifier_finished") is True
         and isinstance(digests.get("artifact"), str)
     )
-
+    if schema_version == "omp.attempt-observation/v1":
+        return common_complete
+    return (
+        common_complete
+        and lifecycle.get("runner_started") is True
+        and lifecycle.get("runner_finished") is True
+        and lifecycle.get("runner_evidence_frozen") is True
+        and isinstance(digests.get("runner_evidence"), str)
+    )
 
 def classify_attempt(observation: JSONObject) -> JSONObject:
     """Classify one observation defensively without clocks, I/O, or mutable state."""
 
-    if observation.get("schema_version") != "omp.attempt-observation/v1":
+    schema_version = observation.get("schema_version")
+    if schema_version not in {
+        "omp.attempt-observation/v1",
+        "omp.attempt-observation/v2",
+    }:
         raise AccountingError("unsupported attempt observation schema_version")
     evidence_use = observation.get("evidence_use")
-    if evidence_use not in {
+    allowed_evidence_uses = {
         None,
         "admission-only",
         "calibration-only",
-    }:
+    }
+    if evidence_use not in allowed_evidence_uses:
         raise AccountingError("evidence_use is invalid")
 
     lifecycle = _object(observation.get("lifecycle"), "lifecycle")
@@ -286,7 +316,7 @@ def classify_attempt(observation: JSONObject) -> JSONObject:
             "runner_harness",
             "runner-failure",
         )
-    if readiness.get("provider") != "available":
+    if readiness.get("provider") != "available" and evidence_use is None:
         return _invalid(
             observation,
             "indeterminate",
@@ -309,14 +339,16 @@ def classify_attempt(observation: JSONObject) -> JSONObject:
 
 
     if termination_kind in {"model-deadline", "resource-limit"}:
-        if provider.get("request_started") is not True:
+        if evidence_use is None and provider.get("request_started") is not True:
             return _invalid(
                 observation,
                 "indeterminate",
                 "provider_api",
                 "incomplete-observation",
             )
-        if not _model_lifecycle_complete(lifecycle, provider, digests):
+        if not _model_lifecycle_complete(
+            lifecycle, provider, digests, evidence_use=evidence_use
+        ):
             return _invalid(
                 observation,
                 "indeterminate",
@@ -365,7 +397,13 @@ def classify_attempt(observation: JSONObject) -> JSONObject:
                 "verifier",
                 "verifier-result-malformed",
             )
-        if not _verifier_lifecycle_complete(lifecycle, provider, digests):
+        if not _verifier_lifecycle_complete(
+            lifecycle,
+            provider,
+            digests,
+            evidence_use=evidence_use,
+            schema_version=str(schema_version),
+        ):
             return _invalid(
                 observation,
                 "indeterminate",
@@ -448,7 +486,10 @@ def summarize_outcomes(outcomes: Sequence[JSONObject]) -> JSONObject:
     excluded = 0
 
     for outcome in outcomes:
-        if outcome.get("schema_version") != "omp.attempt-outcome/v1":
+        if outcome.get("schema_version") not in {
+            "omp.attempt-outcome/v1",
+            "omp.attempt-outcome/v2",
+        }:
             raise AccountingError("unsupported attempt outcome schema_version")
         _validate_outcome_tuple(outcome)
         disposition = outcome.get("disposition")

@@ -1,0 +1,41 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "expression": "Apache-2.0",
+      "kind": "official-license",
+      "url": "https://github.com/harbor-framework/terminal-bench/blob/main/LICENSE"
+    },
+    {
+      "expression": "MIT",
+      "kind": "repository-license",
+      "path": "LICENSE"
+    },
+    {
+      "digest_sha256": "7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a",
+      "kind": "dataset-release",
+      "reference": "terminal-bench/terminal-bench-2-1@6"
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "Apache-2.0 AND MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain Terminal-Bench Apache-2.0 attribution and modified-work notice.",
+    "Identify synthetic inputs and passive harness as RoleBench MIT-licensed modifications."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-14T17:36:49Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "b92d6f0ba64e00ff02edc03bf62155c5eb21bec6446d130493ba13ff40363bf8",
+    "source_digest_sha256": "70367c38732e1beda7b229968a48d60242277c2fa4db91339c3f064c4c230d49",
+    "source_task": "terminal-bench/multi-source-data-merger",
+    "verifier_private_tree_digest_sha256": "edca1f40cd2322327f8aaa55ecd786bfcd32d1842fe1b7f56452fe293021b394"
+  },
+  "task_id": "terminal-bench.multi-source-data-merger",
+  "task_version": "2.1-r6"
+}

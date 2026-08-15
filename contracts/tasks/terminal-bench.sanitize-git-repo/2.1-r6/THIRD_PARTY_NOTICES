@@ -1,0 +1,35 @@
+Terminal-Bench 2.1 — terminal-bench/sanitize-git-repo
+
+Source: terminal-bench/terminal-bench-2-1@6
+Task content digest: 6e86297715fae62cd499fbdd27013e11a38d05d7e05b7f661cb50b4ecead128f
+Original task author: Jeffrey Li (jeffreywpli)
+Upstream project: https://github.com/harbor-framework/terminal-bench
+License: Apache License 2.0; see ../../../../LICENSES/Apache-2.0.txt from this task directory.
+
+RoleBench modification notice: the original environment was replaced with a minimal, manifestly synthetic credential-removal fixture. RoleBench added a data-only patch runner, passive verifier, exact expected-state oracle, isolation recipes, and admission probes. These modifications are covered by the repository MIT license.
+
+DCLM / test-secret-removal provenance
+
+The original Terminal-Bench environment cloned jeffreywpli/test-secret-removal at commit 8df3c81f7a9c8df2fb2ed417ff7d6afdfec2492e. The published RoleBench fixture is independently synthetic, but the upstream provenance and notice are retained conservatively.
+
+MIT License
+
+Copyright (c) 2024 mlfoundations
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
