@@ -6,7 +6,7 @@
     "digest_sha256": "0acc30b19e88c79f693723d87d8e59d97370e2d0b7293aa45c2cfe0ece578365"
   },
   "policy": {
-    "path": "contracts/scored-worker-policy.json",
+    "path": "contracts/scored-worker-policy-v2.json",
     "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70"
   },
   "provider": {

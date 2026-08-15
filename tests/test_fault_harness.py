@@ -15,7 +15,7 @@ from rolebench.fault_harness import FaultHarnessError, _observation, run_fault_c
 
 
 PRODUCT_ROOT = Path(__file__).resolve().parents[1]
-POLICY_PATH = Path("contracts/scored-worker-policy.json")
+POLICY_PATH = Path("contracts/scored-worker-policy-v2.json")
 
 
 class FaultHarnessTests(unittest.TestCase):

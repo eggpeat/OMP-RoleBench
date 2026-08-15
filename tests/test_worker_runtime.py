@@ -386,7 +386,7 @@ class WorkerRuntimeFixture(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         shutil.copytree(CONTRACTS_ROOT, self.root / "contracts")
-        policy_path = self.root / "contracts/scored-worker-policy.json"
+        policy_path = self.root / "contracts/scored-worker-policy-v2.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         digest = hashlib.sha256(canonical_json(policy).encode()).hexdigest()
         platform = {"os": "linux", "architecture": "amd64", "variant": None}
@@ -396,7 +396,7 @@ class WorkerRuntimeFixture(unittest.TestCase):
             "role": "task",
             "task": {"digest_sha256": "3" * 64},
             "policy": {
-                "path": "contracts/scored-worker-policy.json",
+                "path": "contracts/scored-worker-policy-v2.json",
                 "digest_sha256": digest,
             },
             "provider": {"enabled": False},
@@ -556,7 +556,7 @@ class DoctorTests(WorkerRuntimeFixture):
     ) -> None:
         report = worker.doctor_worker(
             self.root,
-            Path("contracts/scored-worker-policy.json"),
+            Path("contracts/scored-worker-policy-v2.json"),
             docker="docker-fixture",
         )
         self.assertTrue(report["ready"])
@@ -573,24 +573,16 @@ class DoctorTests(WorkerRuntimeFixture):
 
 class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
     def test_v1_manifest_executes_without_a_runner_container(self) -> None:
-        policy_path = self.root / "contracts/scored-worker-policy-v1.json"
-        policy = json.loads(
-            (self.root / "contracts/scored-worker-policy.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        policy["schema_version"] = "omp.scored-worker-policy/v1"
-        policy["policy_id"] = "rolebench-scored-worker-v1"
-        del policy["timeouts"]["runner_seconds"]
-        policy["handoff"] = {
-            "mode": "immutable-content-addressed",
-            "digest_algorithm": "sha256",
-            "require_agent_exit": True,
-            "verifier_read_only": True,
-        }
-        policy_path.write_text(
-            json.dumps(policy, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
+        policy_path = self.root / "contracts/scored-worker-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        self.assertEqual(policy["schema_version"], "omp.scored-worker-policy/v1")
+        self.assertEqual(policy["policy_id"], "rolebench-scored-worker-v1")
+        expected_digest = hashlib.sha256(
+            canonical_json(policy).encode("utf-8")
+        ).hexdigest()
+        self.assertEqual(
+            expected_digest,
+            "c773b99f959a64065d0237ac96af2c70f3e3fd6c676c87383645b94f8d1983ac",
         )
         self.manifest["schema_version"] = "omp.worker-run-manifest/v1"
         self.manifest.pop("runner")
@@ -598,10 +590,8 @@ class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
             self.manifest[container_name].pop("config_digest_sha256")
             self.manifest[container_name].pop("platform")
         self.manifest["policy"] = {
-            "path": "contracts/scored-worker-policy-v1.json",
-            "digest_sha256": hashlib.sha256(
-                canonical_json(policy).encode("utf-8")
-            ).hexdigest(),
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": expected_digest,
         }
         self.fake.verifier_stream = worker._StreamResult(
             0,
@@ -624,6 +614,20 @@ class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
             "omp.attempt-outcome/v1",
         )
 
+
+    def test_v1_manifest_with_tampered_policy_digest_fails_closed(self) -> None:
+        self.manifest["schema_version"] = "omp.worker-run-manifest/v1"
+        self.manifest.pop("runner")
+        for container_name in ("agent", "verifier"):
+            self.manifest[container_name].pop("config_digest_sha256")
+            self.manifest[container_name].pop("platform")
+        self.manifest["policy"] = {
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": "0" * 64,
+        }
+        self._write_manifest()
+        with self.assertRaises(worker.WorkerError):
+            self.run_worker()
 
 class ImageBindingAndIsolationTests(WorkerRuntimeFixture):
     def _assert_binding_rejected_before_stream(self) -> dict[str, object]:

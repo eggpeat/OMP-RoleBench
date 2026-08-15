@@ -24,7 +24,7 @@ class WorkerManifestTests(unittest.TestCase):
 
     def policy_digest(self) -> str:
         policy = json.loads(
-            (self.root / "contracts/scored-worker-policy.json").read_text(encoding="utf-8")
+            (self.root / "contracts/scored-worker-policy-v2.json").read_text(encoding="utf-8")
         )
         return sha256(canonical_json(policy).encode("utf-8")).hexdigest()
 
@@ -36,7 +36,7 @@ class WorkerManifestTests(unittest.TestCase):
             "role": "task",
             "task": {"digest_sha256": "1" * 64},
             "policy": {
-                "path": "contracts/scored-worker-policy.json",
+                "path": "contracts/scored-worker-policy-v2.json",
                 "digest_sha256": self.policy_digest(),
             },
             "provider": {"enabled": False},
@@ -84,31 +84,19 @@ class WorkerManifestTests(unittest.TestCase):
         self.assertTrue(result.valid, self.rendered(result))
 
     def test_v1_manifest_uses_the_v1_referenced_policy_schema(self) -> None:
-        policy_path = self.root / "contracts/scored-worker-policy-v1.json"
         policy = json.loads(
             (self.root / "contracts/scored-worker-policy.json").read_text(
                 encoding="utf-8"
             )
         )
-        policy["schema_version"] = "omp.scored-worker-policy/v1"
-        policy["policy_id"] = "rolebench-scored-worker-v1"
-        del policy["timeouts"]["runner_seconds"]
-        policy["handoff"] = {
-            "mode": "immutable-content-addressed",
-            "digest_algorithm": "sha256",
-            "require_agent_exit": True,
-            "verifier_read_only": True,
-        }
-        policy_path.write_text(
-            json.dumps(policy, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        self.assertEqual(policy["schema_version"], "omp.scored-worker-policy/v1")
+        self.assertEqual(policy["policy_id"], "rolebench-scored-worker-v1")
 
         manifest = self.manifest()
         manifest["schema_version"] = "omp.worker-run-manifest/v1"
         del manifest["runner"]
         manifest["policy"] = {
-            "path": "contracts/scored-worker-policy-v1.json",
+            "path": "contracts/scored-worker-policy.json",
             "digest_sha256": sha256(
                 canonical_json(policy).encode("utf-8")
             ).hexdigest(),
@@ -358,7 +346,7 @@ class WorkerManifestTests(unittest.TestCase):
         first = self.validate(manifest)
         self.assertTrue(first.valid, self.rendered(first))
 
-        policy_path = self.root / "contracts/scored-worker-policy.json"
+        policy_path = self.root / "contracts/scored-worker-policy-v2.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
         policy_path.write_text(
             json.dumps(dict(reversed(tuple(policy.items()))), indent=4),

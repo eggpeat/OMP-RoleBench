@@ -17,8 +17,10 @@ from rolebench.contracts import (
 
 PRODUCT_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS_ROOT = PRODUCT_ROOT / "contracts"
-POLICY = "contracts/scored-worker-policy.json"
+POLICY = "contracts/scored-worker-policy-v2.json"
 SCHEMA = "contracts/schemas/scored-worker-policy.schema.json"
+V1_POLICY = "contracts/scored-worker-policy.json"
+V1_SCHEMA = "contracts/schemas/scored-worker-policy-v1.schema.json"
 
 
 class WorkerPolicyFixture(unittest.TestCase):
@@ -64,6 +66,19 @@ class ValidWorkerPolicyTests(WorkerPolicyFixture):
             load_repository(self.root).scored_worker_policy,
             self.policy(),
         )
+    def test_v1_legacy_policy_and_schema_are_valid(self) -> None:
+        v1_result = validate_artifact(
+            self.root,
+            "scored-worker-policy",
+            Path(V1_POLICY),
+        )
+        self.assertTrue(v1_result.valid, v1_result.diagnostics)
+        v1_policy = self.read_json(V1_POLICY)
+        self.assertEqual(v1_policy["schema_version"], "omp.scored-worker-policy/v1")
+        self.assertEqual(v1_policy["policy_id"], "rolebench-scored-worker-v1")
+        v2_policy = self.read_json(POLICY)
+        self.assertEqual(v2_policy["schema_version"], "omp.scored-worker-policy/v2")
+        self.assertEqual(v2_policy["policy_id"], "rolebench-scored-worker-v2")
 
     def test_schema_encodes_fail_closed_sandbox_and_accounting_constants(self) -> None:
         schema = self.read_json(SCHEMA)

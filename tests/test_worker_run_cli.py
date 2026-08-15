@@ -12,7 +12,7 @@ from rolebench.worker import WorkerError
 
 
 PRODUCT_ROOT = Path(__file__).resolve().parents[1]
-POLICY_PATH = Path("contracts/scored-worker-policy.json")
+POLICY_PATH = Path("contracts/scored-worker-policy-v2.json")
 MANIFEST_PATH = Path("fixtures/docker-runsc/worker-run-manifest.json")
 POLICY_SHA = "a" * 64
 ARTIFACT_SHA = "b" * 64

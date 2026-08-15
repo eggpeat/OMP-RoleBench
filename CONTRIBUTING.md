@@ -34,7 +34,7 @@ python -m unittest discover -s tests -v
 Worker contributors must also follow the [rootless Docker/`runsc` setup](README.md#rootless-dockerrunsc-worker-setup). Install the repository's `scripts/rolebench-runsc-wrapper` beside the real `runsc`, register that absolute wrapper path as Docker's `runsc` runtime, and verify the host before any runtime scenario:
 
 ```bash
-rolebench worker doctor contracts/scored-worker-policy.json
+rolebench worker doctor contracts/scored-worker-policy-v2.json
 ```
 
 The doctor must report every prerequisite as `PASS`, including the local rootless Docker socket and `runsc resource enforcement`. The worker always targets `/run/user/$(id -u)/docker.sock` explicitly. Do not weaken the policy, omit OCI resource flags, switch to privileged/rootful or remote Docker, or use raw `runsc` to make a failing host pass. Runtime manifests must use immutable repository digests for distinct agent and verifier images; never commit local manifests or runtime artifacts.
@@ -139,7 +139,7 @@ The classifier in `src/rolebench/accounting.py` is deterministic. New failure si
 Run the deterministic no-model gate after changing the worker policy or accounting:
 
 ```bash
-rolebench worker fault-check contracts/scored-worker-policy.json
+rolebench worker fault-check contracts/scored-worker-policy-v2.json
 ```
 
 A clean result covers all 29 accounting reason codes with 4 scored controls, 18 retryable system failures, 5 quarantined controls, 1 cancellation, 1 excluded-evidence control, and zero external calls. The gate is synthetic: it validates policy and accounting behavior but does not prove installed runtime behavior.

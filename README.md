@@ -63,7 +63,7 @@ This prevents infrastructure trouble from looking like poor model quality withou
 
 ### Worker status
 
-[`contracts/scored-worker-policy.json`](contracts/scored-worker-policy.json) defines the required Docker/`runsc` isolation, provider-proxy boundary, resource limits, immutable handoff, networkless verifier, and fail-closed accounting behavior. `rolebench worker fault-check` validates that policy and sends 29 deterministic synthetic conditions through artifact validation and attempt accounting without launching Docker, using the network, or calling a model. The additional control proves that `admission-only` and `calibration-only` observations are classified as excluded evidence and never enter model-quality scoring.
+[`contracts/scored-worker-policy-v2.json`](contracts/scored-worker-policy-v2.json) defines the required Docker/`runsc` isolation, provider-proxy boundary, resource limits, immutable handoff, networkless verifier, and fail-closed accounting behavior. `rolebench worker fault-check` validates that policy and sends 29 deterministic synthetic conditions through artifact validation and attempt accounting without launching Docker, using the network, or calling a model. The additional control proves that `admission-only` and `calibration-only` observations are classified as excluded evidence and never enter model-quality scoring.
 
 `rolebench worker doctor` now checks an installed rootless Docker daemon, the registered RoleBench `runsc` wrapper, cgroup v2 delegation, and effective CPU/memory/PID enforcement. `rolebench worker run` executes exact digest-pinned, provider-disabled manifests across a three-container isolation pipeline: separate non-root agent, candidate runner, and passive verifier images, read-only roots, bounded tmpfs scratch, no network, no capabilities or host resources. The candidate artifact is supplied only to and may execute only in the candidate runner; it never executes in or becomes instructions for the verifier container. Because runner output may reflect artifact bytes, the verifier receives those bytes only as bounded inert untrusted data inside a host-framed evidence envelope. The host seals that evidence with a per-attempt nonce, `run_id`, stream lengths and digests, and bound request digests. Verifier verdicts echo exact bindings and emit strict `omp.verifier-result/v1`. Candidate execution semantics remain untrusted unless externally observable; runner stdout/events/clocks are untrusted payloads and internally self-reported semantics remain inadmissible without source-separated observation. Tasks requiring semantic observation like cancel-async remain inadmissible until such observation is available. This slice deliberately cannot run a scored provider request; provider-proxy integration and representative compatibility benchmarks remain gates before live scored benchmarks.
 
@@ -154,8 +154,8 @@ rolebench contracts digest --json
 rolebench artifacts validate route-policy path/to/policy.json --json
 rolebench accounting classify path/to/observation.json
 rolebench accounting summarize path/to/outcome-*.json
-rolebench worker fault-check contracts/scored-worker-policy.json --json
-rolebench worker doctor contracts/scored-worker-policy.json --json
+rolebench worker fault-check contracts/scored-worker-policy-v2.json --json
+rolebench worker doctor contracts/scored-worker-policy-v2.json --json
 rolebench worker run path/to/worker-run-manifest.json --report .rolebench/run-report.json --json
 rolebench tasks pack-verify contracts/task-packs/task-v1.json --json
 rolebench tasks qualification-check path/to/task.json path/to/qualification.json --json
@@ -203,7 +203,7 @@ Restart the user daemon and run the fail-closed doctor:
 
 ```bash
 systemctl --user restart docker.service
-rolebench worker doctor contracts/scored-worker-policy.json --json
+rolebench worker doctor contracts/scored-worker-policy-v2.json --json
 ```
 
 `ready: true` requires every policy, local user-owned Unix-socket daemon, runtime, delegation, and resource-enforcement check to pass. The worker always supplies `--host unix:///run/user/$(id -u)/docker.sock`; Docker contexts and conflicting `DOCKER_HOST` values cannot redirect execution. Do not run a benchmark after a failed doctor. The wrapper creates one transient delegated cgroup scope per container, copies the OCI CPU/memory/PID limits into cgroup v2 controls, attaches `runsc`, and removes the scope after `runsc delete`.
@@ -217,8 +217,10 @@ The example manifest is provider-disabled and must report `external_provider_cal
 ```text
 contracts/
   role-registry.json     Canonical built-in role registry and OMP provenance
-  scored-worker-policy.json
+  scored-worker-policy-v2.json
                           Canonical policy for future scored-worker enforcement
+  scored-worker-policy.json
+                          Legacy v1 policy preserved for replaying v1 manifests
   roles/                 Versioned diagnostic contracts for all ten roles
   schemas/               Draft 2020-12 artifact schemas
   task-packs/            Reviewed default calibration pack and authoring queues

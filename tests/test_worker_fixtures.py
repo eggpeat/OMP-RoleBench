@@ -15,7 +15,7 @@ PRODUCT_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = PRODUCT_ROOT / "fixtures" / "docker-runsc"
 DIAGNOSTIC_FIXTURE_ROOT = PRODUCT_ROOT / "fixtures" / "diagnostic-task"
 MANIFEST_PATH = FIXTURE_ROOT / "worker-run-manifest.json"
-POLICY_PATH = PRODUCT_ROOT / "contracts" / "scored-worker-policy.json"
+POLICY_PATH = PRODUCT_ROOT / "contracts" / "scored-worker-policy-v2.json"
 BASE = "busybox@sha256:7a3ebe5bfd1a4a19797d20b0c0bb39d44393e9a03fd852c0865b0f540d868df0"
 PYTHON_BASE = "python:3.13-slim-bookworm@sha256:00faa2debb87529f9f0764e9491d8ba400a3678976616c3bd7cb193745ac20d1"
 PLACEHOLDER_DIGESTS = {"0" * 64, "a" * 64, "f" * 64}
@@ -39,7 +39,7 @@ class DockerRunscFixtureTests(unittest.TestCase):
         policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
         expected_policy_digest = sha256(canonical_json(policy).encode("utf-8")).hexdigest()
         self.assertEqual(manifest["policy"], {
-            "path": "contracts/scored-worker-policy.json",
+            "path": "contracts/scored-worker-policy-v2.json",
             "digest_sha256": expected_policy_digest,
         })
         self.assertEqual(manifest["provider"], {"enabled": False})

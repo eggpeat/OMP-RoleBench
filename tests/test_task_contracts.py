@@ -130,7 +130,7 @@ class TaskContractFixture(unittest.TestCase):
         tamper_repeat.write_text('{"tamper_blocked":true,"trial":2}\n', encoding="utf-8")
 
         contract = json.loads((self.root / "contracts/roles/task.json").read_text(encoding="utf-8"))
-        policy = json.loads((self.root / "contracts/scored-worker-policy.json").read_text(encoding="utf-8"))
+        policy = json.loads((self.root / "contracts/scored-worker-policy-v2.json").read_text(encoding="utf-8"))
         public_digest = tree_sha256(public_root)
         private_digest = tree_sha256(private_root)
         platform = {"os": "linux", "architecture": "amd64", "variant": None}
@@ -210,7 +210,7 @@ class TaskContractFixture(unittest.TestCase):
                 },
             },
             "policy": {
-                "path": "contracts/scored-worker-policy.json",
+                "path": "contracts/scored-worker-policy-v2.json",
                 "digest_sha256": canonical_sha256(policy),
             },
             "agent": {
