@@ -1,0 +1,18 @@
+$ make release
+g++ -std=c++17 -o release main.cpp user.cpp -O2 -DNDEBUG -L/usr/local/gcc-custom-release/lib64 -Wl,-Bstatic -lstdc++ -Wl,-Bdynamic -lm
+$ ./release
+=== Monte Carlo π Estimation Application ===
+
+=== Running Monte Carlo Simulation ===
+
+Estimating π using Monte Carlo method...
+Samples: 1000000
+Estimated π: 3.141388
+Actual π: 3.141593
+Error: 0.000205
+Accuracy: 99.99%
+
+=== Computation completed successfully ===
+Segmentation fault (core dumped)
+$ echo $?
+139

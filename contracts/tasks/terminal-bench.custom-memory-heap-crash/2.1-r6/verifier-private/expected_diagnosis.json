@@ -1,0 +1,19 @@
+{
+  "expected_failure_point_id": "STATIC_LOCALE_DESTRUCTOR",
+  "expected_fault_category": "ALLOCATOR_LIFETIME_MISMATCH",
+  "expected_primary_hypothesis_id": "HYP_CUSTOM_HEAP_LOCALE_DESTRUCTION",
+  "expected_remediation_action_id": "PREINITIALIZE_LOCALE_FACETS_IN_USER_INIT",
+  "expected_trigger_id": "STREAM_OUTPUT_FORMATTING",
+  "forbidden_remediation_action_ids": [
+    "CALL_QUICK_EXIT_IN_USER_CLEANUP",
+    "DISABLE_OPTIMIZATION_FLAGS",
+    "DELETE_STATIC_DESTRUCTORS"
+  ],
+  "required_evidence_ids": [
+    "EVID_GDB_SIGSEGV_FREE",
+    "EVID_VALGRIND_INVALID_FREE"
+  ],
+  "schema_version": "omp.task-expected-diagnosis/v2",
+  "task_id": "terminal-bench.custom-memory-heap-crash",
+  "task_version": "2.1-r6"
+}

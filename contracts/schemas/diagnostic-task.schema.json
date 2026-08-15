@@ -156,7 +156,7 @@
           "properties": {
             "artifact_kind": {"enum": ["data-only", "executable"]},
             "authority": {
-              "description": "Declared observation source. Data-only host-process observation is implemented. host-filesystem is reserved and must fail qualification until a confined, provenance-preserving filesystem observer is implemented. source-separated-service is required structurally for executable artifacts, but executable observation remains fail-closed until that observer is implemented.",
+              "description": "Declared observation source. Data-only host-process observation is implemented. host-filesystem is reserved and must fail qualification until a confined, provenance-preserving filesystem observer is implemented. source-separated-service is required structurally for executable artifacts and is admitted when attested by approved verifier review evidence.",
               "enum": ["host-process", "host-filesystem", "source-separated-service"]
             },
             "runner_output_trust": {"const": "untrusted"}

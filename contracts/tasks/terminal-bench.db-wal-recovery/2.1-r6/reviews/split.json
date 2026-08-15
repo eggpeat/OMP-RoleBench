@@ -1,0 +1,25 @@
+{
+  "assignment": {
+    "assignment_method": "author-assigned",
+    "confidentiality": "public",
+    "family_id": "terminal-bench.db-wal-recovery",
+    "partition": "anchor",
+    "role": "slow"
+  },
+  "capability_tags": [
+    "root-cause-analysis",
+    "long-horizon-reasoning",
+    "hypothesis-testing",
+    "debugging-tool-use",
+    "failure-recovery"
+  ],
+  "decision": "approved",
+  "findings": [],
+  "rationale": "Root-cause diagnosis, competing hypothesis testing, and complete database recovery of an encrypted Write-Ahead Log requiring multi-step investigation.",
+  "review_type": "split",
+  "reviewed_at": "2026-08-15T07:35:52Z",
+  "reviewer": "rolebench/reviewer/role-fit-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "task_id": "terminal-bench.db-wal-recovery",
+  "task_version": "2.1-r6"
+}
