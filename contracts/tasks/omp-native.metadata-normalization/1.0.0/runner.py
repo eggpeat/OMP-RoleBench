@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Exact-format parser for the tiny metadata-normalization task."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import sys
+from typing import NoReturn
+
+MAX_ARTIFACT_BYTES = 2 * 1024
+SCHEMA_VERSION = "rolebench.metadata-normalization/v1"
+SNAPSHOT_VERSION = "rolebench.metadata-normalization-runner-snapshot/v1"
+KEYS = ["schema_version", "run_id", "outcome", "role", "retryable", "latency_bucket", "labels"]
+
+
+class SubmissionError(ValueError):
+    """Malformed normalized metadata artifact."""
+
+
+def _reject_constant(value: str) -> NoReturn:
+    raise SubmissionError(f"non-finite JSON number {value!r}")
+
+
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise SubmissionError(f"duplicate JSON key {key!r}")
+        result[key] = value
+    return result
+
+
+def _validate(value: object, payload: bytes) -> dict[str, object]:
+    if not isinstance(value, dict) or list(value) != KEYS:
+        raise SubmissionError("submission keys or key order are invalid")
+    if payload != json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"):
+        raise SubmissionError("submission must be compact canonical JSON without surrounding whitespace")
+    if value.get("schema_version") != SCHEMA_VERSION:
+        raise SubmissionError("unsupported submission schema")
+    if any(not isinstance(value.get(field), str) or not value[field] for field in ("run_id", "outcome", "role", "latency_bucket")):
+        raise SubmissionError("normalized string fields must be non-empty")
+    if not isinstance(value.get("retryable"), bool):
+        raise SubmissionError("retryable must be a boolean")
+    labels = value.get("labels")
+    if not isinstance(labels, list) or any(not isinstance(item, str) or not item for item in labels) or len(labels) != len(set(labels)):
+        raise SubmissionError("labels must be unique non-empty strings")
+    return value
+
+
+def _snapshot(*, status: str, error: str | None, fixture_sha256: str | None, submission: object) -> str:
+    return json.dumps({"schema_version": SNAPSHOT_VERSION, "status": status, "error": error, "fixture_sha256": fixture_sha256, "submission": submission}, sort_keys=True, separators=(",", ":"))
+
+
+def main() -> int:
+    payload = sys.stdin.buffer.read(MAX_ARTIFACT_BYTES + 1)
+    if len(payload) > MAX_ARTIFACT_BYTES:
+        sys.stdout.write(_snapshot(status="rejected", error="artifact exceeds 2 KiB", fixture_sha256=None, submission=None))
+        return 0
+    try:
+        parsed = json.loads(payload.decode("utf-8"), object_pairs_hook=_unique_object, parse_constant=_reject_constant)
+        submission = _validate(parsed, payload)
+        fixture = Path("/opt/rolebench/task/public/workspace/route_header.txt")
+        if not fixture.is_file():
+            fixture = Path(__file__).resolve().parent / "public" / "workspace" / "route_header.txt"
+        fixture_sha256 = hashlib.sha256(fixture.read_bytes()).hexdigest()
+    except (UnicodeDecodeError, json.JSONDecodeError, SubmissionError, OSError, TypeError, RecursionError) as error:
+        sys.stdout.write(_snapshot(status="rejected", error=str(error), fixture_sha256=None, submission=None))
+        return 0
+    sys.stdout.write(_snapshot(status="executed", error=None, fixture_sha256=fixture_sha256, submission=submission))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

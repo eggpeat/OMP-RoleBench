@@ -52,14 +52,7 @@ _TASK_QUALIFICATION_SCHEMA = "task-qualification.schema.json"
 _TASK_REVIEW_EVIDENCE_SCHEMA = "task-review-evidence.schema.json"
 _EXPERIMENT_LEDGER_ENTRY_SCHEMA = "experiment-ledger-entry.schema.json"
 _V1_TASK_PACKS: tuple[str, ...] = ("task", "smol", "slow")
-_PILOT_TASK_PACKS: tuple[str, ...] = (
-    "default",
-    "task",
-    "smol",
-    "slow",
-    "plan",
-    "advisor",
-)
+_V2_TASK_PACKS: tuple[str, ...] = BUILTIN_ROLES
 _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
     "attempt-observation": {
         "omp.attempt-observation/v1": "attempt-observation-v1",
@@ -267,7 +260,7 @@ def _load_object(root: Path, relative: Path) -> JSONObject:
 def _task_pack_roles(registry: JSONObject) -> tuple[str, ...]:
     if registry.get("schema_version") == "omp.role-registry/v1":
         return _V1_TASK_PACKS
-    return _PILOT_TASK_PACKS
+    return _V2_TASK_PACKS
 
 
 def load_repository(root: Path | None = None) -> Repository:

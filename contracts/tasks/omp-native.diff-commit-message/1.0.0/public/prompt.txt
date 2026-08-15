@@ -1,0 +1,13 @@
+Read `/opt/rolebench/task/public/workspace/change.patch` and produce the conventional commit that describes only observable production behavior in the diff.
+
+Convention:
+- type is one of `fix`, `feat`, `refactor`, `test`, or `docs`;
+- scope is the first component below `src/`;
+- subject is imperative, lowercase, has no trailing punctuation, and is at most 72 characters;
+- body contains one concise sentence per distinct production behavior, in diff order; do not mention test implementation details;
+- evidence contains the narrowest `change.patch:<start>-<end>` line range for each body sentence, in the same order;
+- `breaking` is true only for a demonstrated incompatible public-interface change.
+
+Return exactly one UTF-8 JSON object and no markdown or commentary:
+
+{"schema_version":"rolebench.commit-message/v1","type":"<value>","scope":"<value>","subject":"<value>","body":["<sentence>"],"evidence":["change.patch:<start>-<end>"],"breaking":<boolean>}

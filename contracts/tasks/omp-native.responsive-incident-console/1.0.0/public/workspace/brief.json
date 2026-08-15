@@ -1,0 +1,18 @@
+{
+  "product": "Relay Incident Console",
+  "audience": "on-call engineers",
+  "tone": "calm, precise, operational",
+  "requirements": {
+    "desktop": "persistent left navigation and a multi-column incident grid",
+    "mobile": "hide the left navigation, show a menu control, and use one incident column without horizontal overflow",
+    "interaction": "each incident exposes its timeline through a native disclosure control",
+    "accessibility": "semantic landmarks, labelled controls, visible keyboard focus, 44px primary targets, and WCAG AA text contrast"
+  },
+  "navigation": ["Overview", "Incidents", "Services", "Runbooks"],
+  "filters": ["All services", "API", "Ingest", "Storage"],
+  "incidents": [
+    {"id": "INC-241", "title": "API latency above SLO", "severity": "critical", "service": "API", "age": "12m", "timeline": "11:42 alert · 11:46 mitigation started"},
+    {"id": "INC-238", "title": "Ingest retry queue growing", "severity": "warning", "service": "Ingest", "age": "31m", "timeline": "11:23 alert · 11:35 owner assigned"},
+    {"id": "INC-233", "title": "Replica lag elevated", "severity": "watch", "service": "Storage", "age": "1h", "timeline": "10:54 alert · 11:18 lag stabilizing"}
+  ]
+}

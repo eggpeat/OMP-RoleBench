@@ -2,7 +2,7 @@
 
 RoleBench turns a fixed OMP role benchmark profile and exact candidate model routes into reviewable evidence and ranked model-to-role recommendations. Optional capacity inputs can extend qualified recommendations into allocation policies; optional session-derived tasks can extend the default benchmark profile. Contributions must preserve four properties: **measured quality**, **reproducibility**, **canonical defaults**, and **data minimization**.
 
-The project is currently building its contract, worker, and diagnostic-authoring layers. It ships one reviewed, routing-ineligible `default` calibration pack, but not a complete ten-role benchmark corpus, provider-backed evaluation, model-route recommendations, session-to-task synthesis, an optimizer, or OMP runtime integration. Read the [target architecture](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, benchmark-profile, estimator, optimizer, or OMP integration change, and keep planned behavior distinct from implemented behavior in user-facing documentation.
+The project is currently building its worker, calibration, and diagnostic-authoring layers. It ships 14 reviewed, routing-ineligible anchors across all ten fixed role packs, but not provider-backed evaluation, model-route recommendations, session-to-task synthesis, an optimizer, or OMP runtime integration. Read the [target architecture](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, benchmark-profile, estimator, optimizer, or OMP integration change, and keep planned behavior distinct from implemented behavior in user-facing documentation.
 
 ## License of contributions
 

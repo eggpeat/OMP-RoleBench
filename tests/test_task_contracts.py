@@ -414,36 +414,34 @@ class TaskContractFixture(unittest.TestCase):
         return task, qualification
 
 
-class CanonicalPilotPackTests(TaskContractFixture):
-    def test_repository_and_pilot_packs_are_canonical(self) -> None:
+class CanonicalFixedPackTests(TaskContractFixture):
+    def test_repository_and_fixed_packs_are_canonical(self) -> None:
         result = validate_repository(self.root)
         self.assertTrue(result.valid, self.messages(result))
         repository = load_repository(self.root)
         packs = dict(repository.task_packs)
+        expected_entries = {
+            "default": 2,
+            "smol": 1,
+            "slow": 2,
+            "vision": 2,
+            "plan": 1,
+            "designer": 1,
+            "commit": 1,
+            "tiny": 1,
+            "task": 1,
+            "advisor": 2,
+        }
         self.assertEqual(
             tuple(role for role, _ in repository.task_packs),
-            ("default", "task", "smol", "slow", "plan", "advisor"),
+            tuple(expected_entries),
         )
-        default = packs["default"]
-        self.assertEqual(default["status"], "calibration")
-        self.assertIs(default["routing_eligible"], False)
-        self.assertEqual(len(default["entries"]), 2)
-        for role, entry_count in {
-            "task": 1,
-            "slow": 2,
-            "plan": 1,
-            "advisor": 1,
-        }.items():
+        for role, entry_count in expected_entries.items():
             pack = packs[role]
             self.assertEqual(pack["role"], role)
             self.assertEqual(pack["status"], "calibration")
             self.assertIs(pack["routing_eligible"], False)
             self.assertEqual(len(pack["entries"]), entry_count)
-        smol = packs["smol"]
-        self.assertEqual(smol["role"], "smol")
-        self.assertEqual(smol["status"], "authoring")
-        self.assertIs(smol["routing_eligible"], False)
-        self.assertEqual(smol["entries"], [])
 
     def test_mapped_pack_changes_canonical_repository_digest(self) -> None:
         before = canonical_digest(load_repository(self.root))

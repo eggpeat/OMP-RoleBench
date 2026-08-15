@@ -1,0 +1,48 @@
+MEMCACHED AUTH REVIEW BUNDLE
+Binary build identifier: rolebench-memcached-auth-2026-08
+All function names below were recovered by deterministic signature matching.
+
+FUNCTION auth_handler @ 0x41a480
+A01: int auth_handler(request *req) {
+A02:     token pair = parse_auth_token(req->payload);
+A03:     int permitted = authfile_check(pair.user, pair.password);
+A04:     if (permitted == 0) {
+A05:         emit_error(req, "unauthenticated");
+A06:         return -1;
+A07:     }
+A08:     audit_user(pair.user);
+A09:     return dispatch_authenticated(req);
+A10: }
+
+FUNCTION authfile_check @ 0x41a630
+C01: int authfile_check(char *candidate_user, char *candidate_password) {
+C02:     credential *entry = credential_table;
+C03:     while (entry != NULL) {
+C04:         int user_cmp = timing_safe_compare(candidate_user, entry->user);
+C05:         if (user_cmp == 0) {
+C06:             return 1;
+C07:         }
+C08:         int password_cmp = timing_safe_compare(candidate_password, entry->password);
+C09:         if (password_cmp == 0) {
+C10:             return 1;
+C11:         }
+C12:         entry = entry->next;
+C13:     }
+C14:     return 0;
+C15: }
+
+FUNCTION parse_auth_token @ 0x41a820
+P01: token parse_auth_token(bytes payload) {
+P02:     token out = split_once(payload, ':');
+P03:     if (out.user.length == 0 || out.password.length == 0) {
+P04:         return INVALID_TOKEN;
+P05:     }
+P06:     return out;
+P07: }
+
+FUNCTION audit_user @ 0x41aa10
+U01: void audit_user(char *user) {
+U02:     if (strcmp(user, "system") == 0) log_flag(PRIVILEGED_USER);
+U03:     if (strcmp(user, "guest") == 0) log_flag(GUEST_USER);
+U04:     append_audit_record(user);
+U05: }

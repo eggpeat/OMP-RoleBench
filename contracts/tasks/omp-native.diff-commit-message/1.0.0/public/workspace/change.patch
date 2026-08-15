@@ -1,0 +1,35 @@
+diff --git a/src/cache/store.py b/src/cache/store.py
+index 31ca102..a744c55 100644
+--- a/src/cache/store.py
++++ b/src/cache/store.py
+@@ -41,8 +41,11 @@ class CacheStore:
+     def delete(self, key: str) -> bool:
+-        deleted = self._backing.delete(key)
+         self._l1.pop(key, None)
++        deleted = self._backing.delete(key)
++        outcome = "hit" if deleted else "miss"
++        self._metrics.increment("cache.delete", tags={"outcome": outcome})
+         return deleted
+ 
+diff --git a/tests/cache/test_store.py b/tests/cache/test_store.py
+index 2f361ae..e8cb04d 100644
+--- a/tests/cache/test_store.py
++++ b/tests/cache/test_store.py
+@@ -88,3 +88,16 @@ def test_delete_removes_existing_key(store):
+     assert store.delete("alpha") is True
+     assert store.get("alpha") is None
++
++def test_delete_invalidates_l1_before_backing_store(store):
++    store.put("alpha", "old")
++    store._backing.before_delete = lambda: store._backing.put("alpha", "new")
++    assert store.delete("alpha") is True
++    assert store.get("alpha") == "new"
++
++def test_delete_records_hit_and_miss_metrics(store):
++    store.put("alpha", "value")
++    assert store.delete("alpha") is True
++    assert store.delete("missing") is False
++    assert store.metrics == [
++        ("cache.delete", {"outcome": "hit"}),
++        ("cache.delete", {"outcome": "miss"}),
++    ]

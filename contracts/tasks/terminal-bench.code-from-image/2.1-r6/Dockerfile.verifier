@@ -1,0 +1,14 @@
+FROM python:3.13-slim-bookworm@sha256:00faa2debb87529f9f0764e9491d8ba400a3678976616c3bd7cb193745ac20d1
+
+ARG PRIVATE_TREE_SHA256
+
+LABEL org.omp.rolebench.task.role="vision" \
+      org.omp.rolebench.task.stage="verifier" \
+      org.omp.rolebench.task.verifier-private-tree-sha256="${PRIVATE_TREE_SHA256}"
+
+COPY verifier-private/ /opt/rolebench/task/verifier-private/
+RUN chmod -R a+rX /opt/rolebench/task/verifier-private \
+ && chmod 0555 /opt/rolebench/task/verifier-private/verifier.py
+
+USER 1000:1000
+ENTRYPOINT ["/opt/rolebench/task/verifier-private/verifier.py"]
