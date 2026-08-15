@@ -114,7 +114,6 @@ _FORBIDDEN_NAMES = frozenset(
         "sys",
         "SystemExit",
         "threading",
-        "type",
         "vars",
     }
 )
@@ -316,6 +315,28 @@ def _validate_candidate_source(source: str) -> ast.Module:
             if node.decorator_list:
                 raise SourceValidationError("function decorators are not allowed")
         if isinstance(node, ast.Name):
+            if node.id == "type":
+                call = parents.get(node)
+                comparison = (
+                    parents.get(call) if isinstance(call, ast.Call) else None
+                )
+                if not (
+                    isinstance(call, ast.Call)
+                    and call.func is node
+                    and len(call.args) == 1
+                    and not isinstance(call.args[0], ast.Starred)
+                    and not call.keywords
+                    and isinstance(comparison, ast.Compare)
+                    and comparison.left is call
+                    and len(comparison.ops) == 1
+                    and isinstance(comparison.ops[0], (ast.Is, ast.IsNot))
+                    and len(comparison.comparators) == 1
+                    and isinstance(comparison.comparators[0], ast.Name)
+                    and comparison.comparators[0].id == "int"
+                ):
+                    raise SourceValidationError(
+                        "type may only be used in a direct exact-type identity check"
+                    )
             if node.id.startswith("__") or node.id in _FORBIDDEN_NAMES:
                 raise SourceValidationError(f"name {node.id!r} is not allowed")
             if isinstance(node.ctx, ast.Load) and node.id in module_aliases:

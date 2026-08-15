@@ -560,6 +560,26 @@ CANDIDATE_PLAN = json.loads(r'''{
       }
     ]
   },
+  "service_level_model": {
+    "compiled_shape_metric_id": "UNIQUE_COMPILED_GRAPHS",
+    "compiled_shape_operator": "LESS_THAN_OR_EQUAL",
+    "compiled_shape_limit": 8,
+    "latency_metric_id": "REQUEST_LATENCY_MS",
+    "latency_aggregation": "P95",
+    "latency_operator": "LESS_THAN_OR_EQUAL",
+    "latency_limit_parameter_id": "REQUEST_SLA_MAX_LATENCY_MS",
+    "padding_metric_id": "PADDED_TOKEN_WORK",
+    "padding_operator": "LESS_THAN_OR_EQUAL",
+    "padding_limit_parameter_id": "REQUEST_SLA_MAX_PADDED_TOKENS",
+    "cost_metric_id": "TOTAL_COST",
+    "cost_equation_id": "GPU_TIME_COST_PLUS_QUEUE_OVERHEAD",
+    "gpu_time_metric_id": "TOTAL_ACTIVE_GPU_SECONDS",
+    "gpu_time_coefficient_parameter_id": "GPU_RATE_PER_SECOND",
+    "queue_overhead_metric_id": "QUEUE_OVERHEAD_COST",
+    "queue_overhead_coefficient": 1,
+    "cost_operator": "LESS_THAN_OR_EQUAL",
+    "cost_limit_parameter_id": "REQUEST_SLA_MAX_COST"
+  },
   "rollout_and_recovery": {
     "atomic_commit_strategy": {
       "strategy_kind": "GENERATION_DIRECTORY_SWAP",

@@ -1743,5 +1743,92 @@ class SanitizerRunnerTests(unittest.TestCase):
 
 
 
+class PublishedCandidateRegressionTests(unittest.TestCase):
+    def test_memory_candidate_meets_verifier_narrative_gates(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.custom-memory-heap-crash/2.1-r6"
+        )
+        candidate = runpy.run_path(str(task_dir / "probes/candidate.py"))[
+            "CANDIDATE_DIAGNOSIS"
+        ]
+        is_substantive_text = runpy.run_path(
+            str(task_dir / "verifier-private/verifier.py")
+        )["_is_substantive_text"]
+
+        technical_notes = candidate["technical_notes"]
+        for field in ("root_cause_explanation", "recovery_explanation"):
+            with self.subTest(field=field):
+                self.assertTrue(
+                    is_substantive_text(
+                        technical_notes[field],
+                        min_chars=120,
+                        min_words=15,
+                    )
+                )
+
+    def test_scheduler_candidate_satisfies_runner_contract(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.llm-inference-batching-scheduler/2.1-r6"
+        )
+        candidate = runpy.run_path(str(task_dir / "probes/candidate.py"))[
+            "CANDIDATE_PLAN"
+        ]
+        validate_submission = runpy.run_path(str(task_dir / "runner.py"))[
+            "_validate_submission"
+        ]
+
+        normalized = validate_submission(candidate)
+        expected = json.loads(
+            (
+                task_dir / "verifier-private/expected_plan_graph.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            normalized["service_level_model"],
+            expected["required_service_level_model"],
+        )
+
+
+class CancelAsyncRunnerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        namespace = runpy.run_path(
+            str(
+                PRODUCT_ROOT
+                / "contracts/tasks/terminal-bench.cancel-async-tasks"
+                / "2.1-r6/runner.py"
+            )
+        )
+        self.validate_source = namespace["_validate_candidate_source"]
+        self.validation_error = namespace["SourceValidationError"]
+
+    def test_accepts_direct_exact_type_identity_check(self) -> None:
+        self.validate_source(
+            "async def run_tasks(tasks, max_concurrent):\n"
+            "    if type(max_concurrent) is not int:\n"
+            "        raise ValueError('invalid concurrency')\n"
+        )
+
+    def test_type_result_cannot_escape_exact_identity_check(self) -> None:
+        sources = (
+            "async def run_tasks(tasks, max_concurrent):\n"
+            "    value_type = type(max_concurrent)\n",
+            "async def run_tasks(tasks, max_concurrent):\n"
+            "    if type(max_concurrent, (), {}) is int:\n"
+            "        return None\n",
+            "async def run_tasks(tasks, max_concurrent):\n"
+            "    if type(max_concurrent) == int:\n"
+            "        return None\n",
+            "async def run_tasks(tasks, max_concurrent):\n"
+            "    if type(max_concurrent) is bool:\n"
+            "        return None\n",
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                with self.assertRaises(self.validation_error):
+                    self.validate_source(source)
+
+
 if __name__ == "__main__":
     unittest.main()

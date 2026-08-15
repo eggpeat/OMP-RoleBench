@@ -34,7 +34,7 @@ CANDIDATE_DIAGNOSIS = {
     "remediation_action_id": "PREINITIALIZE_LOCALE_FACETS_IN_USER_INIT",
     "schema_version": "rolebench.diagnosis/v2",
     "technical_notes": {
-        "recovery_explanation": "Force facet allocation on the default system heap during user_init prior to custom allocator instantiation.",
+        "recovery_explanation": "Force facet allocation on the default system heap during user_init before constructing the custom allocator, so static cleanup later returns those blocks through the matching system deallocator.",
         "root_cause_explanation": "Lifetime inversion where static runtime facets outlive the custom heap allocator that serviced their dynamic allocation."
     },
     "trigger_id": "STREAM_OUTPUT_FORMATTING"
