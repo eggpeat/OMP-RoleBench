@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import runpy
 import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -1767,6 +1768,30 @@ class PublishedCandidateRegressionTests(unittest.TestCase):
                     )
                 )
 
+    def test_memory_release_requires_custom_runtime(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.custom-memory-heap-crash/2.1-r6"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary) / "workspace"
+            shutil.copytree(task_dir / "public/workspace", workspace)
+            missing_runtime = workspace / "missing-release-runtime"
+            result = subprocess.run(
+                ["make", "release", f"RELEASE_LIB={missing_runtime}"],
+                cwd=workspace,
+                capture_output=True,
+                check=False,
+                text=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                f"Required custom release runtime {missing_runtime} not found.",
+                result.stderr,
+            )
+            self.assertFalse((workspace / "release").exists())
+
     def test_scheduler_candidate_satisfies_runner_contract(self) -> None:
         task_dir = (
             PRODUCT_ROOT
@@ -1790,6 +1815,34 @@ class PublishedCandidateRegressionTests(unittest.TestCase):
             expected["required_service_level_model"],
         )
 
+    def test_scheduler_verifier_rejects_non_rollback_gate_fallback(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.llm-inference-batching-scheduler/2.1-r6"
+        )
+        candidate = runpy.run_path(str(task_dir / "probes/candidate.py"))[
+            "CANDIDATE_PLAN"
+        ]
+        validate_submission = runpy.run_path(str(task_dir / "runner.py"))[
+            "_validate_submission"
+        ]
+        verify_plan = runpy.run_path(
+            str(task_dir / "verifier-private/verifier.py")
+        )["_verify_plan"]
+        expected = json.loads(
+            (
+                task_dir / "verifier-private/expected_plan_graph.json"
+            ).read_text(encoding="utf-8")
+        )
+        normalized = validate_submission(candidate)
+        self.assertTrue(verify_plan(normalized, expected))
+
+        weakened = deepcopy(normalized)
+        weakened["risks_and_mitigations"]["gates"][0][
+            "fallback_action"
+        ] = "FAIL_CLOSED"
+        self.assertFalse(verify_plan(weakened, expected))
+
 
 class CancelAsyncRunnerTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -1802,6 +1855,23 @@ class CancelAsyncRunnerTests(unittest.TestCase):
         )
         self.validate_source = namespace["_validate_candidate_source"]
         self.validation_error = namespace["SourceValidationError"]
+
+    def test_accepts_running_loop_api(self) -> None:
+        sources = (
+            (
+                "import asyncio\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    asyncio.get_running_loop()\n"
+            ),
+            (
+                "from asyncio import get_running_loop\n\n"
+                "async def run_tasks(tasks, max_concurrent):\n"
+                "    get_running_loop()\n"
+            ),
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                self.validate_source(source)
 
     def test_accepts_direct_exact_type_identity_check(self) -> None:
         self.validate_source(
