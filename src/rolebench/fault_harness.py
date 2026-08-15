@@ -719,7 +719,7 @@ def run_fault_check(root: Path, policy_path: Path) -> JSONObject:
     )
 
     return {
-        "schema_version": "omp.fault-harness-report/v1",
+        "schema_version": "omp.worker-fault-check-report/v1",
         "passed": (
             failed_scenarios == 0
             and coverage_complete

@@ -26,6 +26,10 @@ class FaultHarnessTests(unittest.TestCase):
         report = self.run_report()
 
         self.assertTrue(report["passed"])
+        self.assertEqual(
+            report["schema_version"],
+            "omp.worker-fault-check-report/v1",
+        )
         self.assertEqual(report["external_calls"], 0)
         self.assertEqual(report["scenario_count"], 29)
         self.assertEqual(report["expected_reason_count"], 29)
