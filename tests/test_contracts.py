@@ -696,5 +696,46 @@ class ArtifactValidationTests(ContractFixture):
         messages = self.diagnostic_messages("task-pack", pack)
         self.assertIn("calibration packs require calibration-required qualifications", messages)
 
+    def test_approved_task_review_evidence_requires_all_checks_to_pass(self) -> None:
+        evidence_path = (
+            "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/reviews/privacy.json"
+        )
+        evidence = self.read_json(evidence_path)
+
+        result = validate_artifact(
+            self.root,
+            "task-review-evidence",
+            self.write_artifact(evidence),
+        )
+        self.assertTrue(result.valid, result.diagnostics)
+
+        failing_approved = dict(evidence)
+        failing_approved["checks"] = dict(evidence["checks"])  # type: ignore[arg-type]
+        failing_approved["checks"]["secret_scrubbing"] = "fail"
+        messages = self.diagnostic_messages("task-review-evidence", failing_approved)
+        self.assertIn("must be 'pass' for approved review evidence", messages)
+        self.assertIn("$.checks.secret_scrubbing", messages)
+
+        failing_rejected = dict(failing_approved)
+        failing_rejected["decision"] = "rejected"
+        result_rejected = validate_artifact(
+            self.root,
+            "task-review-evidence",
+            self.write_artifact(failing_rejected),
+        )
+        self.assertTrue(result_rejected.valid, result_rejected.diagnostics)
+
+        task_path = "contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6/task.json"
+        task = self.read_json(task_path)
+        self.write_json(evidence_path, failing_approved)
+        task_result = validate_artifact(
+            self.root,
+            "diagnostic-task",
+            self.write_artifact(task),
+        )
+        self.assertFalse(task_result.valid)
+        task_messages = "\n".join(item.message for item in task_result.diagnostics)
+        self.assertIn("must be 'pass' for approved review evidence", task_messages)
+
 if __name__ == "__main__":
     unittest.main()

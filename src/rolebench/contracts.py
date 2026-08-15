@@ -1792,6 +1792,16 @@ def _task_review_evidence_semantics(
                 f"must match {json_path}.{field}",
             )
 
+    checks = evidence.get("checks")
+    if evidence.get("decision") == "approved" and isinstance(checks, dict):
+        for check_name, check_result in checks.items():
+            if check_result != "pass":
+                yield Diagnostic(
+                    evidence_relative.as_posix(),
+                    f"$.checks.{check_name}",
+                    "must be 'pass' for approved review evidence",
+                )
+
     scope = evidence.get("scope")
     assets = task.get("assets")
     public = assets.get("public") if isinstance(assets, dict) else None
@@ -2801,6 +2811,16 @@ def _artifact_semantics(
         yield from _task_pack_semantics(root, artifact, relative)
     elif schema_name == "experiment-ledger-entry":
         yield from _ledger_entry_semantics(root, artifact, relative)
+    elif schema_name == "task-review-evidence":
+        checks = artifact.get("checks")
+        if artifact.get("decision") == "approved" and isinstance(checks, dict):
+            for check_name, check_result in checks.items():
+                if check_result != "pass":
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.checks.{check_name}",
+                        "must be 'pass' for approved review evidence",
+                    )
 
 
 def _safe_schema(root: Path, relative: Path, diagnostics: list[Diagnostic]) -> JSONObject | None:
