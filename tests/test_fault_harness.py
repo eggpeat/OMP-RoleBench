@@ -259,6 +259,16 @@ class FaultHarnessTests(unittest.TestCase):
             with self.assertRaisesRegex(FaultHarnessError, "invalid scored-worker policy"):
                 run_fault_check(PRODUCT_ROOT, path)
 
+    def test_legacy_policy_is_not_accepted_by_v2_fault_gate(self) -> None:
+        with self.assertRaisesRegex(
+            FaultHarnessError,
+            "fault check requires omp.scored-worker-policy/v2",
+        ):
+            run_fault_check(
+                PRODUCT_ROOT,
+                Path("contracts/scored-worker-policy.json"),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -361,6 +361,10 @@ def _validated_policy(
     validation = validate_value(root, "scored-worker-policy", policy, relative)
     if not validation.valid:
         raise WorkerError(f"invalid scored-worker policy: {_diagnostics(validation)}")
+    if policy.get("schema_version") != "omp.scored-worker-policy/v2":
+        raise WorkerError(
+            "current worker requires omp.scored-worker-policy/v2"
+        )
     return policy, _sha256(canonical.encode("utf-8")), (relative, identity)
 
 

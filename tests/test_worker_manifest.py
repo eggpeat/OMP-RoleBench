@@ -115,6 +115,42 @@ class WorkerManifestTests(unittest.TestCase):
             )
         )
 
+    def test_manifest_rejects_mismatched_policy_schema_version(self) -> None:
+        for manifest_version, policy_name, expected_policy_version in (
+            (
+                "omp.worker-run-manifest/v1",
+                "scored-worker-policy-v2.json",
+                "omp.scored-worker-policy/v1",
+            ),
+            (
+                "omp.worker-run-manifest/v2",
+                "scored-worker-policy.json",
+                "omp.scored-worker-policy/v2",
+            ),
+        ):
+            with self.subTest(manifest_version=manifest_version):
+                policy_path = self.root / "contracts" / policy_name
+                policy = json.loads(policy_path.read_text(encoding="utf-8"))
+                manifest = self.manifest()
+                manifest["schema_version"] = manifest_version
+                if manifest_version == "omp.worker-run-manifest/v1":
+                    del manifest["runner"]
+                manifest["policy"] = {
+                    "path": f"contracts/{policy_name}",
+                    "digest_sha256": sha256(
+                        canonical_json(policy).encode("utf-8")
+                    ).hexdigest(),
+                }
+
+                messages = self.rendered(self.validate(manifest))
+
+                self.assertIn(
+                    "worker-run-manifest.json:$.policy.path: "
+                    f"{manifest_version} requires {expected_policy_version}, "
+                    f"got {policy['schema_version']!r}",
+                    messages,
+                )
+
     def test_missing_runner_is_rejected(self) -> None:
         manifest = self.manifest()
         del manifest["runner"]

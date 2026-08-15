@@ -1584,6 +1584,23 @@ def _worker_run_manifest_semantics(
         )
         return
 
+    manifest_schema_version = manifest.get("schema_version")
+    expected_policy_schema_version = {
+        "omp.worker-run-manifest/v1": "omp.scored-worker-policy/v1",
+        "omp.worker-run-manifest/v2": "omp.scored-worker-policy/v2",
+    }.get(manifest_schema_version)
+    policy_schema_version = policy.get("schema_version")
+    if (
+        expected_policy_schema_version is not None
+        and policy_schema_version != expected_policy_schema_version
+    ):
+        yield Diagnostic(
+            relative.as_posix(),
+            "$.policy.path",
+            f"{manifest_schema_version} requires "
+            f"{expected_policy_schema_version}, got {policy_schema_version!r}",
+        )
+
     policy_schema_name = _schema_name_for_artifact(
         "scored-worker-policy",
         policy,

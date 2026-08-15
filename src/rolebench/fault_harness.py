@@ -613,6 +613,10 @@ def _load_validated_policy(
             "validated scored-worker policy is not a JSON object"
         )
     policy = cast(JSONObject, decoded)
+    if policy.get("schema_version") != "omp.scored-worker-policy/v2":
+        raise FaultHarnessError(
+            "fault check requires omp.scored-worker-policy/v2"
+        )
     try:
         digest = sha256(canonical_json(policy).encode("utf-8")).hexdigest()
     except (TypeError, ValueError) as error:

@@ -576,6 +576,23 @@ class ManifestRuntimeGuardTests(WorkerRuntimeFixture):
 
         self.assertTrue(report["passed"], report["diagnostics"])
         self.assertEqual(manifest_captures, 1)
+    def test_v2_manifest_rejects_legacy_v1_policy(self) -> None:
+        policy_path = self.root / "contracts/scored-worker-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        self.manifest["policy"] = {
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": hashlib.sha256(
+                canonical_json(policy).encode("utf-8")
+            ).hexdigest(),
+        }
+        self._write_manifest()
+
+        with self.assertRaisesRegex(
+            worker.WorkerError,
+            "requires omp.scored-worker-policy/v2",
+        ):
+            self.run_worker()
+        self.assertEqual(self.fake.commands, [])
 
 
 class DoctorTests(WorkerRuntimeFixture):
@@ -685,6 +702,21 @@ class LegacyRuntimeCompatibilityTests(WorkerRuntimeFixture):
 
         with self.assertRaises(worker.WorkerError):
             self.run_worker()
+
+    def test_v1_manifest_rejects_current_v2_policy(self) -> None:
+        self.manifest["schema_version"] = "omp.worker-run-manifest/v1"
+        self.manifest.pop("runner")
+        for container_name in ("agent", "verifier"):
+            self.manifest[container_name].pop("config_digest_sha256")
+            self.manifest[container_name].pop("platform")
+        self._write_manifest()
+
+        with self.assertRaisesRegex(
+            worker.WorkerError,
+            "requires omp.scored-worker-policy/v1",
+        ):
+            self.run_worker()
+        self.assertEqual(self.fake.commands, [])
 
 class ImageBindingAndIsolationTests(WorkerRuntimeFixture):
     def _assert_binding_rejected_before_stream(self) -> dict[str, object]:
