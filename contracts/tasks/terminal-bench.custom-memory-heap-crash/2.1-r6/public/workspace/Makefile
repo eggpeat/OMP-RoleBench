@@ -7,10 +7,10 @@ RELEASE_LIB ?= /usr/local/gcc-custom-release/lib64
 all: release debug
 
 release: main.cpp user.cpp user.h
-	@if [ -d "$(RELEASE_LIB)" ]; then \
-		$(CXX) $(CXXFLAGS) -o release main.cpp user.cpp -O2 -DNDEBUG -L$(RELEASE_LIB) -Wl,-Bstatic -lstdc++ -Wl,-Bdynamic -lm; \
+	@if [ -f "$(RELEASE_LIB)/libstdc++.a" ]; then \
+		$(CXX) $(CXXFLAGS) -o release main.cpp user.cpp -O2 -DNDEBUG "$(RELEASE_LIB)/libstdc++.a" -lm; \
 	else \
-		echo "Error: Required custom release runtime $(RELEASE_LIB) not found." >&2; \
+		echo "Error: Required custom release runtime archive $(RELEASE_LIB)/libstdc++.a not found." >&2; \
 		exit 1; \
 	fi
 

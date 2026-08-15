@@ -1777,20 +1777,30 @@ class PublishedCandidateRegressionTests(unittest.TestCase):
             workspace = Path(temporary) / "workspace"
             shutil.copytree(task_dir / "public/workspace", workspace)
             missing_runtime = workspace / "missing-release-runtime"
-            result = subprocess.run(
-                ["make", "release", f"RELEASE_LIB={missing_runtime}"],
-                cwd=workspace,
-                capture_output=True,
-                check=False,
-                text=True,
-            )
+            empty_runtime = workspace / "empty-release-runtime"
+            empty_runtime.mkdir()
 
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                f"Required custom release runtime {missing_runtime} not found.",
-                result.stderr,
-            )
-            self.assertFalse((workspace / "release").exists())
+            for release_runtime in (missing_runtime, empty_runtime):
+                with self.subTest(release_runtime=release_runtime):
+                    result = subprocess.run(
+                        [
+                            "make",
+                            "release",
+                            f"RELEASE_LIB={release_runtime}",
+                        ],
+                        cwd=workspace,
+                        capture_output=True,
+                        check=False,
+                        text=True,
+                    )
+
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(
+                        "Required custom release runtime archive "
+                        f"{release_runtime}/libstdc++.a not found.",
+                        result.stderr,
+                    )
+                    self.assertFalse((workspace / "release").exists())
 
     def test_scheduler_candidate_satisfies_runner_contract(self) -> None:
         task_dir = (
