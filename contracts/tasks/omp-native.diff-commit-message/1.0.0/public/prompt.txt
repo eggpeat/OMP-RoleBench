@@ -5,6 +5,7 @@ Convention:
 - scope is the first component below `src/`;
 - subject is imperative, lowercase, has no trailing punctuation, and is at most 72 characters;
 - body contains one concise sentence per distinct production behavior, in diff order; do not mention test implementation details;
+- Wording may vary, but deterministic semantic grading requires the subject to contain `l1` plus words beginning with `invalidat` and `delet`; the first body sentence to contain `l1`, words beginning with `invalidat`, `backing`, and `store`; and the second body sentence to contain `hit`, `miss`, `outcome`, `cache`, and a word beginning with `delet`. Matching is case-insensitive.
 - evidence contains the narrowest `change.patch:<start>-<end>` line range for each body sentence, in the same order;
 - `breaking` is true only for a demonstrated incompatible public-interface change.
 

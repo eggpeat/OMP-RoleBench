@@ -258,6 +258,8 @@ def main() -> int:
         "primary_width",
         "primary_height",
         "primary_contrast",
+        "minimum_text_contrast",
+        "brief_content_rendered",
         "body_contrast",
         "focus_indicator",
         "disclosure_visible_after_open",
@@ -279,6 +281,10 @@ def main() -> int:
             or surface.get("primary_height") < 44
             or not isinstance(surface.get("primary_contrast"), (int, float))
             or not isinstance(surface.get("body_contrast"), (int, float))
+            or isinstance(surface.get("minimum_text_contrast"), bool)
+            or not isinstance(surface.get("minimum_text_contrast"), (int, float))
+            or surface.get("minimum_text_contrast") < 4.5
+            or surface.get("brief_content_rendered") is not True
             or surface.get("primary_contrast") < 4.5
             or surface.get("body_contrast") < 4.5
             or surface.get("focus_indicator") is not True

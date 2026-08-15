@@ -237,8 +237,32 @@ def main() -> int:
         return reject()
     if snapshot.get("patch_sha256") != "4a667d7a5dc3ee32ba5fb31cbf4b54922bd504e51e4a88cb83fdcbb830c3a635":
         return reject()
-    expected = json.loads('{"body":["Invalidate the L1 entry before deleting from the backing store.","Record hit and miss outcomes for cache deletions."],"breaking":false,"evidence":["change.patch:7-9","change.patch:10-11"],"schema_version":"rolebench.commit-message/v1","scope":"cache","subject":"invalidate l1 before backing-store deletion","type":"fix"}')
-    if snapshot.get("submission") != expected:
+    submission = snapshot.get("submission")
+    if not isinstance(submission, dict):
+        return reject()
+    subject = submission.get("subject")
+    body = submission.get("body")
+    if (
+        set(submission) != {"schema_version", "type", "scope", "subject", "body", "evidence", "breaking"}
+        or submission.get("schema_version") != "rolebench.commit-message/v1"
+        or submission.get("type") != "fix"
+        or submission.get("scope") != "cache"
+        or submission.get("evidence") != ["change.patch:7-9", "change.patch:10-11"]
+        or submission.get("breaking") is not False
+        or not isinstance(subject, str)
+        or not isinstance(body, list)
+        or len(body) != 2
+        or any(not isinstance(sentence, str) for sentence in body)
+    ):
+        return reject()
+    subject_lower = subject.casefold()
+    body_lower = [sentence.casefold() for sentence in body]
+    if (
+        not all(term in subject_lower for term in ("l1", "invalidat", "delet"))
+        or not all(term in body_lower[0] for term in ("l1", "invalidat", "backing", "store"))
+        or not all(term in body_lower[1] for term in ("hit", "miss", "outcome", "cache", "delet"))
+        or any("test" in text for text in (subject_lower, *body_lower))
+    ):
         return reject()
     return emit("accepted", 1, bound)
 

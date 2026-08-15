@@ -255,8 +255,8 @@ def main() -> int:
         or metrics.get("rows") != 2048
         or metrics.get("vim_exit_code") != 0
         or metrics.get("transformation_matches") is not True
-        or metrics.get("output_sha256") != "fe9b96864b28a1f57cdbed743fc75f5c401d0343555687c8fee302a5c027c882"
-        or metrics.get("expected_sha256") != "fe9b96864b28a1f57cdbed743fc75f5c401d0343555687c8fee302a5c027c882"
+        or metrics.get("output_sha256") != "277f8ea19c4e8dbd8d6888c208eb83d7ee607d01649170a4d73cd7ff6860fecf"
+        or metrics.get("expected_sha256") != "277f8ea19c4e8dbd8d6888c208eb83d7ee607d01649170a4d73cd7ff6860fecf"
     ):
         return reject()
     return emit("accepted", 1, bound)

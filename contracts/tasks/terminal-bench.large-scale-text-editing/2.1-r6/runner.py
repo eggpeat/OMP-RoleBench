@@ -163,34 +163,54 @@ def main() -> int:
         return 0
 
     try:
-        with tempfile.TemporaryDirectory(prefix="rolebench-vim-", dir="/tmp") as temporary:
-            work = Path(temporary)
-            source = work / "input.csv"
-            expected = work / "expected.csv"
-            script_path = work / "apply_macros.vim"
-            rows = [_row(index) for index in range(1, ROWS + 1)]
-            source.write_text("\n".join(row[0] for row in rows) + "\n", encoding="utf-8", newline="")
-            expected.write_text("\n".join(row[1] for row in rows) + "\n", encoding="utf-8", newline="")
-            script_path.write_text(script, encoding="utf-8", newline="")
-            result = subprocess.run(
-                ["vim", "-Nu", "NONE", "-n", "-Es", str(source), "-S", str(script_path)],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=8,
-                check=False,
-            )
-            output_digest = _digest(source)
-            expected_digest = _digest(expected)
-            metrics: dict[str, object] = {
-                "distinct_macros": True,
-                "macro_keystrokes": total,
-                "rows": ROWS,
-                "vim_exit_code": result.returncode,
-                "output_sha256": output_digest,
-                "expected_sha256": expected_digest,
-                "transformation_matches": result.returncode == 0 and output_digest == expected_digest,
-            }
+        work = Path("/workspace")
+        rows = [_row(index) for index in range(ROWS)]
+        source = work / "input.csv"
+        source.write_text(
+            "\n".join(raw for raw, _expected in rows) + "\n",
+            encoding="utf-8",
+        )
+        expected_digest = hashlib.sha256(
+            ("\n".join(expected for _raw, expected in rows) + "\n").encode("utf-8")
+        ).hexdigest()
+        script_path = work / "script.vim"
+        script_path.write_text(script + "\n", encoding="utf-8")
+
+        result = subprocess.run(
+            [
+                "/usr/bin/vim",
+                "-Z",
+                "-Nu",
+                "NONE",
+                "-n",
+                "-es",
+                "-S",
+                str(script_path),
+                str(source),
+            ],
+            cwd=work,
+            env={
+                "HOME": str(work),
+                "LANG": "C.UTF-8",
+                "PATH": "/usr/bin",
+                "SHELL": "/bin/false",
+            },
+            check=False,
+            capture_output=True,
+            timeout=30,
+        )
+        output_digest = _digest(source)
+        metrics = {
+            "distinct_macros": True,
+            "macro_keystrokes": total,
+            "rows": ROWS,
+            "vim_exit_code": result.returncode,
+            "output_sha256": output_digest,
+            "expected_sha256": expected_digest,
+            "transformation_matches": (
+                result.returncode == 0 and output_digest == expected_digest
+            ),
+        }
     except (OSError, subprocess.SubprocessError, UnicodeError) as error:
         sys.stdout.write(_snapshot(status="rejected", error=f"Vim execution failed: {error}", metrics=None))
         return 0

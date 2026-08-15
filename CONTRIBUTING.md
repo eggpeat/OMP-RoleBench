@@ -182,7 +182,7 @@ The default profile uses two kinds of scored task:
 
 Optional session-derived diagnostics are a third authoring source, not part of the standard workflow. Held-out task families are validation inputs and must remain outside task selection and estimator fitting.
 
-Every current `omp.diagnostic-task/v1` artifact must declare:
+Every current `omp.diagnostic-task/v2` artifact must declare:
 
 - its role contract, task mix, capability tags, difficulty, and partition;
 - task and source versions plus content and source digests;
@@ -193,7 +193,7 @@ Every current `omp.diagnostic-task/v1` artifact must declare:
 
 For `source.kind: "terminal-bench"`, `source.version` is the immutable Harbor dataset package reference with a numeric revision, `source.task` is the exact Harbor task package name, `source.digest_sha256` is that task version's Harbor content hash, and `source.dataset_digest_sha256` is the dataset version's Harbor content hash. Store both hashes as lowercase hexadecimal without the `sha256:` prefix. Mutable references such as `@latest` are invalid.
 
-A future default-profile or evidence contract should additionally bind the benchmark harness, runner, and verifier software versions used to produce a result. Do not add those undeclared fields to the closed v1 diagnostic-task object; version the schema and its consumers first.
+The v2 diagnostic-task object binds the executable environment through exact agent, admission-agent, runner, and verifier image identities and config digests, while the public and verifier-private tree digests bind task content. Any future contract that changes these provenance semantics must version the schema and its consumers first.
 
 ### Diagnostic-task authoring and admission
 

@@ -77,10 +77,13 @@ def _validate(value: object, functions: dict[str, str], labels: set[str]) -> dic
         if not isinstance(address, str) or ADDRESS.fullmatch(address) is None or functions[name] != address:
             raise SubmissionError("finding address does not match the review bundle")
         finding_functions.add(name)
-        for field in ("defect", "impact", "remediation"):
-            if not isinstance(finding.get(field), str) or not finding[field]:
-                raise SubmissionError(f"{field} must be a non-empty string")
-        if finding.get("severity") not in {"low", "medium", "high", "critical"}:
+        if finding.get("defect") != "credential-match-or-bypass":
+            raise SubmissionError("defect class is invalid")
+        if finding.get("impact") != "authentication-bypass":
+            raise SubmissionError("impact class is invalid")
+        if finding.get("remediation") != "require-both-username-and-password-match":
+            raise SubmissionError("remediation class is invalid")
+        if finding.get("severity") != "critical":
             raise SubmissionError("severity is invalid")
         evidence = finding.get("evidence")
         if not isinstance(evidence, list) or not 1 <= len(evidence) <= 4 or len(set(evidence)) != len(evidence):

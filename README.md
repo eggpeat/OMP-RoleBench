@@ -82,7 +82,7 @@ This prevents infrastructure trouble from looking like poor model quality withou
 
 ### Diagnostic-task workflow status
 
-RoleBench treats task authoring as a gated workflow, not as benchmark evidence. The seven anchors listed above populate the `default`, `task`, `slow`, `plan`, and `advisor` packs; all remain mechanically routing-ineligible and claim neither model quality nor calibrated route coverage. The `smol` pack remains an empty `authoring` queue.
+RoleBench treats task authoring as a gated workflow, not as benchmark evidence. The 14 anchors listed above populate all ten canonical role packs; every qualification remains `calibration-required`, every pack remains mechanically routing-ineligible, and none claims model quality or calibrated route coverage.
 
 Current candidate discovery is private and explicit. `rolebench tasks scan-session` scans one caller-supplied OMP JSONL session and returns a versioned candidate with a fresh opaque reference, parsed-message `entry_count`, and signal objects containing a message-entry `ordinal` and deterministic `kind`; it never emits raw prompts, paths, entry IDs, model/provider/account data, or a stable session fingerprint. This is the safe discovery boundary for the planned local session-to-task generator, not automatic task synthesis or admission. `rolebench tasks import-omp-gym` independently imports the ergonomic `task.toml` plus `workspace/` shape into an ignored private candidate directory. It does not depend on or copy `omp-gym` code, infer a license, or admit the result.
 
@@ -105,20 +105,20 @@ The experiment ledger is an append-only, hash-chained **local journal**, not adm
 
 ## Built-in roles
 
-V1 uses all ten roles from OMP's canonical role registry. The final column describes the planned fixed evidence mix; no routing-eligible default packs are shipped yet.
+V1 uses all ten roles from OMP's canonical role registry. The final column summarizes the committed fixed evidence; every pack is calibration-only and routing-ineligible.
 
-| Role | Capability focus | Planned default evidence |
+| Role | Capability focus | Fixed evidence |
 | --- | --- | --- |
-| `default` | Broad interactive coding, terminal work, and tool use | Terminal-Bench anchors plus representative OMP-native repository tasks |
-| `smol` | Correct bounded work under strict latency and consumption budgets | Small deterministic OMP-native tasks with explicit budgets |
-| `slow` | Difficult diagnosis, reasoning, and recovery | Hard Terminal-Bench anchors plus OMP-native recovery tasks |
-| `vision` | Image-grounded multimodal work | Objective image-input and visual-grounding tasks |
-| `plan` | Executable architecture, decomposition, and sequencing | Executability-checked plans plus selected terminal-task evidence |
-| `designer` | Functional UI implementation and visual quality | Browser/DOM verification plus separately identified visual evaluation |
-| `commit` | Semantic commit-message coverage without invention | Diff-grounded exactness and repository-convention tasks |
-| `tiny` | Exact metadata, extraction, and classification | Deterministic structured-output tasks |
-| `task` | Autonomous delegated implementation | Terminal-Bench anchors plus autonomous OMP-native repository tasks |
-| `advisor` | Defect and risk recall with controlled false positives | Seeded review tasks plus selected terminal-task evidence |
+| `default` | Broad interactive coding, terminal work, and tool use | Pinned Terminal-Bench tool-use and data-transformation anchors |
+| `smol` | Correct bounded work under strict latency and consumption budgets | Pinned bounded Terminal-Bench text-editing anchor with explicit resource limits |
+| `slow` | Difficult diagnosis, reasoning, and recovery | Pinned hard Terminal-Bench recovery and debugging anchors |
+| `vision` | Image-grounded multimodal work | Pinned image-grounded Terminal-Bench code and CAD anchors |
+| `plan` | Executable architecture, decomposition, and sequencing | Pinned architecture and sequencing Terminal-Bench anchor |
+| `designer` | Functional UI implementation and visual quality | OMP-native rendered desktop/mobile task with semantic, responsive, accessibility, contrast, and screenshot checks |
+| `commit` | Semantic commit-message coverage without invention | Diff-grounded exactness and repository-convention task |
+| `tiny` | Exact metadata, extraction, and classification | Deterministic structured-output task |
+| `task` | Autonomous delegated implementation | Pinned autonomous Terminal-Bench repository anchor |
+| `advisor` | Defect and risk recall with controlled false positives | Pinned seeded security-review Terminal-Bench anchors |
 
 The source-of-truth manifests are in [`contracts/roles`](contracts/roles), and their pinned OMP provenance is recorded in [`contracts/role-registry.json`](contracts/role-registry.json). Thresholds remain `calibration-required` until benchmark and held-out evidence supports freezing them.
 

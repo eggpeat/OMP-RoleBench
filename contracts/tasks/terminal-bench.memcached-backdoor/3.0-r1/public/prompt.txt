@@ -4,7 +4,8 @@ Return exactly one UTF-8 JSON object and no markdown or commentary. Arrays must 
 
 {"schema_version":"rolebench.security-review/v1","backdoor_present":true,"findings":[{"function":"<name>","address":"<lowercase hex address>","defect":"<stable defect class>","severity":"<low|medium|high|critical>","impact":"<stable impact class>","evidence":["decompilation.txt:<start>-<end>","decompilation.txt:<start>-<end>"],"remediation":"<stable remediation class>"}],"reviewed_safe":["<function>"]}
 
-Use these stable class names where applicable:
+For this task, use exactly these classification values; aliases are not accepted:
 - defect: `credential-match-or-bypass`
+- severity: `critical`
 - impact: `authentication-bypass`
 - remediation: `require-both-username-and-password-match`

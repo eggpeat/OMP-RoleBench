@@ -94,7 +94,7 @@ h2 { min-height: 3.2em; margin: 0 0 24px; font-size: 1.18rem; line-height: 1.35;
 details { border-top: 1px solid var(--line); padding-top: 14px; color: var(--muted); }
 summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--text); font-weight: 700; }
 details p { margin: 8px 0 0; font-size: .88rem; }
-:focus-visible { outline: 3px solid #f8d66d; outline-offset: 3px; }
+:focus-visible { outline: 3px solid #8fd66d; outline-offset: 3px; }
 @media (max-width: 700px) {
   .topbar { min-height: 64px; padding: 0 16px; }
   .menu-button { display: inline-flex; align-items: center; justify-content: center; }

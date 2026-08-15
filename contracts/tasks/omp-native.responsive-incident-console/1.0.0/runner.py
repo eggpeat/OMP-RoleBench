@@ -29,18 +29,67 @@ FORBIDDEN = re.compile(r"(?is)<script\b|<iframe\b|\b(?:src|href)\s*=\s*[\"'](?:h
 AUDIT_MARKER = "rolebench-audit"
 AUDIT = r"""
 (() => {
+  const brief = __ROLEBENCH_BRIEF__;
   const visible = (node) => {
     if (!node) return false;
-    const style = getComputedStyle(node);
     const rect = node.getBoundingClientRect();
-    return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    let effectiveOpacity = 1;
+    for (let current = node; current; current = current.parentElement) {
+      const style = getComputedStyle(current);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+      effectiveOpacity *= Number(style.opacity);
+    }
+    return (
+      effectiveOpacity > 0 &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      rect.right > 0 &&
+      rect.bottom > 0 &&
+      rect.left < window.innerWidth &&
+      rect.top < window.innerHeight
+    );
   };
-  const rgb = (value) => {
-    const match = value.match(/[\d.]+/g);
-    return match ? match.slice(0, 3).map(Number) : [0, 0, 0];
+  const rendered = (node) => {
+    if (!node) return false;
+    const rect = node.getBoundingClientRect();
+    let effectiveOpacity = 1;
+    for (let current = node; current; current = current.parentElement) {
+      const style = getComputedStyle(current);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+      effectiveOpacity *= Number(style.opacity);
+    }
+    return effectiveOpacity > 0 && rect.width > 0 && rect.height > 0;
   };
-  const luminance = (value) => {
-    const channels = rgb(value).map((item) => {
+  const normalize = (node) => node ? node.innerText.replace(/\s+/g, ' ').trim() : '';
+  const rgba = (value) => {
+    const values = value.match(/[\d.]+/g);
+    if (!values) return [0, 0, 0, 0];
+    return [
+      Number(values[0]),
+      Number(values[1]),
+      Number(values[2]),
+      values.length > 3 ? Number(values[3]) : 1
+    ];
+  };
+  const blend = (foreground, background) => {
+    const alpha = foreground[3];
+    return [
+      foreground[0] * alpha + background[0] * (1 - alpha),
+      foreground[1] * alpha + background[1] * (1 - alpha),
+      foreground[2] * alpha + background[2] * (1 - alpha)
+    ];
+  };
+  const effectiveBackground = (node) => {
+    const layers = [];
+    for (let current = node; current; current = current.parentElement) {
+      layers.push(rgba(getComputedStyle(current).backgroundColor));
+    }
+    let color = [255, 255, 255];
+    for (const layer of layers.reverse()) color = blend(layer, color);
+    return color;
+  };
+  const luminance = (color) => {
+    const channels = color.map((item) => {
       const normalized = item / 255;
       return normalized <= 0.04045 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
     });
@@ -51,29 +100,102 @@ AUDIT = r"""
     const second = luminance(background);
     return Math.round(((Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05)) * 100) / 100;
   };
+  const nodeContrast = (node) => {
+    const background = effectiveBackground(node);
+    const foreground = blend(rgba(getComputedStyle(node).color), background);
+    return contrast(foreground, background);
+  };
+
   const sidebar = document.querySelector('[data-role="sidebar"]');
   const menu = document.querySelector('[data-role="mobile-menu"]');
   const grid = document.querySelector('[data-role="incident-grid"]');
   const primary = document.querySelector('[data-role="primary-action"]');
-  const disclosure = document.querySelector('details');
-  if (disclosure) disclosure.open = true;
+  const disclosures = [...document.querySelectorAll('details')];
+  for (const disclosure of disclosures) disclosure.open = true;
   if (primary) primary.focus();
+
   const primaryStyle = primary ? getComputedStyle(primary) : null;
-  const bodyStyle = getComputedStyle(document.body);
   const primaryRect = primary ? primary.getBoundingClientRect() : {width: 0, height: 0};
-  const columns = grid ? getComputedStyle(grid).gridTemplateColumns.split(/\s+/).filter(Boolean).length : 0;
+  const primaryBackground = primary ? effectiveBackground(primary) : [255, 255, 255];
+  const primaryForeground = primaryStyle ? blend(rgba(primaryStyle.color), primaryBackground) : [255, 255, 255];
+  const surroundingBackground = primary && primary.parentElement
+    ? effectiveBackground(primary.parentElement)
+    : [255, 255, 255];
+  const outline = primaryStyle ? rgba(primaryStyle.outlineColor) : [0, 0, 0, 0];
+  const outlineContrast = contrast(blend(outline, surroundingBackground), surroundingBackground);
+
+  const cards = grid ? [...grid.querySelectorAll('article')].filter(rendered) : [];
+  const cardRects = cards.map((card) => card.getBoundingClientRect());
+  const firstTop = cardRects.length ? Math.min(...cardRects.map((rect) => rect.top)) : 0;
+  const columns = cardRects.filter((rect) => Math.abs(rect.top - firstTop) < 2).length;
+
+  const navLabels = [...document.querySelectorAll('nav a')].map(normalize);
+  const filterOptions = [...document.querySelectorAll('select option')].map(normalize);
+  const productRendered = normalize(document.querySelector('header')).includes(brief.product);
+  const navigationRendered =
+    navLabels.length === brief.navigation.length &&
+    brief.navigation.every((label, index) => navLabels[index] === label);
+  const filtersRendered = brief.filters.every((label) => filterOptions.includes(label));
+  const incidentCardMatches = brief.incidents.map((incident) =>
+    cards.filter((candidate) => normalize(candidate).includes(incident.id))
+  );
+  const matchedCards = incidentCardMatches.map((matches) => matches.length === 1 ? matches[0] : null);
+  const incidentsRendered =
+    cards.length === brief.incidents.length &&
+    matchedCards.every(Boolean) &&
+    new Set(matchedCards).size === brief.incidents.length &&
+    brief.incidents.every((incident, index) => {
+      const card = matchedCards[index];
+      const text = normalize(card);
+      const details = card ? card.querySelector('details') : null;
+      return Boolean(
+        card &&
+        details &&
+        text.includes(incident.title) &&
+        text.toLowerCase().includes(String(incident.severity).toLowerCase()) &&
+        text.includes(incident.service) &&
+        text.includes(incident.age) &&
+        normalize(details).includes(incident.timeline)
+      );
+    });
+  const disclosureVisible =
+    disclosures.length === brief.incidents.length &&
+    disclosures.every((details) =>
+      details.open &&
+      rendered(details) &&
+      [...details.children].some((child) => child.tagName !== 'SUMMARY' && rendered(child))
+    );
+
+  const contrastNodes = [
+    document.querySelector('header'),
+    ...document.querySelectorAll(
+      'header a, header button, header span, nav a, main h1, main h2, main p, main label, main select, main summary, main details > :not(summary), main article span'
+    ),
+    primary
+  ].filter((node) => visible(node) && normalize(node));
+  const textContrasts = contrastNodes.map(nodeContrast);
+
   return {
     viewport_width: window.innerWidth,
-    horizontal_overflow: document.documentElement.scrollWidth > window.innerWidth,
+    horizontal_overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
     sidebar_visible: visible(sidebar),
     mobile_menu_visible: visible(menu),
     grid_columns: columns,
     primary_width: Math.round(primaryRect.width * 100) / 100,
     primary_height: Math.round(primaryRect.height * 100) / 100,
-    primary_contrast: primaryStyle ? contrast(primaryStyle.color, primaryStyle.backgroundColor) : 0,
-    body_contrast: contrast(bodyStyle.color, bodyStyle.backgroundColor),
-    focus_indicator: primaryStyle ? primaryStyle.outlineStyle !== 'none' && parseFloat(primaryStyle.outlineWidth) >= 2 : false,
-    disclosure_visible_after_open: disclosure ? visible(disclosure.querySelector('[data-timeline]')) : false
+    primary_contrast: primaryStyle ? contrast(primaryForeground, primaryBackground) : 0,
+    body_contrast: nodeContrast(document.body),
+    minimum_text_contrast: textContrasts.length ? Math.min(...textContrasts) : 0,
+    focus_indicator: Boolean(
+      primaryStyle &&
+      primaryStyle.outlineStyle !== 'none' &&
+      parseFloat(primaryStyle.outlineWidth) >= 2 &&
+      outline[3] > 0 &&
+      outlineContrast >= 3
+    ),
+    disclosure_visible_after_open: disclosureVisible,
+    brief_content_rendered:
+      productRendered && navigationRendered && filtersRendered && incidentsRendered
   };
 })()
 """
@@ -295,7 +417,7 @@ def _debugger_target() -> str:
     raise SubmissionError("Chromium debugger did not become ready")
 
 
-def _render(work: Path, width: int, height: int) -> dict[str, object]:
+def _render(work: Path, width: int, height: int, brief: dict[str, object]) -> dict[str, object]:
     profile = work / f"chromium-{width}"
     process = subprocess.Popen(
         [
@@ -352,9 +474,13 @@ def _render(work: Path, width: int, height: int) -> dict[str, object]:
             "Input.dispatchKeyEvent",
             {"type": "keyUp", "key": "Tab", "code": "Tab", "windowsVirtualKeyCode": 9},
         )
+        audit_expression = AUDIT.replace(
+            "__ROLEBENCH_BRIEF__",
+            json.dumps(brief, sort_keys=True, separators=(",", ":")),
+        )
         evaluated = client.command(
             "Runtime.evaluate",
-            {"expression": AUDIT, "returnByValue": True},
+            {"expression": audit_expression, "returnByValue": True},
         )
         remote_result = evaluated.get("result")
         audit = remote_result.get("value") if isinstance(remote_result, dict) else None
@@ -403,8 +529,8 @@ def main() -> int:
             (work / "index.html").write_text(html, encoding="utf-8")
             (work / "styles.css").write_text(css, encoding="utf-8")
             Path("/workspace/rolebench-home").mkdir(mode=0o700, exist_ok=True)
-            desktop = _render(work, 1280, 800)
-            mobile = _render(work, 390, 844)
+            desktop = _render(work, 1280, 800, brief)
+            mobile = _render(work, 390, 844, brief)
         brief_sha256 = hashlib.sha256(brief_bytes).hexdigest()
     except (UnicodeDecodeError, json.JSONDecodeError, SubmissionError, OSError, TypeError, RecursionError, subprocess.SubprocessError) as error:
         sys.stdout.write(_snapshot(status="rejected", error=str(error), brief_sha256=None, source_checks=None, desktop=None, mobile=None))
