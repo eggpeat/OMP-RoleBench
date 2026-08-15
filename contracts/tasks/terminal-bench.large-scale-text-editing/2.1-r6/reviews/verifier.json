@@ -1,1 +1,45 @@
-{"checks":{"baseline_rejected":"pass","determinism":"pass","evidence_bindings":"pass","external_provider_calls_zero":"pass","passive_verifier":"pass","reference_accepted":"pass","reward_mapping":"pass","source_separated_observer":"pass","source_validation":"pass","tamper_rejected":"pass","verifier_private_digest_matches":"pass"},"decision":"approved","findings":[],"remediation":[{"finding":"Untrusted macro text must not gain ambient process or filesystem authority in the candidate runner.","resolution":"runner.py admits only three anchored normal-mode macros plus wq, then invokes absolute /usr/bin/vim in restricted mode with an isolated working directory, HOME, PATH, and non-interactive shell."}],"report_digests_sha256":["af3e6185612a9d7c61cff0a3f4df1499fd6a498160f2861c99f6bb483d212783","7eca84b810fe0dd55083662a5f854f4be80b62a4672d86a55ec8d41370ac0627","e9ed64331b12966d116e05c851cb958c3d0c1f5b77f011fbaf75c05e53102853","2500ce8d112b29134f075a4e5b638a514691577996cde1ca8fad96d00d362031","0390f6dda78af80360c701ce26556381bdf51bbfef793128648714814ddaf213","d9d3817b8d0b1711a471ae91035f7e5c28e00410460eee04a9e8bb7d798d5395"],"review_type":"verifier","reviewed_at":"2026-08-15T20:19:16Z","reviewer":"rolebench/reviewer/verifier-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"2696f269259a3367f32322e030ce605ac5fe67ee4710ebbc0ada49a36941243d","runner_config_digest_sha256":"ad2200e8cda2ecd689713090f72b73a243f985615a8bbe04ce96de94cc627742","runner_image":"rolebench.local/large-scale-text-editing-smol-runner@sha256:7dbd136dd4441267ffc3a1f43b6426c55418db6f39c51af226ae5553655d295d","verifier_config_digest_sha256":"ae42eab1852ded64de1207af66ac0d267710eaf70b7f57be136ec75549c8a3e7","verifier_image":"rolebench.local/large-scale-text-editing-smol-verifier@sha256:c192577b51b85702177aa9debb4f3089e43a0eb5e1305f25324b811a8da31e96","verifier_private_tree_digest_sha256":"17c389cda5c23d31b86c8a4db1a82c958e826f7bf94f849f575d57f13233d3c4"},"task_id":"terminal-bench.large-scale-text-editing","task_version":"2.1-r6"}
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Untrusted macro text must not gain ambient process or filesystem authority in the candidate runner.",
+      "resolution": "runner.py admits only three anchored normal-mode macros plus wq, then invokes absolute /usr/bin/vim in restricted mode with an isolated working directory, HOME, PATH, and non-interactive shell."
+    }
+  ],
+  "report_digests_sha256": [
+    "4001174e51e46ba7b52c1f3592d8acad698a8861f5ac81750e4fccdf50c29d17",
+    "9db110c4e52f1a06351a3f15fa5b87e820abba10d8e7ad04c33c4d8405bc8298",
+    "aed9ea6d8d033aa0741bc5934a98562ea5b4ea5d243c2a23cbec281a51308257",
+    "2fddb4c755b60a1fba83c68be082825a6112e036519a54f910469ad3e74d6c49",
+    "f2122e5a308dac1e64486312b228d34e66ea1c7113bc2164908ff806c84c4e7f",
+    "eecec9cd35b997b9f74afb40e4bb7f5623261cf651e22be62173a262d9eaa502"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-15T23:13:57Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "2696f269259a3367f32322e030ce605ac5fe67ee4710ebbc0ada49a36941243d",
+    "runner_config_digest_sha256": "ad2200e8cda2ecd689713090f72b73a243f985615a8bbe04ce96de94cc627742",
+    "runner_image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:7dbd136dd4441267ffc3a1f43b6426c55418db6f39c51af226ae5553655d295d",
+    "verifier_config_digest_sha256": "ae42eab1852ded64de1207af66ac0d267710eaf70b7f57be136ec75549c8a3e7",
+    "verifier_image": "rolebench.local/large-scale-text-editing-smol-verifier@sha256:c192577b51b85702177aa9debb4f3089e43a0eb5e1305f25324b811a8da31e96",
+    "verifier_private_tree_digest_sha256": "17c389cda5c23d31b86c8a4db1a82c958e826f7bf94f849f575d57f13233d3c4"
+  },
+  "task_id": "terminal-bench.large-scale-text-editing",
+  "task_version": "2.1-r6"
+}

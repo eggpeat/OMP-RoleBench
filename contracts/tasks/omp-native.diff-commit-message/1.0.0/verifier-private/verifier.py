@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import struct
 import sys
 from typing import NoReturn
@@ -13,6 +14,103 @@ from typing import NoReturn
 RUNNER_EVIDENCE_MAGIC = b"OMP-RUNNER-EVIDENCE-V1\n"
 RUNNER_EVIDENCE_SCHEMA_VERSION = "omp.runner-evidence/v1"
 VERIFIER_RESULT_SCHEMA_VERSION = "omp.verifier-result/v1"
+OUTCOME_ACTIONS = frozenset(
+    {
+        "capture",
+        "collect",
+        "count",
+        "emit",
+        "expose",
+        "increment",
+        "log",
+        "measure",
+        "observe",
+        "persist",
+        "publish",
+        "record",
+        "report",
+        "store",
+        "track",
+    }
+)
+INVALIDATION_WORD = r"\binvalidat(?:e|es|ed|ing|ion|ions)\b"
+DELETION_WORD = r"\bdelet(?:e|es|ed|ing|ion|ions)\b"
+L1_INVALIDATION = (
+    rf"(?:"
+    rf"{INVALIDATION_WORD}\s+(?:the\s+)?\bl1\b"
+    rf"(?:\s+(?:cache(?:\s+entry)?|entry))?"
+    rf"|"
+    rf"\bl1\b(?:\s+(?:cache(?:\s+entry)?|entry))?"
+    rf"\s+{INVALIDATION_WORD}"
+    rf")"
+)
+BACKING_STORE = r"\bbacking(?:[\s-]+)store\b"
+BACKING_STORE_DELETION = (
+    rf"(?:"
+    rf"{DELETION_WORD}\s+"
+    rf"(?:(?:the\s+)?(?:(?:cache\s+)?(?:entry|item|record|value)|cache)"
+    rf"\s+(?:from|of)\s+)?"
+    rf"(?:(?:from|of)\s+)?(?:the\s+)?{BACKING_STORE}"
+    rf"(?:\s+(?:entry|item|record|value))?"
+    rf"|"
+    rf"{BACKING_STORE}"
+    rf"(?:\s+(?:(?:cache\s+)?(?:entry|item|record|value)|cache))?"
+    rf"\s+{DELETION_WORD}"
+    rf")"
+)
+ORDER_MODIFIER = r"(?:(?:a|the)\s+)?(?:cache\s+)?lookup"
+PURPOSE_SUFFIX = (
+    r"(?:\s+(?:"
+    r"to\s+(?:"
+    r"prevent\s+stale\s+reads"
+    r"|preserve\s+cache\s+consistency"
+    r"|avoid\s+stale\s+data"
+    r")"
+    r"|so\s+that\s+cache\s+state\s+remains\s+consistent"
+    r"|so\s+as\s+to\s+preserve\s+cache\s+consistency"
+    r"|rather\s+than\s+leave\s+stale\s+data"
+    r"))?"
+)
+ORDERED_CLAIM = re.compile(
+    rf"(?:"
+    rf"{L1_INVALIDATION}\s+(?:before|prior\s+to|ahead\s+of)\s+"
+    rf"{BACKING_STORE_DELETION}"
+    rf"|"
+    rf"{L1_INVALIDATION}\s*,?\s+then\s+{BACKING_STORE_DELETION}"
+    rf"|"
+    rf"{L1_INVALIDATION}\s+after\s+{ORDER_MODIFIER}\s*,\s+then\s+"
+    rf"{BACKING_STORE_DELETION}"
+    rf"|"
+    rf"{BACKING_STORE_DELETION}\s+(?:after|following)\s+{L1_INVALIDATION}"
+    rf"|"
+    rf"(?:before|prior\s+to|ahead\s+of)\s+{BACKING_STORE_DELETION}"
+    rf"\s*,\s*{L1_INVALIDATION}"
+    rf"|"
+    rf"(?:after|following)\s+{L1_INVALIDATION}\s*,\s*"
+    rf"{BACKING_STORE_DELETION}"
+    rf"|"
+    rf"{L1_INVALIDATION}\s+preced(?:e|es|ing)\s+"
+    rf"{BACKING_STORE_DELETION}"
+    rf"|"
+    rf"{BACKING_STORE_DELETION}\s+follow(?:s|ing)\s+{L1_INVALIDATION}"
+    rf"|"
+    rf"{L1_INVALIDATION}\s+(?:is|was|will\s+be)\s+followed\s+by\s+"
+    rf"{BACKING_STORE_DELETION}"
+    rf"|"
+    rf"{BACKING_STORE_DELETION}\s+(?:is|was|will\s+be)\s+preceded\s+by\s+"
+    rf"{L1_INVALIDATION}"
+    rf")"
+    rf"{PURPOSE_SUFFIX}"
+)
+OUTCOME_CLAIM = re.compile(
+    rf"(?:"
+    rf"(?:{'|'.join(sorted(OUTCOME_ACTIONS))}) "
+    rf"hit and miss outcomes for cache deletions"
+    rf"|"
+    rf"increment cache deletion metrics with hit and miss outcomes"
+    rf")"
+)
+MAX_CLAIM_CHARS = 512
 MAX_EVIDENCE_BYTES = 32 * 1024 * 1024
 HEADER_KEYS = {
     "schema_version",
@@ -67,6 +165,44 @@ def _is_sha256(value: object) -> bool:
     )
 
 
+def _normalize_claim(text: str, *, require_period: bool) -> str | None:
+    if text != text.strip():
+        return None
+    if require_period:
+        if not text.endswith(".") or text.endswith(".."):
+            return None
+        text = text[:-1]
+    elif text.endswith((".", "!", "?")):
+        return None
+    if not text:
+        return None
+    return text.casefold()
+
+
+def _states_invalidation_before_deletion(
+    text: str,
+    *,
+    require_imperative: bool = False,
+) -> bool:
+    normalized = _normalize_claim(text, require_period=not require_imperative)
+    return (
+        normalized is not None
+        and (
+            not require_imperative
+            or (
+                text == text.casefold()
+                and re.match(r"(?:delete|invalidate)\b", normalized) is not None
+            )
+        )
+        and ORDERED_CLAIM.fullmatch(normalized) is not None
+    )
+
+
+def _states_outcome_recording(text: str) -> bool:
+    normalized = _normalize_claim(text, require_period=True)
+    return normalized is not None and OUTCOME_CLAIM.fullmatch(normalized) is not None
+
+
 def _emit_result(
     *,
     outcome: str,
@@ -91,6 +227,51 @@ def _emit_result(
     }
     sys.stdout.write(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
     return 0
+
+
+def _valid_submission(submission: object) -> bool:
+    if not isinstance(submission, dict):
+        return False
+    subject = submission.get("subject")
+    body = submission.get("body")
+    if (
+        set(submission)
+        != {
+            "schema_version",
+            "type",
+            "scope",
+            "subject",
+            "body",
+            "evidence",
+            "breaking",
+        }
+        or submission.get("schema_version") != "rolebench.commit-message/v1"
+        or submission.get("type") != "fix"
+        or submission.get("scope") != "cache"
+        or submission.get("evidence")
+        != ["change.patch:7-9", "change.patch:10-11"]
+        or submission.get("breaking") is not False
+        or not isinstance(subject, str)
+        or not isinstance(body, list)
+        or len(body) != 2
+        or any(not isinstance(sentence, str) for sentence in body)
+        or len(subject) > 72
+        or any(len(sentence) > MAX_CLAIM_CHARS for sentence in body)
+    ):
+        return False
+    texts = (subject, *body)
+    return (
+        not any(
+            re.search(r"\btest[a-z]*\b", text.casefold()) is not None
+            for text in texts
+        )
+        and _states_invalidation_before_deletion(
+            subject,
+            require_imperative=True,
+        )
+        and _states_invalidation_before_deletion(body[0])
+        and _states_outcome_recording(body[1])
+    )
 
 
 def main() -> int:
@@ -237,32 +418,7 @@ def main() -> int:
         return reject()
     if snapshot.get("patch_sha256") != "4a667d7a5dc3ee32ba5fb31cbf4b54922bd504e51e4a88cb83fdcbb830c3a635":
         return reject()
-    submission = snapshot.get("submission")
-    if not isinstance(submission, dict):
-        return reject()
-    subject = submission.get("subject")
-    body = submission.get("body")
-    if (
-        set(submission) != {"schema_version", "type", "scope", "subject", "body", "evidence", "breaking"}
-        or submission.get("schema_version") != "rolebench.commit-message/v1"
-        or submission.get("type") != "fix"
-        or submission.get("scope") != "cache"
-        or submission.get("evidence") != ["change.patch:7-9", "change.patch:10-11"]
-        or submission.get("breaking") is not False
-        or not isinstance(subject, str)
-        or not isinstance(body, list)
-        or len(body) != 2
-        or any(not isinstance(sentence, str) for sentence in body)
-    ):
-        return reject()
-    subject_lower = subject.casefold()
-    body_lower = [sentence.casefold() for sentence in body]
-    if (
-        not all(term in subject_lower for term in ("l1", "invalidat", "delet"))
-        or not all(term in body_lower[0] for term in ("l1", "invalidat", "backing", "store"))
-        or not all(term in body_lower[1] for term in ("hit", "miss", "outcome", "cache", "delet"))
-        or any("test" in text for text in (subject_lower, *body_lower))
-    ):
+    if not _valid_submission(snapshot.get("submission")):
         return reject()
     return emit("accepted", 1, bound)
 

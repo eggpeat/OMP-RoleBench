@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:role-registry:v3",
-  "title": "OMP Role Registry v3",
+  "$id": "urn:omp-rolebench:schema:role-registry:v2",
+  "title": "OMP Role Registry v2",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "source", "roles", "contracts", "task_packs"],
   "properties": {
-    "schema_version": {"const": "omp.role-registry/v3"},
+    "schema_version": {"const": "omp.role-registry/v2"},
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -48,17 +48,13 @@
     "task_packs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"],
+      "required": ["default", "task", "smol", "slow", "plan", "advisor"],
       "properties": {
         "default": {"const": "contracts/task-packs/default-v1.json"},
+        "task": {"const": "contracts/task-packs/task-v1.json"},
         "smol": {"const": "contracts/task-packs/smol-v1.json"},
         "slow": {"const": "contracts/task-packs/slow-v1.json"},
-        "vision": {"const": "contracts/task-packs/vision-v1.json"},
         "plan": {"const": "contracts/task-packs/plan-v1.json"},
-        "designer": {"const": "contracts/task-packs/designer-v1.json"},
-        "commit": {"const": "contracts/task-packs/commit-v1.json"},
-        "tiny": {"const": "contracts/task-packs/tiny-v1.json"},
-        "task": {"const": "contracts/task-packs/task-v1.json"},
         "advisor": {"const": "contracts/task-packs/advisor-v1.json"}
       }
     }

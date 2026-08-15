@@ -1742,6 +1742,319 @@ class SanitizerRunnerTests(unittest.TestCase):
 
 
 
+class RoleAnchorSemanticTests(unittest.TestCase):
+    def test_cad_reference_covers_every_visible_dimension(self) -> None:
+        task_dir = PRODUCT_ROOT / "contracts/tasks/terminal-bench.cad-model/3.0-r1"
+        expected = runpy.run_path(
+            str(task_dir / "verifier-private/verifier.py")
+        )["_expected_submission"]()
+        expected_dimensions = {
+            "base_flange": {
+                "length": 73,
+                "width": 75,
+                "thickness": 13,
+                "corner_radius": 17,
+            },
+            "base_mounting_holes": {
+                "through_diameter": 6,
+                "counterbore_diameter": 12,
+                "counterbore_depth": 4,
+            },
+            "vertical_rib": {
+                "thickness": 13,
+                "top_radius": 15,
+                "height": 55,
+                "included_angle_degrees": 75,
+            },
+            "vertical_rib_hole": {"diameter": 12},
+            "inclined_tab": {
+                "width": 75,
+                "thickness": 7,
+                "end_radius": 37.5,
+                "angle_degrees": 45,
+                "transition_radius": 16,
+                "vertical_drop": 45,
+            },
+            "inclined_tab_hole": {"diameter": 33},
+        }
+
+        for probe in ("candidate", "reference"):
+            with self.subTest(probe=probe):
+                submission = runpy.run_path(str(task_dir / f"probes/{probe}.py"))[
+                    "submission"
+                ]
+                self.assertEqual(submission, expected)
+                actual_dimensions = {
+                    feature["id"]: feature["dimensions"]
+                    for feature in submission["features"]
+                }
+                self.assertEqual(actual_dimensions, expected_dimensions)
+
+    def test_commit_verifier_rejects_negated_required_actions(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/omp-native.diff-commit-message/1.0.0"
+        )
+        valid_submission = runpy.run_path(str(task_dir / "probes/reference.py"))[
+            "submission"
+        ]
+        verifier = runpy.run_path(str(task_dir / "verifier-private/verifier.py"))
+        is_valid = verifier["_valid_submission"]
+
+        self.assertTrue(is_valid(valid_submission))
+        for subject in (
+            "do not invalidate l1 before backing-store deletion",
+            "do not ever invalidate l1 before backing-store deletion",
+            "never invalidate l1 before backing-store deletion",
+            "no l1 invalidation before backing-store deletion",
+            "avoid invalidating l1 before backing-store deletion",
+            "unable to invalidate l1 before backing-store deletion",
+            "turn off l1 invalidation before backing-store deletion",
+            "invalidate l1 but do not delete from the backing store",
+            "invalidate l1 before backing-store deletionless",
+            (
+                "invalidate l1 before backing-store deletion "
+                "to not delete the store"
+            ),
+            (
+                "invalidate l1 after backing-store deletion, "
+                "then delete backing-store"
+            ),
+        ):
+            with self.subTest(subject=subject):
+                negated = deepcopy(valid_submission)
+                negated["subject"] = subject
+                self.assertFalse(is_valid(negated))
+
+        for sentence in (
+            "L1 invalidation before backing store deletion is impossible.",
+            "Stop invalidating L1 before deleting from the backing store.",
+            "Turn off L1 invalidation before backing-store deletion.",
+            "L1 invalidation is preceded by backing-store deletion.",
+            "Backing-store deletion is followed by L1 invalidation.",
+            "Invalidate L1 before deleting metrics; preserve the backing store.",
+            "Invalidate L1 before canceling backing-store deletion.",
+            "L1 invalidation before backing-store deletion is false.",
+            "L1 invalidation before backing-store deletion is untrue.",
+            "Undo L1 invalidation before backing-store deletion.",
+            "Reverse L1 invalidation before backing-store deletion.",
+            "Prohibit L1 invalidation before backing-store deletion.",
+            "Reject L1 invalidation before backing-store deletion.",
+            "L1 invalidation precedes backing-store deletionless.",
+            "L1 invalidationless precedes backing-store deletion.",
+            (
+                "L1 invalidation precedes backing-store deletion "
+                "to avoid both actions."
+            ),
+            (
+                "Invalidate L1 after backing-store deletion, "
+                "then delete from backing store."
+            ),
+            (
+                "Invalidate L1 before deleting the backing store, but "
+                "backing-store deletion precedes L1 invalidation."
+            ),
+        ):
+            with self.subTest(sentence=sentence):
+                negated = deepcopy(valid_submission)
+                negated["body"][0] = sentence
+                self.assertFalse(is_valid(negated))
+
+        for sentence in (
+            "Do not record hit and miss outcomes for cache deletions.",
+            "Never track hit and miss outcomes for cache deletions.",
+            "Record no hit and miss outcomes for cache deletions.",
+            "Avoid logging hit and miss outcomes for cache deletions.",
+            "Capturing hit and miss outcomes for cache deletions is disabled.",
+            "Stop recording hit and miss outcomes for cache deletions.",
+            "Recording hit and miss outcomes for cache deletions isn't enabled.",
+            "Ignore hit and miss outcomes in cache deletion logic.",
+            "Recording hit and miss outcomes for cache deletions is impossible.",
+            "Turn off recording hit and miss outcomes for cache deletions.",
+            "Opt out of recording hit and miss outcomes for cache deletions.",
+            "Track cache deletion logic rather than hit and miss outcomes.",
+        ):
+            with self.subTest(sentence=sentence):
+                negated = deepcopy(valid_submission)
+                negated["body"][1] = sentence
+                self.assertFalse(is_valid(negated))
+
+        reversed_order = deepcopy(valid_submission)
+        reversed_order["subject"] = "invalidate l1 after backing-store deletion"
+        self.assertFalse(is_valid(reversed_order))
+
+        unbound_deletion = deepcopy(valid_submission)
+        unbound_deletion["subject"] = "invalidate l1 then delete cache"
+        self.assertFalse(is_valid(unbound_deletion))
+
+        unbound_deletion = deepcopy(valid_submission)
+        unbound_deletion["subject"] = (
+            "invalidate l1 before deleting metrics and preserving backing store"
+        )
+        self.assertFalse(is_valid(unbound_deletion))
+
+        reversed_order = deepcopy(valid_submission)
+        reversed_order["body"][0] = (
+            "Delete from the backing store before invalidating the L1 entry."
+        )
+        self.assertFalse(is_valid(reversed_order))
+
+        affirmative = deepcopy(valid_submission)
+        affirmative["body"][0] = (
+            "Invalidate the L1 entry before deleting from the backing store to "
+            "preserve cache consistency."
+        )
+        affirmative["body"][1] = (
+            "Track hit and miss outcomes for cache deletions."
+        )
+        self.assertTrue(is_valid(affirmative))
+
+        for subject, sentence in (
+            (
+                "invalidate l1 then delete from backing store",
+                "Invalidate L1, then delete from the backing store.",
+            ),
+            (
+                "delete backing-store entry after invalidating l1",
+                "Delete from the backing store after invalidating L1.",
+            ),
+            (
+                "delete from backing store following l1 invalidation",
+                "After invalidating L1, delete from the backing store.",
+            ),
+        ):
+            with self.subTest(subject=subject):
+                ordered = deepcopy(valid_submission)
+                ordered["subject"] = subject
+                ordered["body"][0] = sentence
+                self.assertTrue(is_valid(ordered))
+
+        for sentence in (
+            "L1 invalidation precedes backing-store deletion.",
+            "Backing-store deletion follows L1 invalidation.",
+            "L1 invalidation is followed by backing-store deletion.",
+            "Backing-store deletion is preceded by L1 invalidation.",
+        ):
+            with self.subTest(sentence=sentence):
+                ordered = deepcopy(valid_submission)
+                ordered["body"][0] = sentence
+                self.assertTrue(is_valid(ordered))
+
+        for purpose in (
+            "to prevent stale reads",
+            "to preserve cache consistency",
+            "to avoid stale data",
+            "so that cache state remains consistent",
+            "so as to preserve cache consistency",
+            "rather than leave stale data",
+        ):
+            sentence = (
+                "L1 invalidation precedes backing-store deletion "
+                f"{purpose}."
+            )
+            with self.subTest(sentence=sentence):
+                purposeful = deepcopy(valid_submission)
+                purposeful["body"][0] = sentence
+                self.assertTrue(is_valid(purposeful))
+
+        for subject, sentence in (
+            (
+                (
+                    "invalidate l1 before deleting from backing store "
+                    "to prevent stale reads"
+                ),
+                (
+                    "Invalidate L1 before deleting from the backing store "
+                    "rather than leave stale data."
+                ),
+            ),
+            (
+                "invalidate l1 after lookup, then delete from backing store",
+                (
+                    "Invalidate L1 after lookup, then delete from the "
+                    "backing store."
+                ),
+            ),
+        ):
+            with self.subTest(subject=subject):
+                purposeful = deepcopy(valid_submission)
+                purposeful["subject"] = subject
+                purposeful["body"][0] = sentence
+                self.assertTrue(is_valid(purposeful))
+
+        for action in (
+            "capture",
+            "collect",
+            "count",
+            "emit",
+            "expose",
+            "increment",
+            "log",
+            "measure",
+            "observe",
+            "persist",
+            "publish",
+            "record",
+            "report",
+            "store",
+            "track",
+        ):
+            sentence = (
+                f"{action.capitalize()} hit and miss outcomes for cache deletions."
+            )
+            with self.subTest(sentence=sentence):
+                alternative = deepcopy(valid_submission)
+                alternative["body"][1] = sentence
+                self.assertTrue(is_valid(alternative))
+
+        alternative = deepcopy(valid_submission)
+        alternative["body"][1] = (
+            "Increment cache deletion metrics with hit and miss outcomes."
+        )
+        self.assertTrue(is_valid(alternative))
+        tamper = runpy.run_path(str(task_dir / "probes/tamper.py"))["submission"]
+        self.assertFalse(is_valid(tamper))
+
+
+class ResponsiveIncidentRunnerTests(unittest.TestCase):
+    def test_rejects_character_reference_obfuscated_remote_urls(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/omp-native.responsive-incident-console/1.0.0"
+        )
+        namespace = runpy.run_path(str(task_dir / "runner.py"))
+        validate_submission = namespace["_validate_submission"]
+        submission_error = namespace["SubmissionError"]
+
+        for markup in (
+            '<a href="java&#x73;cript:alert(1)">link</a>',
+            '<a href="h&#x74;tps://example.invalid/asset">link</a>',
+            '<a href="&#x2f;&#x2f;example.invalid/asset">link</a>',
+            '<img srcset="local.png 1x, h&#x74;tps://example.invalid/a 2x">',
+            '<form action="java&#x73;cript:alert(1)"></form>',
+            '<meta http-equiv="refresh" content="0;url=/elsewhere">',
+            '<base href="/elsewhere/">',
+            '<div style="background-image:u&#x72;l(//example.invalid/a)"></div>',
+        ):
+            with self.subTest(markup=markup):
+                submission = {
+                    "schema_version": "rolebench.ui-implementation/v1",
+                    "files": {
+                        "index.html": (
+                            "<!doctype html><html><head>"
+                            '<link rel="stylesheet" href="styles.css">'
+                            f"</head><body>{markup}</body></html>"
+                        ),
+                        "styles.css": "body { color: #111; background: #fff; }",
+                    },
+                }
+                with self.assertRaisesRegex(
+                    submission_error,
+                    "forbidden active or remote content",
+                ):
+                    validate_submission(submission, {})
+
+
 class PublishedCandidateRegressionTests(unittest.TestCase):
     def test_memory_candidate_meets_verifier_narrative_gates(self) -> None:
         task_dir = (

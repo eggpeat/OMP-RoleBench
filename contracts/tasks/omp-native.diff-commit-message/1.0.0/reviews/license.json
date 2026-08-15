@@ -1,1 +1,29 @@
-{"decision":"approved","evidence":[{"kind":"author-declaration","reference":"RoleBench repository-authored task under the repository MIT license."}],"findings":[],"license":{"expression":"MIT","redistribution":"permitted"},"requirements":["Retain the RoleBench MIT license notice when redistributing this authored task."],"review_type":"license","reviewed_at":"2026-08-15T21:13:35Z","reviewer":"rolebench/reviewer/license-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"fd2c6529a4887f18bb493539eb6468c78bead64ac51db1731ce84e0a3fe7283c","source_digest_sha256":"fd2c6529a4887f18bb493539eb6468c78bead64ac51db1731ce84e0a3fe7283c","source_task":null,"verifier_private_tree_digest_sha256":"c4777529498d73a5e75e0c20e5343f76dc38fe11b0f93064e68f5aa7c9a9c4af"},"task_id":"omp-native.diff-commit-message","task_version":"1.0.0"}
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "author-declaration",
+      "reference": "RoleBench repository-authored task under the repository MIT license."
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain the RoleBench MIT license notice when redistributing this authored task."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-15T23:03:04Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "source_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "source_task": null,
+    "verifier_private_tree_digest_sha256": "09c37065867423f32caf4d5b7508ec2be47d867b6910aa0644e46479e37083c1"
+  },
+  "task_id": "omp-native.diff-commit-message",
+  "task_version": "1.0.0"
+}

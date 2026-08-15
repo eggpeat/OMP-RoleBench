@@ -77,6 +77,25 @@ class SuccessfulRepositoryTests(ContractFixture):
             ("task", "smol", "slow"),
         )
 
+    def test_v2_role_registry_repository_remains_valid(self) -> None:
+        registry = self.read_json("contracts/role-registry.json")
+        registry["schema_version"] = "omp.role-registry/v2"
+        task_packs = registry["task_packs"]
+        self.assertIsInstance(task_packs, dict)
+        for role in ("vision", "designer", "commit", "tiny"):
+            task_packs.pop(role)
+            (self.root / f"contracts/task-packs/{role}-v1.json").unlink()
+        self.write_json("contracts/role-registry.json", registry)
+
+        result = validate_repository(self.root)
+
+        self.assertTrue(result.valid, result.diagnostics)
+        repository = load_repository(self.root)
+        self.assertEqual(
+            tuple(role for role, _ in repository.task_packs),
+            ("default", "task", "smol", "slow", "plan", "advisor"),
+        )
+
     def test_contracts_validate_cli_reports_repository_valid(self) -> None:
         output = StringIO()
         status = run(
@@ -445,10 +464,11 @@ class ArtifactValidationTests(ContractFixture):
         )
         self.assertTrue(result.valid, result.diagnostics)
 
-    def test_route_policy_accepts_v1_and_v2_role_registry_snapshots(self) -> None:
+    def test_route_policy_accepts_supported_role_registry_snapshots(self) -> None:
         for schema_version in (
             "omp.role-registry/v1",
             "omp.role-registry/v2",
+            "omp.role-registry/v3",
         ):
             with self.subTest(schema_version=schema_version):
                 policy = self.policy()

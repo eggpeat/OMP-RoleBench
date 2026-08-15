@@ -1,5 +1,5 @@
 {
-  "schema_version": "omp.role-registry/v2",
+  "schema_version": "omp.role-registry/v3",
   "source": {
     "repository": "can1357/oh-my-pi",
     "revision": "a5090f1f81cf0ac072fbd1ec949eebe6bbbc23a9",

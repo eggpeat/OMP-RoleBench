@@ -1,1 +1,31 @@
-{"checks":{"credentials":"pass","host_paths":"pass","personal_identifiers":"pass","private_repository_content":"pass","session_or_model_content":"pass","synthetic_values_explicit":"pass"},"decision":"approved","findings":[],"remediation":[{"finding":"Public prompt must state every deterministic semantic requirement without disclosing the private reference wording.","resolution":"Published the required semantic term families while keeping the reference wording and verifier implementation private."}],"review_type":"privacy","reviewed_at":"2026-08-15T21:13:35Z","reviewer":"rolebench/reviewer/privacy-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"prompt_digest_sha256":"eb2f668294381fb09166653fbf849d7da39eb71de9e72a7c5057915fa08ba5cb","public_tree_digest_sha256":"fd2c6529a4887f18bb493539eb6468c78bead64ac51db1731ce84e0a3fe7283c","verifier_digest_sha256":"7e81416d28a5caa80d14d57f1cef5ad34072528dbf48caf432eabfb8ee73d229","verifier_private_tree_digest_sha256":"c4777529498d73a5e75e0c20e5343f76dc38fe11b0f93064e68f5aa7c9a9c4af","workspace_digest_sha256":"877248bc085b5b0df27cf0df10f8c672493df1280e76b134465c718a33cb8dec"},"task_id":"omp-native.diff-commit-message","task_version":"1.0.0"}
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Public prompt must state every deterministic semantic requirement without disclosing the private reference wording.",
+      "resolution": "Published the required semantic term families while keeping the reference wording and verifier implementation private."
+    }
+  ],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-15T23:03:04Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "b880139370dd97c719330548f8ebf93d8b44e40dd91ae3f618d58c919475b065",
+    "public_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "verifier_digest_sha256": "68556510190c562157fe00bb58dbebc9e4c352f2ca0ae8f9d9bb855e3dd12235",
+    "verifier_private_tree_digest_sha256": "09c37065867423f32caf4d5b7508ec2be47d867b6910aa0644e46479e37083c1",
+    "workspace_digest_sha256": "877248bc085b5b0df27cf0df10f8c672493df1280e76b134465c718a33cb8dec"
+  },
+  "task_id": "omp-native.diff-commit-message",
+  "task_version": "1.0.0"
+}

@@ -1,1 +1,45 @@
-{"checks":{"baseline_rejected":"pass","determinism":"pass","evidence_bindings":"pass","external_provider_calls_zero":"pass","passive_verifier":"pass","reference_accepted":"pass","reward_mapping":"pass","source_separated_observer":"pass","source_validation":"pass","tamper_rejected":"pass","verifier_private_digest_matches":"pass"},"decision":"approved","findings":[],"remediation":[{"finding":"Rendered screenshots alone do not prove that a submission implements the fixed brief or accessible interaction states.","resolution":"runner.py loads the source-separated brief and audits every required product, navigation, filter, incident, and timeline value; desktop/mobile layout, overflow, disclosures, target size, focus contrast, text contrast, and screenshot evidence are independently verified."}],"report_digests_sha256":["4a042c70654dfbbe6b41bdc3661d37a2b6c6d3468fa95df4a51666989fa46f69","91a753bedec04fa9b46018aeea4639ac5528c2aa200dcd8832110b90e552b60b","1b6c1f8d4e3504020b53676d0dae30f3a1eeaa4e26587cce6997cae4889888c1","234c9fa1fc842f0d92b3ca76e1d608905d3d84f3b2acfb3bce6b0db659328f6b","2c1fc2541f017b22d0f654b61f7406b8362c5c348d5e7ee23277d87f261a3a11","befa3ce3a5ad15e94edcc74483d11328515fd8a9a111ae08009aff50864226f4"],"review_type":"verifier","reviewed_at":"2026-08-15T21:13:35Z","reviewer":"rolebench/reviewer/verifier-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"9cf68a265cb60c8a34a0d7bde0c9ac33456240d7e66b3e903fa3d3a1acbe04ee","runner_config_digest_sha256":"c54c05c1bcb1aa99ca8f0e7ab2ffa2b7f414f0e927292d01cd8941a819423819","runner_image":"rolebench.local/responsive-incident-console-designer-runner@sha256:c198e9ba44bd20356d7d1d394fbb3d91996124e84aa93918eb2b11b619d0689c","verifier_config_digest_sha256":"734d3985ae0c870596d647483653082f163aeee5e92e1a66731d8f3c2174fba0","verifier_image":"rolebench.local/responsive-incident-console-designer-verifier@sha256:5f651daa1394ac786f9d8c34069005a2250c4ce0582386fd7185e69688e1904e","verifier_private_tree_digest_sha256":"77915b3f474b99b7cdb730f27a281effef7f3ce7b87b1f4c9bd747fe7934505c"},"task_id":"omp-native.responsive-incident-console","task_version":"1.0.0"}
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Rendered screenshots alone do not prove that a submission implements the fixed brief or accessible interaction states.",
+      "resolution": "runner.py loads the source-separated brief and audits every required product, navigation, filter, incident, and timeline value; desktop/mobile layout, overflow, disclosures, target size, focus contrast, text contrast, and screenshot evidence are independently verified."
+    }
+  ],
+  "report_digests_sha256": [
+    "41c98ec93623bfda056310d83eda24a4d5fd222e8fc83c47d40fe036e9d98c2f",
+    "dad1b1599044287832c4909c238f4a0126e79c69134d42a1a91b18b8a21c8544",
+    "827135e41360e2411ed61bd4faa2abe64b0d5bfe7213c03c1e5536825bb16379",
+    "6f401ee7421229cac413e56c49e5fb6bbf68c86051b9338285a1c4f834b7ec75",
+    "c85a833570f37f0c2955b7925fb0f4beeb80962275800678bad0ae56f94e1dc1",
+    "2aed610646d0609963639f1abbd1580e8f6801acac36cf0b2ca7f201df940623"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-15T23:13:57Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "9cf68a265cb60c8a34a0d7bde0c9ac33456240d7e66b3e903fa3d3a1acbe04ee",
+    "runner_config_digest_sha256": "7737871a8a482231b281936746ec8b68f7400f177bf7cf1ee92f18cc268f86f2",
+    "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:d2e5d0683f90fb6d533b9224d468b9a12f064ec8a80e4a671c9ca9f35e7fe56b",
+    "verifier_config_digest_sha256": "734d3985ae0c870596d647483653082f163aeee5e92e1a66731d8f3c2174fba0",
+    "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:5f651daa1394ac786f9d8c34069005a2250c4ce0582386fd7185e69688e1904e",
+    "verifier_private_tree_digest_sha256": "77915b3f474b99b7cdb730f27a281effef7f3ce7b87b1f4c9bd747fe7934505c"
+  },
+  "task_id": "omp-native.responsive-incident-console",
+  "task_version": "1.0.0"
+}

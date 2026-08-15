@@ -26,6 +26,21 @@ MAX_CSS_BYTES = 40 * 1024
 SCHEMA_VERSION = "rolebench.ui-implementation/v1"
 SNAPSHOT_VERSION = "rolebench.ui-runner-snapshot/v1"
 FORBIDDEN = re.compile(r"(?is)<script\b|<iframe\b|\b(?:src|href)\s*=\s*[\"'](?:https?:|data:|javascript:)|@import\b|url\s*\(|\son[a-z]+\s*=")
+URL_ATTRIBUTES = frozenset(
+    {
+        "action",
+        "background",
+        "cite",
+        "formaction",
+        "href",
+        "manifest",
+        "ping",
+        "poster",
+        "src",
+        "srcset",
+        "xlink:href",
+    }
+)
 AUDIT_MARKER = "rolebench-audit"
 AUDIT = r"""
 (() => {
@@ -111,8 +126,11 @@ AUDIT = r"""
   const grid = document.querySelector('[data-role="incident-grid"]');
   const primary = document.querySelector('[data-role="primary-action"]');
   const disclosures = [...document.querySelectorAll('details')];
-  for (const disclosure of disclosures) disclosure.open = true;
-  if (primary) primary.focus();
+  let primaryFocused = false;
+  if (primary) {
+    primary.focus();
+    primaryFocused = document.activeElement === primary;
+  }
 
   const primaryStyle = primary ? getComputedStyle(primary) : null;
   const primaryRect = primary ? primary.getBoundingClientRect() : {width: 0, height: 0};
@@ -130,12 +148,17 @@ AUDIT = r"""
   const columns = cardRects.filter((rect) => Math.abs(rect.top - firstTop) < 2).length;
 
   const navLabels = [...document.querySelectorAll('nav a')].map(normalize);
-  const filterOptions = [...document.querySelectorAll('select option')].map(normalize);
+  const filterControls = [...document.querySelectorAll('select')].filter(visible);
+  const filterOptions = filterControls.flatMap((control) =>
+    [...control.querySelectorAll('option')].map(normalize)
+  );
   const productRendered = normalize(document.querySelector('header')).includes(brief.product);
   const navigationRendered =
     navLabels.length === brief.navigation.length &&
     brief.navigation.every((label, index) => navLabels[index] === label);
-  const filtersRendered = brief.filters.every((label) => filterOptions.includes(label));
+  const filtersRendered =
+    filterControls.length > 0 &&
+    brief.filters.every((label) => filterOptions.includes(label));
   const incidentCardMatches = brief.incidents.map((incident) =>
     cards.filter((candidate) => normalize(candidate).includes(incident.id))
   );
@@ -160,20 +183,33 @@ AUDIT = r"""
     });
   const disclosureVisible =
     disclosures.length === brief.incidents.length &&
-    disclosures.every((details) =>
-      details.open &&
-      rendered(details) &&
-      [...details.children].some((child) => child.tagName !== 'SUMMARY' && rendered(child))
-    );
+    disclosures.every((details) => {
+      const summary = details.querySelector(':scope > summary');
+      return (
+        details.open &&
+        rendered(details) &&
+        rendered(summary) &&
+        [...details.children].some((child) => child.tagName !== 'SUMMARY' && rendered(child))
+      );
+    });
 
-  const contrastNodes = [
-    document.querySelector('header'),
-    ...document.querySelectorAll(
-      'header a, header button, header span, nav a, main h1, main h2, main p, main label, main select, main summary, main details > :not(summary), main article span'
-    ),
-    primary
-  ].filter((node) => visible(node) && normalize(node));
-  const textContrasts = contrastNodes.map(nodeContrast);
+  const textElements = new Set();
+  const textWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (textWalker.nextNode()) {
+    const parent = textWalker.currentNode.parentElement;
+    if (parent && textWalker.currentNode.nodeValue.trim() && rendered(parent)) {
+      textElements.add(parent);
+    }
+  }
+  for (const control of document.querySelectorAll('button, input, select, textarea')) {
+    if (
+      rendered(control) &&
+      (normalize(control) || String(control.value || '').trim() || String(control.placeholder || '').trim())
+    ) {
+      textElements.add(control);
+    }
+  }
+  const textContrasts = [...textElements].map(nodeContrast);
 
   return {
     viewport_width: window.innerWidth,
@@ -187,9 +223,12 @@ AUDIT = r"""
     body_contrast: nodeContrast(document.body),
     minimum_text_contrast: textContrasts.length ? Math.min(...textContrasts) : 0,
     focus_indicator: Boolean(
+      primaryFocused &&
+      visible(primary) &&
       primaryStyle &&
       primaryStyle.outlineStyle !== 'none' &&
       parseFloat(primaryStyle.outlineWidth) >= 2 &&
+      parseFloat(primaryStyle.outlineOffset) >= 0 &&
       outline[3] > 0 &&
       outlineContrast >= 3
     ),
@@ -214,6 +253,17 @@ class StructureParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.tags[tag] = self.tags.get(tag, 0) + 1
         self.attributes.append((tag, dict(attrs)))
+
+def _forbidden_asset_url(value: str | None) -> bool:
+    if value is None:
+        return False
+    candidates = [value, *re.split(r"[\s,]+", value)]
+    return any(
+        compact.startswith("//")
+        or re.match(r"^[a-z][a-z0-9+.-]*:", compact) is not None
+        for candidate in candidates
+        if (compact := re.sub(r"[\x00-\x20]+", "", candidate).casefold())
+    )
 
 
 def _reject_constant(value: str) -> NoReturn:
@@ -272,6 +322,28 @@ def _validate_submission(value: object, brief: dict[str, object]) -> tuple[str, 
 
     parser = StructureParser()
     parser.feed(html)
+    if (
+        any(
+            _forbidden_asset_url(value)
+            for tag, attrs in parser.attributes
+            for name, value in attrs.items()
+            if name in URL_ATTRIBUTES or (tag == "object" and name == "data")
+        )
+        or any(
+            FORBIDDEN.search(value) is not None
+            for _, attrs in parser.attributes
+            if (value := attrs.get("style")) is not None
+        )
+        or any(
+            tag == "base"
+            or (
+                tag == "meta"
+                and (attrs.get("http-equiv") or "").strip().casefold() == "refresh"
+            )
+            for tag, attrs in parser.attributes
+        )
+    ):
+        raise SubmissionError("UI contains forbidden active or remote content")
     semantics = all(parser.tags.get(tag, 0) >= count for tag, count in {"header": 1, "nav": 1, "main": 1, "section": 1, "article": 3, "form": 1, "details": 3, "summary": 3, "button": 1}.items())
     linked_css = any(tag == "link" and attrs.get("rel") == "stylesheet" and attrs.get("href") == "styles.css" for tag, attrs in parser.attributes)
     active_nav = any(attrs.get("aria-current") == "page" for _, attrs in parser.attributes)
@@ -416,6 +488,72 @@ def _debugger_target() -> str:
         time.sleep(0.05)
     raise SubmissionError("Chromium debugger did not become ready")
 
+def _runtime_value(client: CDPClient, expression: str) -> object:
+    evaluated = client.command(
+        "Runtime.evaluate",
+        {"expression": expression, "returnByValue": True},
+    )
+    remote_result = evaluated.get("result")
+    if not isinstance(remote_result, dict) or "value" not in remote_result:
+        raise SubmissionError("Chromium interaction returned an invalid value")
+    return remote_result["value"]
+
+
+def _exercise_disclosures(client: CDPClient, expected_count: int) -> None:
+    count = _runtime_value(client, "document.querySelectorAll('details > summary').length")
+    if isinstance(count, bool) or not isinstance(count, int) or count != expected_count:
+        raise SubmissionError("UI disclosure count does not match the brief")
+    for index in range(count):
+        state = _runtime_value(
+            client,
+            f"""(() => {{
+  const details = document.querySelectorAll('details')[{index}];
+  const summary = details ? details.querySelector(':scope > summary') : null;
+  if (!details || !summary) return null;
+  summary.scrollIntoView({{block: 'center'}});
+  summary.focus();
+  return {{focused: document.activeElement === summary, open: details.open}};
+}})()""",
+        )
+        if (
+            not isinstance(state, dict)
+            or set(state) != {"focused", "open"}
+            or state.get("focused") is not True
+            or state.get("open") is not False
+        ):
+            raise SubmissionError("UI disclosure summary is not keyboard-focusable and closed")
+        client.command(
+            "Input.dispatchKeyEvent",
+            {
+                "type": "keyDown",
+                "key": "Enter",
+                "code": "Enter",
+                "text": "\r",
+                "unmodifiedText": "\r",
+                "windowsVirtualKeyCode": 13,
+                "nativeVirtualKeyCode": 13,
+            },
+        )
+        client.command(
+            "Input.dispatchKeyEvent",
+            {
+                "type": "keyUp",
+                "key": "Enter",
+                "code": "Enter",
+                "windowsVirtualKeyCode": 13,
+                "nativeVirtualKeyCode": 13,
+            },
+        )
+        if (
+            _runtime_value(
+                client,
+                f"document.querySelectorAll('details')[{index}].open",
+            )
+            is not True
+        ):
+            raise SubmissionError("UI disclosure did not open through its summary")
+    _runtime_value(client, "scrollTo(0, 0); true")
+
 
 def _render(work: Path, width: int, height: int, brief: dict[str, object]) -> dict[str, object]:
     profile = work / f"chromium-{width}"
@@ -466,14 +604,10 @@ def _render(work: Path, width: int, height: int, brief: dict[str, object]) -> di
                 "returnByValue": True,
             },
         )
-        client.command(
-            "Input.dispatchKeyEvent",
-            {"type": "rawKeyDown", "key": "Tab", "code": "Tab", "windowsVirtualKeyCode": 9},
-        )
-        client.command(
-            "Input.dispatchKeyEvent",
-            {"type": "keyUp", "key": "Tab", "code": "Tab", "windowsVirtualKeyCode": 9},
-        )
+        incidents = brief.get("incidents")
+        if not isinstance(incidents, list):
+            raise SubmissionError("brief incidents are malformed")
+        _exercise_disclosures(client, len(incidents))
         audit_expression = AUDIT.replace(
             "__ROLEBENCH_BRIEF__",
             json.dumps(brief, sort_keys=True, separators=(",", ":")),
