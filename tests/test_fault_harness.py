@@ -8,9 +8,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from rolebench.accounting import AccountingError
+from rolebench.accounting import AccountingError, classify_attempt
 from rolebench.accounting_rules import ATTEMPT_OUTCOME_RULES
-from rolebench.contracts import canonical_json
+from rolebench.contracts import JSONObject, canonical_json
 from rolebench.fault_harness import FaultHarnessError, _observation, run_fault_check
 
 
@@ -91,6 +91,31 @@ class FaultHarnessTests(unittest.TestCase):
                 '"quarantined":5,"retryable_invalid":18},"quality_score":0.5,'
                 '"rejected":2,"scored_attempts":4,"total_attempts":29}'
             ],
+        )
+
+    def test_invalid_classification_fails_closed_without_crashing(self) -> None:
+        def invalid_classification(observation: JSONObject) -> JSONObject:
+            outcome = classify_attempt(observation)
+            outcome["disposition"] = "invalid-for-test"
+            return outcome
+
+        with patch(
+            "rolebench.fault_harness.classify_attempt",
+            side_effect=invalid_classification,
+        ):
+            report = self.run_report()
+
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["failed_scenarios"], 29)
+        self.assertEqual(report["quality_summary"]["total_attempts"], 0)
+        scenarios = report["scenarios"]
+        self.assertIsInstance(scenarios, list)
+        self.assertTrue(all(not item["outcome_valid"] for item in scenarios))
+        self.assertTrue(
+            all(
+                any("invalid-for-test" in diagnostic for diagnostic in item["diagnostics"])
+                for item in scenarios
+            )
         )
 
     def test_report_is_deterministic(self) -> None:

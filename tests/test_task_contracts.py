@@ -1214,6 +1214,124 @@ class ArtifactSemanticTests(TaskContractFixture):
 
 
 class SanitizerRunnerTests(unittest.TestCase):
+    def test_accepts_standard_git_diff_preamble_and_binds_paths(
+        self,
+    ) -> None:
+        namespace = runpy.run_path(
+            str(
+                PRODUCT_ROOT
+                / "contracts/tasks/terminal-bench.sanitize-git-repo"
+                / "2.1-r6/runner.py"
+            )
+        )
+        apply_patch = namespace["_apply_patch"]
+        standard_patch = (
+            "diff --git a/first.txt b/first.txt\n"
+            "index 1111111..2222222 100644\n"
+            "--- a/first.txt\n"
+            "+++ b/first.txt\n"
+            "@@ -1 +1 @@\n"
+            "-alpha=old\n"
+            "+alpha=new\n"
+            "diff --git a/second.txt b/second.txt\n"
+            "index aaaaaaa..bbbbbbb 100644\n"
+            "--- a/second.txt\n"
+            "+++ b/second.txt\n"
+            "@@ -1 +1 @@\n"
+            "-beta=old\n"
+            "+beta=new\n"
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            first = workspace / "first.txt"
+            second = workspace / "second.txt"
+            first.write_text("alpha=old\n", encoding="utf-8")
+            second.write_text("beta=old\n", encoding="utf-8")
+
+            applied, error = apply_patch(standard_patch, workspace)
+
+            self.assertTrue(applied, error)
+            self.assertIsNone(error)
+            self.assertEqual(
+                first.read_text(encoding="utf-8"),
+                "alpha=new\n",
+            )
+            self.assertEqual(
+                second.read_text(encoding="utf-8"),
+                "beta=new\n",
+            )
+
+            first.write_text("alpha=old\n", encoding="utf-8")
+            second.write_text("beta=old\n", encoding="utf-8")
+            mismatched = standard_patch.replace(
+                "diff --git a/first.txt b/first.txt",
+                "diff --git a/first.txt b/unrelated.txt",
+                1,
+            )
+            applied, error = apply_patch(mismatched, workspace)
+
+            self.assertFalse(applied)
+            self.assertEqual(
+                error,
+                "git diff paths do not match file headers",
+            )
+            self.assertEqual(
+                first.read_text(encoding="utf-8"),
+                "alpha=old\n",
+            )
+            self.assertEqual(
+                second.read_text(encoding="utf-8"),
+                "beta=old\n",
+            )
+
+    def test_hunk_counts_use_git_defaults_and_preserve_explicit_zero(
+        self,
+    ) -> None:
+        namespace = runpy.run_path(
+            str(
+                PRODUCT_ROOT
+                / "contracts/tasks/terminal-bench.sanitize-git-repo"
+                / "2.1-r6/runner.py"
+            )
+        )
+        apply_patch = namespace["_apply_patch"]
+
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            target = workspace / "sample.txt"
+            target.write_text("middle\n", encoding="utf-8")
+
+            inserted, error = apply_patch(
+                "--- a/sample.txt\n"
+                "+++ b/sample.txt\n"
+                "@@ -0,0 +1 @@\n"
+                "+first\n",
+                workspace,
+            )
+
+            self.assertTrue(inserted, error)
+            self.assertIsNone(error)
+            self.assertEqual(
+                target.read_text(encoding="utf-8"),
+                "first\nmiddle\n",
+            )
+
+            deleted, error = apply_patch(
+                "--- a/sample.txt\n"
+                "+++ b/sample.txt\n"
+                "@@ -1 +0,0 @@\n"
+                "-first\n",
+                workspace,
+            )
+
+            self.assertTrue(deleted, error)
+            self.assertIsNone(error)
+            self.assertEqual(
+                target.read_text(encoding="utf-8"),
+                "middle\n",
+            )
+
     def test_rejects_inconsistent_unified_diff_hunk_metadata(self) -> None:
         namespace = runpy.run_path(
             str(

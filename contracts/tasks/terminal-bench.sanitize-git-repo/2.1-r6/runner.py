@@ -20,6 +20,13 @@ HUNK_HEADER_RE: re.Pattern[str] = re.compile(
     r"^@@ -([0-9]{1,9})(?:,([0-9]{1,9}))? "
     r"\+([0-9]{1,9})(?:,([0-9]{1,9}))? @@"
 )
+GIT_DIFF_HEADER_RE: re.Pattern[str] = re.compile(
+    r"^diff --git (a/[^\r\n]+) (b/[^\r\n]+)\r?\n?$"
+)
+GIT_INDEX_HEADER_RE: re.Pattern[str] = re.compile(
+    r"^index [0-9a-f]{4,64}\.\.[0-9a-f]{4,64}"
+    r"(?: [0-7]{6})?\r?\n?$"
+)
 WORKSPACE_ROOT: Path = Path("/workspace")
 DEFAULT_SOURCE: Path = Path("/opt/rolebench/task/public/workspace")
 
@@ -94,21 +101,64 @@ def _apply_patch(patch_text: str, workspace_dir: Path) -> tuple[bool, str | None
     if not lines or not any(l.strip() for l in lines):
         return True, None
 
-    file_patches: list[list[str]] = []
-    cur: list[str] = []
-    for line in lines:
-        if line.startswith("--- "):
-            if cur:
-                file_patches.append(cur)
-                cur = []
-        cur.append(line)
-    if cur:
-        file_patches.append(cur)
+    file_patches: list[
+        tuple[tuple[str, str] | None, list[str]]
+    ] = []
+    if any(line.startswith("diff --git ") for line in lines):
+        sections: list[list[str]] = []
+        section: list[str] = []
+        for line in lines:
+            if line.startswith("diff --git "):
+                if section:
+                    sections.append(section)
+                section = [line]
+            elif not section:
+                return False, "content before git diff header"
+            else:
+                section.append(line)
+        if section:
+            sections.append(section)
 
+        for section in sections:
+            header_match = GIT_DIFF_HEADER_RE.fullmatch(section[0])
+            if header_match is None:
+                return False, "invalid git diff header"
+            metadata_end = 1
+            if (
+                len(section) > metadata_end
+                and section[metadata_end].startswith("index ")
+            ):
+                if GIT_INDEX_HEADER_RE.fullmatch(
+                    section[metadata_end]
+                ) is None:
+                    return False, "invalid git index header"
+                metadata_end += 1
+            if (
+                len(section) <= metadata_end + 1
+                or not section[metadata_end].startswith("--- ")
+                or not section[metadata_end + 1].startswith("+++ ")
+            ):
+                return False, "unsupported git diff metadata"
+            file_patches.append(
+                (
+                    (header_match.group(1), header_match.group(2)),
+                    section[metadata_end:],
+                )
+            )
+    else:
+        current: list[str] = []
+        for line in lines:
+            if line.startswith("--- "):
+                if current:
+                    file_patches.append((None, current))
+                    current = []
+            current.append(line)
+        if current:
+            file_patches.append((None, current))
     staged_changes: dict[Path, str] = {}
     resolved_workspace = workspace_dir.resolve()
 
-    for fpatch in file_patches:
+    for git_paths, fpatch in file_patches:
         if len(fpatch) < 2:
             return False, "truncated file patch header"
         old_hdr = fpatch[0]
@@ -121,6 +171,11 @@ def _apply_patch(patch_text: str, workspace_dir: Path) -> tuple[bool, str | None
 
         old_rel = _clean_diff_path(old_raw)
         new_rel = _clean_diff_path(new_raw)
+        if git_paths is not None:
+            declared_old = _clean_diff_path(git_paths[0])
+            declared_new = _clean_diff_path(git_paths[1])
+            if declared_old != old_rel or declared_new != new_rel:
+                return False, "git diff paths do not match file headers"
         if old_rel == "/dev/null" or new_rel == "/dev/null":
             return False, "file creation and deletion are not permitted"
         if old_rel != new_rel:

@@ -40,7 +40,6 @@ _SCHEMA_DIRECTORY = Path("contracts/schemas")
 _REGISTRY_FILE = Path("contracts/role-registry.json")
 _ROLE_DIRECTORY = Path("contracts/roles")
 _ROLE_SCHEMA = "role-contract.schema.json"
-_REGISTRY_SCHEMA = "role-registry.schema.json"
 _SCORED_WORKER_POLICY_FILE = Path("contracts/scored-worker-policy.json")
 _SCORED_WORKER_POLICY_SCHEMA = "scored-worker-policy.schema.json"
 _WORKER_RUN_MANIFEST_SCHEMA = "worker-run-manifest"
@@ -50,6 +49,7 @@ _DIAGNOSTIC_TASK_SCHEMA = "diagnostic-task.schema.json"
 _TASK_QUALIFICATION_SCHEMA = "task-qualification.schema.json"
 _TASK_REVIEW_EVIDENCE_SCHEMA = "task-review-evidence.schema.json"
 _EXPERIMENT_LEDGER_ENTRY_SCHEMA = "experiment-ledger-entry.schema.json"
+_V1_TASK_PACKS: tuple[str, ...] = ("task", "smol", "slow")
 _PILOT_TASK_PACKS: tuple[str, ...] = ("default", "task", "smol", "slow")
 _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
     "attempt-observation": {
@@ -64,6 +64,10 @@ _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
         "omp.diagnostic-task/v1": "diagnostic-task-v1",
         "omp.diagnostic-task/v2": "diagnostic-task",
     },
+    "role-registry": {
+        "omp.role-registry/v1": "role-registry-v1",
+        "omp.role-registry/v2": "role-registry",
+    },
     "task-qualification": {
         "omp.task-qualification/v1": "task-qualification-v1",
         "omp.task-qualification/v2": "task-qualification",
@@ -77,6 +81,35 @@ _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
         "omp.worker-run-manifest/v2": "worker-run-manifest",
     },
 }
+_REQUIRED_SCHEMAS: tuple[str, ...] = (
+    "attempt-observation-v1.schema.json",
+    "attempt-observation.schema.json",
+    "attempt-outcome-v1.schema.json",
+    "attempt-outcome.schema.json",
+    "capability-snapshot.schema.json",
+    "capacity-snapshot.schema.json",
+    "demand-snapshot.schema.json",
+    "diagnostic-task-v1.schema.json",
+    "diagnostic-task.schema.json",
+    "evidence-row.schema.json",
+    "experiment-ledger-entry.schema.json",
+    "role-contract.schema.json",
+    "role-registry-v1.schema.json",
+    "role-registry.schema.json",
+    "route-policy.schema.json",
+    "route.schema.json",
+    "routing-decision.schema.json",
+    "scored-worker-policy-v1.schema.json",
+    "scored-worker-policy.schema.json",
+    "task-candidate.schema.json",
+    "task-pack.schema.json",
+    "task-qualification-v1.schema.json",
+    "task-qualification.schema.json",
+    "task-review-evidence.schema.json",
+    "verifier-result.schema.json",
+    "worker-run-manifest-v1.schema.json",
+    "worker-run-manifest.schema.json",
+)
 _DIGEST_CHUNK_SIZE = 1024 * 1024
 _MAX_DIGEST_FILE_BYTES = 64 * 1024 * 1024
 _MAX_DIGEST_TREE_FILES = 10_000
@@ -222,6 +255,12 @@ def _load_object(root: Path, relative: Path) -> JSONObject:
     return value
 
 
+def _task_pack_roles(registry: JSONObject) -> tuple[str, ...]:
+    if registry.get("schema_version") == "omp.role-registry/v1":
+        return _V1_TASK_PACKS
+    return _PILOT_TASK_PACKS
+
+
 def load_repository(root: Path | None = None) -> Repository:
     """Load the registry, canonical role manifests, mapped task packs, and worker policy."""
 
@@ -246,7 +285,7 @@ def load_repository(root: Path | None = None) -> Repository:
     if not isinstance(pack_map, dict):
         raise ContractError("task_packs must be an object", _REGISTRY_FILE.as_posix(), "$.task_packs")
     task_packs: list[tuple[str, JSONObject]] = []
-    for role in _PILOT_TASK_PACKS:
+    for role in _task_pack_roles(registry):
         relative_value = pack_map.get(role)
         if not isinstance(relative_value, str):
             raise ContractError(
@@ -668,17 +707,18 @@ def _duplicate_diagnostics(value: JSONValue, relative: Path, parts: tuple[object
 
 def _registry_semantics(registry: JSONObject) -> Iterator[Diagnostic]:
     relative = _REGISTRY_FILE
+    task_pack_roles = _task_pack_roles(registry)
     task_packs = registry.get("task_packs")
     if isinstance(task_packs, dict):
         actual = set(task_packs)
-        expected = set(_PILOT_TASK_PACKS)
+        expected = set(task_pack_roles)
         if actual != expected:
             yield Diagnostic(
                 relative.as_posix(),
                 "$.task_packs",
                 f"task pack coverage mismatch; missing={sorted(expected - actual)!r}, extra={sorted(actual - expected)!r}",
             )
-        for role in _PILOT_TASK_PACKS:
+        for role in task_pack_roles:
             expected_path = (_TASK_PACK_DIRECTORY / f"{role}-v1.json").as_posix()
             actual_path = task_packs.get(role)
             if actual_path is not None and actual_path != expected_path:
@@ -2260,11 +2300,19 @@ def _task_qualification_semantics(root: Path, qualification: JSONObject, relativ
         "diagnostic-task",
         task,
     )
-    task_schema = _load_object(
-        root,
-        _SCHEMA_DIRECTORY / f"{task_schema_name}.schema.json",
-    )
-    yield from _instance_diagnostics(task, task_schema, task_relative)
+    try:
+        task_schema = _load_object(
+            root,
+            _SCHEMA_DIRECTORY / f"{task_schema_name}.schema.json",
+        )
+    except ContractError as error:
+        yield Diagnostic(
+            error.file or relative.as_posix(),
+            error.json_path,
+            error.message,
+        )
+    else:
+        yield from _instance_diagnostics(task, task_schema, task_relative)
     yield from _diagnostic_task_semantics(root, task, task_relative)
     objective = task.get("objective")
     observation = (
@@ -2557,15 +2605,27 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
                 "task-qualification",
                 qualification,
             )
-            task_schema = _load_object(
-                root,
-                _SCHEMA_DIRECTORY / f"{task_schema_name}.schema.json",
+            try:
+                task_schema = _load_object(
+                    root,
+                    _SCHEMA_DIRECTORY / f"{task_schema_name}.schema.json",
+                )
+                qualification_schema = _load_object(
+                    root,
+                    _SCHEMA_DIRECTORY / f"{qualification_schema_name}.schema.json",
+                )
+            except ContractError as error:
+                yield Diagnostic(
+                    error.file or relative.as_posix(),
+                    error.json_path,
+                    error.message,
+                )
+                continue
+            yield from _instance_diagnostics(
+                task,
+                task_schema,
+                task_path.relative_to(root),
             )
-            qualification_schema = _load_object(
-                root,
-                _SCHEMA_DIRECTORY / f"{qualification_schema_name}.schema.json",
-            )
-            yield from _instance_diagnostics(task, task_schema, task_path.relative_to(root))
             yield from _diagnostic_task_semantics(root, task, task_path.relative_to(root))
             source = task.get("source")
             if (
@@ -2858,17 +2918,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
             if not schema_errors:
                 schemas[schema_path.name] = schema
 
-    for required_schema in (
-        _REGISTRY_SCHEMA,
-        _ROLE_SCHEMA,
-        _SCORED_WORKER_POLICY_SCHEMA,
-        "task-candidate.schema.json",
-        _DIAGNOSTIC_TASK_SCHEMA,
-        _TASK_QUALIFICATION_SCHEMA,
-        _TASK_REVIEW_EVIDENCE_SCHEMA,
-        _TASK_PACK_SCHEMA,
-        _EXPERIMENT_LEDGER_ENTRY_SCHEMA,
-    ):
+    for required_schema in _REQUIRED_SCHEMAS:
         if required_schema not in schemas:
             diagnostics.append(
                 Diagnostic(
@@ -2882,7 +2932,8 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
     if registry is None:
         return ValidationResult(tuple(sorted(set(diagnostics))))
 
-    registry_schema = schemas.get(_REGISTRY_SCHEMA)
+    registry_schema_name = _schema_name_for_artifact("role-registry", registry)
+    registry_schema = schemas.get(f"{registry_schema_name}.schema.json")
     if registry_schema is not None:
         diagnostics.extend(_instance_diagnostics(registry, registry_schema, _REGISTRY_FILE))
     diagnostics.extend(_registry_semantics(registry))
@@ -2933,7 +2984,8 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
                 )
 
     task_pack_map = registry.get("task_packs")
-    expected_pack_files = {f"{role}-v1.json" for role in _PILOT_TASK_PACKS}
+    task_pack_roles = _task_pack_roles(registry)
+    expected_pack_files = {f"{role}-v1.json" for role in task_pack_roles}
     pack_directory = resolved / _TASK_PACK_DIRECTORY
     actual_pack_files = (
         {path.relative_to(pack_directory).as_posix() for path in pack_directory.rglob("*.json")}
@@ -2945,7 +2997,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
     for name in sorted(actual_pack_files - expected_pack_files):
         diagnostics.append(Diagnostic((_TASK_PACK_DIRECTORY / name).as_posix(), "$", "unexpected public task pack"))
     task_pack_schema = schemas.get(_TASK_PACK_SCHEMA)
-    for role in _PILOT_TASK_PACKS:
+    for role in task_pack_roles:
         relative = _TASK_PACK_DIRECTORY / f"{role}-v1.json"
         if not (resolved / relative).is_file():
             continue

@@ -657,13 +657,13 @@ def run_fault_check(root: Path, policy_path: Path) -> JSONObject:
                 if not outcome_valid:
                     outcome_diagnostics.extend(_diagnostics(outcome_validation))
                 actual_obj = _actual_object(outcome)
-                outcomes.append(outcome)
+                if outcome_valid:
+                    outcomes.append(outcome)
             except AccountingError as exc:
                 outcome_valid = False
                 actual_obj = {
                     "reason_code": "accounting-error",
                     "disposition": "accounting-error",
-                    "failure_domain": "accounting-error",
                     "model_outcome": "accounting-error",
                     "verifier_outcome": "accounting-error",
                     "counts_toward_quality": False,

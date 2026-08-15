@@ -57,6 +57,24 @@ class SuccessfulRepositoryTests(ContractFixture):
         repository = load_repository(self.root)
         self.assertEqual(tuple(role for role, _ in repository.manifests), BUILTIN_ROLES)
 
+    def test_v1_role_registry_repository_remains_valid(self) -> None:
+        registry = self.read_json("contracts/role-registry.json")
+        registry["schema_version"] = "omp.role-registry/v1"
+        task_packs = registry["task_packs"]
+        self.assertIsInstance(task_packs, dict)
+        task_packs.pop("default")
+        self.write_json("contracts/role-registry.json", registry)
+        (self.root / "contracts/task-packs/default-v1.json").unlink()
+
+        result = validate_repository(self.root)
+
+        self.assertTrue(result.valid, result.diagnostics)
+        repository = load_repository(self.root)
+        self.assertEqual(
+            tuple(role for role, _ in repository.task_packs),
+            ("task", "smol", "slow"),
+        )
+
     def test_contracts_validate_cli_reports_repository_valid(self) -> None:
         output = StringIO()
         status = run(
@@ -139,6 +157,26 @@ class InvalidRepositoryTests(ContractFixture):
         messages = self.messages()
         self.assertIn("contracts/roles/tiny.json:$: required manifest file is missing", messages)
         self.assertIn("contracts/roles/unexpected.json:$: unexpected manifest file", messages)
+
+    def test_every_published_schema_is_required(self) -> None:
+        schema_directory = self.root / "contracts/schemas"
+        for path in sorted(schema_directory.glob("*.json")):
+            with self.subTest(schema=path.name):
+                content = path.read_bytes()
+                path.unlink()
+                try:
+                    result = validate_repository(self.root)
+                finally:
+                    path.write_bytes(content)
+                self.assertTrue(
+                    any(
+                        diagnostic.file == f"contracts/schemas/{path.name}"
+                        and diagnostic.message
+                        == "required schema file is missing or invalid"
+                        for diagnostic in result.diagnostics
+                    ),
+                    result.diagnostics,
+                )
 
     def test_registry_requires_exact_order_coverage_and_paths(self) -> None:
         registry = self.read_json("contracts/role-registry.json")
@@ -374,14 +412,22 @@ class ArtifactValidationTests(ContractFixture):
         )
         self.assertTrue(result.valid, result.diagnostics)
 
-    def test_partial_role_policy_with_exact_weight_sum_validates(self) -> None:
-        policy = self.policy()
-        result = validate_artifact(
-            self.root,
-            "route-policy",
-            self.write_artifact(policy),
-        )
-        self.assertTrue(result.valid, result.diagnostics)
+    def test_route_policy_accepts_v1_and_v2_role_registry_snapshots(self) -> None:
+        for schema_version in (
+            "omp.role-registry/v1",
+            "omp.role-registry/v2",
+        ):
+            with self.subTest(schema_version=schema_version):
+                policy = self.policy()
+                role_registry_snapshot = policy["role_registry_snapshot"]
+                self.assertIsInstance(role_registry_snapshot, dict)
+                role_registry_snapshot["schema_version"] = schema_version
+                result = validate_artifact(
+                    self.root,
+                    "route-policy",
+                    self.write_artifact(policy),
+                )
+                self.assertTrue(result.valid, result.diagnostics)
 
     def test_policy_rejects_wrong_sum_duplicate_routes_and_validity_order(self) -> None:
         policy = self.policy()

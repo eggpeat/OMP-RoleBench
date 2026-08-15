@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:role-registry:v2",
-  "title": "OMP Role Registry v2",
+  "$id": "urn:omp-rolebench:schema:role-registry:v1",
+  "title": "OMP Role Registry v1",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "source", "roles", "contracts", "task_packs"],
   "properties": {
-    "schema_version": {"const": "omp.role-registry/v2"},
+    "schema_version": {"const": "omp.role-registry/v1"},
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -48,9 +48,8 @@
     "task_packs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default", "task", "smol", "slow"],
+      "required": ["task", "smol", "slow"],
       "properties": {
-        "default": {"const": "contracts/task-packs/default-v1.json"},
         "task": {"const": "contracts/task-packs/task-v1.json"},
         "smol": {"const": "contracts/task-packs/smol-v1.json"},
         "slow": {"const": "contracts/task-packs/slow-v1.json"}
