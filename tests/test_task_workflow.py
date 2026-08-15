@@ -951,7 +951,7 @@ def test_generate_qualification_v2_fail_closed_assertions(
     no_runner_task.pop("runner")
     no_runner_path = tmp_path / "tasks/no-runner-task.json"
     _write_json(no_runner_path, no_runner_task)
-    with pytest.raises(TaskAdmissionError, match="task container or asset mapping is incomplete"):
+    with pytest.raises(TaskAdmissionError, match="task bindings are incomplete"):
         generate_task_qualification(
             tmp_path,
             no_runner_path,
