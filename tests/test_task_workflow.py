@@ -334,29 +334,32 @@ def _bind_verifier_review_reports(
     root: Path,
     task: dict[str, object],
     report_paths: list[Path],
+    *,
+    decision: str = "approved",
+    checks: dict[str, object] | None = None,
 ) -> None:
     evidence_path = root / "reviews/verifier.json"
-    _write_json(
-        evidence_path,
-        {
-            "report_digests_sha256": [
-                file_sha256(path)
-                for path in report_paths
-            ]
-        },
-    )
+    evidence: dict[str, object] = {
+        "decision": decision,
+        "checks": checks or {},
+        "report_digests_sha256": [
+            file_sha256(path)
+            for path in report_paths
+        ],
+    }
+    _write_json(evidence_path, evidence)
     verifier_review = task["reviews"]["verifier"]  # type: ignore[index]
     verifier_review["evidence_path"] = "reviews/verifier.json"  # type: ignore[index]
-    verifier_review["evidence_digest_sha256"] = file_sha256(  # type: ignore[index]
-        evidence_path
+    verifier_review["evidence_digest_sha256"] = canonical_sha256(  # type: ignore[index]
+        evidence
     )
     _write_json(root / "tasks/task.json", task)
-
 
 def _qualification_pair(
     root: Path,
     *,
     observation_authority: str = "host-process",
+    artifact_kind: str = "data-only",
 ) -> tuple[Path, Path, dict[str, object], dict[str, object]]:
     task_path = root / "tasks/task.json"
     task = {
@@ -435,7 +438,7 @@ def _qualification_pair(
             "scoring": "binary",
             "criteria": ["return exact contents of workspace/input.txt"],
             "observation": {
-                "artifact_kind": "data-only",
+                "artifact_kind": artifact_kind,
                 "authority": observation_authority,
                 "runner_output_trust": "untrusted",
             },
@@ -591,6 +594,51 @@ def test_qualification_requires_exact_links_evidence_and_decision(tmp_path: Path
     result = check_task_qualification(tmp_path, task_path, qualification_path)
     assert result["valid"] is False
     assert "qualification decision must be rejected" in result["diagnostics"]
+
+
+def test_qualification_accepts_canonical_verifier_review_digest_for_executable_observer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, qualification_path, task, qualification = _qualification_pair(
+        tmp_path,
+        observation_authority="source-separated-service",
+        artifact_kind="executable",
+    )
+    review_path = tmp_path / "reviews/verifier.json"
+    review = json.loads(review_path.read_text())
+    review["checks"] = {"source_separated_observer": "pass"}
+    _write_json(review_path, review)
+    review_digest = canonical_sha256(review)
+    assert review_digest != file_sha256(review_path)
+    task["reviews"]["verifier"]["evidence_digest_sha256"] = review_digest  # type: ignore[index]
+    _write_json(task_path, task)
+    qualification["source_task"]["digest_sha256"] = canonical_sha256(task)  # type: ignore[index]
+    qualification["reviews"] = json.loads(json.dumps(task["reviews"]))
+    qualification["evaluation_provenance"]["review_digest_sha256"] = (  # type: ignore[index]
+        review_digest
+    )
+    qualification["observed_mapping"]["task_digest_sha256"] = (  # type: ignore[index]
+        task_execution_sha256(task)
+    )
+    _write_json(qualification_path, qualification)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+
+    result = check_task_qualification(
+        tmp_path,
+        task_path,
+        qualification_path,
+    )
+
+    assert result == {
+        "valid": True,
+        "decision": "calibration-required",
+        "diagnostics": [],
+    }
 
 
 def test_qualification_rejects_hashed_but_forged_evidence(
@@ -980,7 +1028,7 @@ def test_generate_qualification_rejects_task_with_approved_failed_review(
     first_check = next(iter(evidence["checks"]))
     evidence["checks"][first_check] = "fail"
     _write_json(evidence_path, evidence)
-    review["evidence_digest_sha256"] = file_sha256(evidence_path)
+    review["evidence_digest_sha256"] = canonical_sha256(evidence)
     _write_json(task_path, task)
 
     output = tmp_path / f"qualifications/rejected-{review_name}-review.json"
@@ -1178,7 +1226,7 @@ def test_qualification_revalidation_rejects_mismatched_runner_binding(
     )
 
 
-def test_generate_qualification_executable_task_is_rejected(
+def test_generate_qualification_executable_task_with_reviewed_observer_passes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1216,6 +1264,66 @@ def test_generate_qualification_executable_task_is_rejected(
             *reports["reference"],
             *reports["tamper"],
         ],
+        decision="approved",
+        checks={"source_separated_observer": "pass"},
+    )
+    output = tmp_path / "qualifications/executable_approved.json"
+    qualification = generate_task_qualification(
+        tmp_path,
+        task_path,
+        reports["baseline"],
+        reports["reference"],
+        reports["tamper"],
+        output,
+        reviewer="reviewer",
+    )
+    assert qualification["checks"]["observation_authority"] == "pass"
+    assert qualification["decision"] == "calibration-required"
+
+    result = check_task_qualification(tmp_path, task_path, output)
+    assert result["valid"] is True
+    assert result["decision"] == "calibration-required"
+
+
+def test_generate_qualification_executable_task_without_passing_observer_is_rejected(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    task["objective"]["observation"] = {
+        "artifact_kind": "executable",
+        "authority": "source-separated-service",
+        "runner_output_trust": "untrusted",
+    }
+    _write_json(task_path, task)
+    new_task_digest = task_execution_sha256(task)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+    for report_list in reports.values():
+        for rpath in report_list:
+            rep = json.loads(rpath.read_text())
+            rep["observation"]["digests"]["task"] = new_task_digest
+            rep["outcome"] = classify_attempt(rep["observation"])
+            _write_json(rpath, rep)
+    _bind_verifier_review_reports(
+        tmp_path,
+        task,
+        [
+            *reports["baseline"],
+            *reports["reference"],
+            *reports["tamper"],
+        ],
+        checks={"source_separated_observer": "fail"},
     )
     output = tmp_path / "qualifications/executable_rejected.json"
     qualification = generate_task_qualification(
@@ -1229,7 +1337,6 @@ def test_generate_qualification_executable_task_is_rejected(
     )
     assert qualification["checks"]["observation_authority"] == "fail"
     assert qualification["decision"] == "rejected"
-
 
 def test_image_inspection_binds_exact_stage_label(
     monkeypatch: pytest.MonkeyPatch,

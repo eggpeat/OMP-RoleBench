@@ -1,0 +1,41 @@
+Terminal-Bench 2.1 — terminal-bench/llm-inference-batching-scheduler
+
+Source: terminal-bench/terminal-bench-2-1@6 (terminal-bench-2/llm-inference-batching-scheduler)
+Original task author: Changran Hu (changran_hu@berkeley.edu)
+Upstream task URL: https://github.com/harbor-framework/terminal-bench-2/tree/main/llm-inference-batching-scheduler
+Upstream repository: https://github.com/harbor-framework/terminal-bench-2
+License: Apache License 2.0; see ../../../../LICENSES/Apache-2.0.txt from this task directory.
+
+LLM Inference Batching Scheduler Domain Provenance
+
+The upstream Terminal-Bench task defines a shape-aware LLM inference batching scheduler for static graph compilation accelerators (e.g. TPUs, RDUs, or bespoke inference ASICs). The domain models incoming request streams with variable prompt and generation lengths that must be packed into batches with static hardware-aligned tensor shapes (seq_align multiple of 64, heads_align=32, hidden_align=4096) subject to an accelerator budget of at most 8 unique compilation shapes across multiple request buckets, analytical cost/latency gates, and immutable input data.
+
+Synthetic Data Provenance Notice
+
+All request identifiers (e.g., "r-001001"), prompt lengths, and generation lengths provided in workspace sample fixtures (requests_bucket_1.jsonl and requests_bucket_2.jsonl) and evaluation harnesses are entirely synthetic fixtures authored for RoleBench evaluation. They contain no real user, customer, production, model telemetry, or personal session data.
+
+RoleBench Modification Notice
+
+RoleBench redesigned this task into an executable architecture and decomposition benchmark for the OMP plan role. Rather than evaluating Python code execution against dynamic inputs, RoleBench evaluates formal, structured execution graph proposals, dependency sequencing, invariant enforcement, risk mitigations, cross-bucket constraint satisfaction, and crash-safe rollback strategies. RoleBench introduced an unprivileged plan runner, passive evidence verifier, structured graph evaluation fixtures, container recipes, and deterministic admission probes. These modifications are covered by the repository MIT license.
+
+MIT License
+
+Copyright (c) 2026 RoleBench Authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

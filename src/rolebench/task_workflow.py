@@ -28,6 +28,7 @@ from .contracts import (
     JSONValue,
     canonical_sha256,
     file_sha256,
+    is_supported_observation,
     task_execution_sha256,
     tree_sha256,
     validate_value,
@@ -778,7 +779,11 @@ def _diagnostics(result: object) -> list[str]:
     return [f"{item.file}:{item.json_path}: {item.message}" for item in getattr(result, "diagnostics", ())]
 
 
-def _expected_decision(task: JSONObject, qualification: JSONObject) -> str:
+def _expected_decision(
+    task: JSONObject,
+    qualification: JSONObject,
+    verifier_evidence: JSONObject | None = None,
+) -> str:
     checks = qualification.get("checks")
     if not isinstance(checks, dict):
         return "rejected"
@@ -805,9 +810,8 @@ def _expected_decision(task: JSONObject, qualification: JSONObject) -> str:
         )
         expected_observation_authority = (
             "pass"
-            if (
-                artifact_kind == "data-only"
-                and authority == "host-process"
+            if is_supported_observation(
+                artifact_kind, authority, verifier_evidence
             )
             else "fail"
         )
@@ -1130,7 +1134,24 @@ def _check_task_qualification_values(
             )
     else:
         diagnostics.append("qualification observed mapping is missing")
-    expected = _expected_decision(task, qualification)
+    verifier_evidence: JSONObject | None = None
+    if is_v2:
+        reviews = task.get("reviews")
+        verifier_review = (
+            reviews.get("verifier") if isinstance(reviews, dict) else None
+        )
+        if isinstance(verifier_review, dict):
+            ev_path = verifier_review.get("evidence_path")
+            ev_digest = verifier_review.get("evidence_digest_sha256")
+            if isinstance(ev_path, str) and isinstance(ev_digest, str):
+                try:
+                    artifact_path = _artifact(root, Path(ev_path))
+                    obj = _object(artifact_path)
+                    if canonical_sha256(obj) == ev_digest:
+                        verifier_evidence = obj
+                except Exception:
+                    verifier_evidence = None
+    expected = _expected_decision(task, qualification, verifier_evidence)
     if qualification.get("decision") != expected:
         diagnostics.append(
             f"qualification decision must be {expected}"
@@ -2083,7 +2104,9 @@ def generate_task_qualification(
         authority = (
             obs.get("authority") if isinstance(obs, dict) else None
         )
-        if artifact_kind == "data-only" and authority == "host-process":
+        if is_supported_observation(
+            artifact_kind, authority, verifier_evidence
+        ):
             observation_authority = "pass"
             decision = "calibration-required"
         else:

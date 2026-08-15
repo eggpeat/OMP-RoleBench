@@ -1,0 +1,66 @@
+A SQLite database `main.db` operates in Write-Ahead Logging (WAL) mode, but its accompanying sidecar file `main.db-wal` is unusable.
+
+Directly inspecting `main.db` in read-only mode returns only 5 base records. However, transaction log metadata and operational records indicate that an active workload wrote 11 items total before shutdown. SQLite fails to read or checkpoint the WAL sidecar due to byte-level encoding / header corruption.
+
+Your task:
+1. Inspect the binary header and page structures of `main.db-wal` to diagnose the sidecar corruption.
+2. Formulate and test competing transformation hypotheses against documented SQLite Write-Ahead Logging (WAL) header format invariants.
+3. Identify the correct transformation, recover the complete database state, and extract all 11 records from the `items` table.
+4. Emit the diagnosis, hypothesis testing evidence, recovery verification, and recovered records as a strict JSON object.
+
+Output format:
+Emit a JSON object conforming to the following structure:
+{
+  "schema_version": "rolebench.db-wal-recovery-submission/v1",
+  "diagnosis": {
+    "sidecar_file": "main.db-wal",
+    "observed_magic_hex": "<8-hex-chars>",
+    "expected_magic_hex": "<8-hex-chars>",
+    "corruption_mechanism": "<mechanism-enum>"
+  },
+  "hypothesis_testing": [
+    {
+      "hypothesis_id": "<string-id-1>",
+      "transform_kind": "<transform-enum>",
+      "parameter_int": 0,
+      "resulting_magic_hex": "<8-hex-chars>",
+      "wal_magic_valid": false
+    },
+    {
+      "hypothesis_id": "<string-id-2>",
+      "transform_kind": "<transform-enum>",
+      "parameter_int": 0,
+      "resulting_magic_hex": "<8-hex-chars>",
+      "wal_magic_valid": true
+    }
+  ],
+  "selected_transform": {
+    "transform_kind": "<transform-enum>",
+    "parameter_int": 0,
+    "target_magic_hex": "<8-hex-chars>"
+  },
+  "recovery_verification": {
+    "base_record_count": 0,
+    "recovered_record_count": 0,
+    "checkpoint_applied": true
+  },
+  "recovered_records": [
+    {"id": 1, "name": "<string>", "value": 0},
+    {"id": 2, "name": "<string>", "value": 0}
+  ]
+}
+
+Supported corruption_mechanism options:
+- "xor-single-byte"
+- "byte-swap"
+- "rot13"
+- "bit-inversion"
+- "header-truncation"
+- "aes-cbc"
+
+Supported transform_kind options:
+- "xor"
+- "invert"
+- "byteswap"
+- "rot"
+- "shift"

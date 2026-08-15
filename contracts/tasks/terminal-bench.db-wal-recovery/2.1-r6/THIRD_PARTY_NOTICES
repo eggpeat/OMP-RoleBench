@@ -1,0 +1,9 @@
+Terminal-Bench 2.1 — terminal-bench/db-wal-recovery
+
+Source: terminal-bench/terminal-bench-2-1@6
+Task content digest: bc389cab45468f44a03544cbd082274f0bae4ab28465b1163ad27639eedb0c14
+Original task author: Xiangning Lin (xiangnlin@alumni.cmu.edu)
+Upstream project: https://github.com/harbor-framework/terminal-bench
+License: Apache License 2.0; see ../../../../LICENSES/Apache-2.0.txt from this task directory.
+
+RoleBench modification notice: the SQLite WAL environment was adapted into a bounded, source-independent data-only recovery evaluation. RoleBench added a strict JSON runner, passive exact-result verifier, expected-output oracle, isolation recipes, and admission probes. These modifications are covered by the repository MIT license.

@@ -1,0 +1,17 @@
+FROM python:3.13-slim-bookworm@sha256:00faa2debb87529f9f0764e9491d8ba400a3678976616c3bd7cb193745ac20d1
+
+ARG PUBLIC_TREE_SHA256
+ARG PROBE_MODE
+
+LABEL org.omp.rolebench.task.role="task" \
+      org.omp.rolebench.task.stage="agent" \
+      org.omp.rolebench.task.public-tree-sha256="${PUBLIC_TREE_SHA256}"
+
+COPY public/ /opt/rolebench/task/public/
+COPY probes/${PROBE_MODE}.py /opt/rolebench/probe/run.py
+
+RUN chmod -R a+rX /opt/rolebench/task/public \
+    && chmod 0555 /opt/rolebench/probe/run.py
+
+USER 1000:1000
+ENTRYPOINT ["/opt/rolebench/probe/run.py"]

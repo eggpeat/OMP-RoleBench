@@ -4,7 +4,7 @@ OMP RoleBench is an open-source toolkit for [Oh My Pi](https://github.com/can135
 
 By default, RoleBench is designed around a fixed benchmark profile built from Terminal-Bench-style executable tasks: pinned Terminal-Bench anchors where they fit a role, plus OMP-native objective diagnostics for capabilities the public benchmark does not cover. Users may optionally supplement that profile with private diagnostic tasks derived from explicitly selected OMP session logs. Session history is never required and is not benchmark evidence by itself.
 
-> **Current status:** pre-release contract and execution foundation. Role contracts, artifact validation, fair attempt accounting, the no-model fault gate, a provider-disabled rootless Docker/`runsc` worker, private candidate ingestion, reviewed task qualification, a two-anchor `default` calibration pack, three empty authoring packs, content-bound run preparation, and a local non-authoritative experiment journal are implemented. RoleBench cannot yet run provider-backed benchmark suites or recommend model assignments. Completing the fixed profile across all ten roles, collecting cross-model discrimination evidence, calibrating capability estimates, session-to-task synthesis, capacity-aware optimization, policy generation, and OMP runtime integration remain unimplemented.
+> **Current status:** pre-release contract and execution foundation. Role contracts, artifact validation, fair attempt accounting, the no-model fault gate, a provider-disabled rootless Docker/`runsc` worker, private candidate ingestion, reviewed task qualification, a seven-anchor calibration profile across five role packs, one empty `smol` authoring pack, content-bound run preparation, and a local non-authoritative experiment journal are implemented. RoleBench cannot yet run provider-backed benchmark suites or recommend model assignments. Completing fixed coverage across all ten roles, collecting cross-model discrimination evidence, calibrating capability estimates, session-to-task synthesis, capacity-aware optimization, policy generation, and OMP runtime integration remain unimplemented.
 
 ## What RoleBench decides
 
@@ -34,7 +34,16 @@ Every installation should start from the same versioned mapping of canonical rol
 
 “Terminal-Bench-style” describes the task contract, not an unofficial Terminal-Bench score: a pinned environment, explicit success criteria, executable verification where practical, exact task and harness provenance, and separate accounting for model failures versus provider or infrastructure failures. Each task binds to one canonical role contract and explicit capability tags. Missing coverage makes a role unavailable for recommendation; it does not make session access mandatory.
 
-The committed [`default-v1`](contracts/task-packs/default-v1.json) pack contains two independently reviewed, provider-disabled Terminal-Bench-derived anchors whose capability tags collectively cover the `default` role contract. Its qualifications remain `calibration-required`; the pack is routing-ineligible and provides no model-quality evidence. The committed `task`, `smol`, and `slow` packs remain empty `authoring` queues.
+The committed fixed profile contains seven independently reviewed, provider-disabled Terminal-Bench 2.1 anchors. Every qualification remains `calibration-required`; every populated pack is routing-ineligible and provides no model-quality evidence.
+
+| Role pack | Pinned Terminal-Bench anchors |
+| --- | --- |
+| [`default-v1`](contracts/task-packs/default-v1.json) | [`sanitize-git-repo`](contracts/tasks/terminal-bench.sanitize-git-repo/2.1-r6), [`multi-source-data-merger`](contracts/tasks/terminal-bench.multi-source-data-merger/2.1-r6) |
+| [`task-v1`](contracts/task-packs/task-v1.json) | [`cancel-async-tasks`](contracts/tasks/terminal-bench.cancel-async-tasks/2.1-r6) |
+| [`slow-v1`](contracts/task-packs/slow-v1.json) | [`custom-memory-heap-crash`](contracts/tasks/terminal-bench.custom-memory-heap-crash/2.1-r6), [`db-wal-recovery`](contracts/tasks/terminal-bench.db-wal-recovery/2.1-r6) |
+| [`plan-v1`](contracts/task-packs/plan-v1.json) | [`llm-inference-batching-scheduler`](contracts/tasks/terminal-bench.llm-inference-batching-scheduler/2.1-r6) |
+| [`advisor-v1`](contracts/task-packs/advisor-v1.json) | [`fix-code-vulnerability`](contracts/tasks/terminal-bench.fix-code-vulnerability/2.1-r6) |
+| [`smol-v1`](contracts/task-packs/smol-v1.json) | No admitted anchor; empty `authoring` queue |
 
 ## Optional session-derived diagnostics
 
@@ -69,7 +78,7 @@ This prevents infrastructure trouble from looking like poor model quality withou
 
 ### Diagnostic-task workflow status
 
-RoleBench treats task authoring as a gated workflow, not as benchmark evidence. The canonical [`default-v1`](contracts/task-packs/default-v1.json) pack contains two reviewed `calibration-required` anchors and remains mechanically routing-ineligible. The [`task-v1`](contracts/task-packs/task-v1.json), [`smol-v1`](contracts/task-packs/smol-v1.json), and [`slow-v1`](contracts/task-packs/slow-v1.json) packs are empty `authoring` queues. None claim model quality or calibrated route coverage.
+RoleBench treats task authoring as a gated workflow, not as benchmark evidence. The seven anchors listed above populate the `default`, `task`, `slow`, `plan`, and `advisor` packs; all remain mechanically routing-ineligible and claim neither model quality nor calibrated route coverage. The `smol` pack remains an empty `authoring` queue.
 
 Current candidate discovery is private and explicit. `rolebench tasks scan-session` scans one caller-supplied OMP JSONL session and returns a versioned candidate with a fresh opaque reference, parsed-message `entry_count`, and signal objects containing a message-entry `ordinal` and deterministic `kind`; it never emits raw prompts, paths, entry IDs, model/provider/account data, or a stable session fingerprint. This is the safe discovery boundary for the planned local session-to-task generator, not automatic task synthesis or admission. `rolebench tasks import-omp-gym` independently imports the ergonomic `task.toml` plus `workspace/` shape into an ignored private candidate directory. It does not depend on or copy `omp-gym` code, infer a license, or admit the result.
 
@@ -286,7 +295,7 @@ The canonical contract digest covers the registry, all ten role manifests in reg
 ## Roadmap
 
 1. Freeze all ten v1 role contracts and cross-repository artifact contracts.
-2. Extend the reviewed two-anchor `default` calibration pack and curate `calibration-required` candidates for the remaining role packs, beginning with `task`, `smol`, and `slow`; pin applicable Terminal-Bench anchors and build OMP-native anchors for uncovered capabilities.
+2. Complete fixed public task coverage for the five unpopulated roles—`smol`, `vision`, `designer`, `commit`, and `tiny`—and add independently reviewed OMP-native anchors wherever Terminal-Bench does not robustly exercise a role contract.
 3. Extend the provider-disabled Docker/`runsc` worker with the credentialless provider-proxy boundary, then prove representative model-task compatibility and observed-fault parity with the no-model gate.
 4. Execute candidate exact routes, collect cross-model discrimination evidence, calibrate task packs and role thresholds, and produce normalized quality, reliability, latency, cost, and consumption evidence.
 5. Estimate calibrated `role x route` capability and emit reproducible ranked model-route recommendations. This is the core toolkit milestone.

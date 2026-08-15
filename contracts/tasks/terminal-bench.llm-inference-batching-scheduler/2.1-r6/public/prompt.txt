@@ -1,0 +1,31 @@
+You are acting in the OMP "plan" role (Executable Architecture and Decomposition).
+
+Your goal is to design a complete, dependency-aware architectural execution plan for the Static Graph LLM Inference Batching Scheduler system.
+
+# Context and Requirements
+1. Workload Ingestion:
+   - Ingests two workload feeds:
+     - Bucket 1 (`/app/task_file/input_data/requests_bucket_1.jsonl`): Interactive, latency-sensitive requests.
+     - Bucket 2 (`/app/task_file/input_data/requests_bucket_2.jsonl`): High-throughput background requests.
+   - All input request records are synthetic fixtures authored for RoleBench evaluation. Inputs are strictly immutable.
+2. Target Output Manifests:
+   - `/app/task_file/output_data/plan_b1.jsonl` (for Bucket 1)
+   - `/app/task_file/output_data/plan_b2.jsonl` (for Bucket 2)
+   mapping each request to a `batch_id` and an aligned tensor shape `(seq_align, heads_align, hidden_align)`.
+3. Invariant & Gate Requirements:
+   - Invariant Categories: `EXACT_ONCE_ASSIGNMENT`, `TENSOR_SHAPE_ALIGNMENT`, `GLOBAL_SHAPE_BUDGET_LE_8`, `COST_AND_LATENCY_GATES`, `IMMUTABLE_INPUTS`, `ATOMIC_TRANSACTION_OR_ROLLBACK`, `DETERMINISTIC_TIE_BREAKING`.
+   - Quality Gate Categories: `GLOBAL_SHAPE_BUDGET`, `REQUEST_INTEGRITY`, `SLA_AND_COST_BOUNDS`, `ATOMIC_WRITE_VERIFICATION`.
+   - All gates must be `blocking: true` with `fallback_action: "ABORT_AND_ROLLBACK"`, evaluated at an explicit pre-commit evaluation step.
+4. Structured Service-Level Model:
+   - Populate `service_level_model` exactly as constrained by `plan_schema.json`: `UNIQUE_COMPILED_GRAPHS <= 8`; P95 `REQUEST_LATENCY_MS <= REQUEST_SLA_MAX_LATENCY_MS`; `PADDED_TOKEN_WORK <= REQUEST_SLA_MAX_PADDED_TOKENS`; and `TOTAL_COST <= REQUEST_SLA_MAX_COST`.
+   - The cost equation identifier `GPU_TIME_COST_PLUS_QUEUE_OVERHEAD` means `TOTAL_COST = TOTAL_ACTIVE_GPU_SECONDS * GPU_RATE_PER_SECOND + 1 * QUEUE_OVERHEAD_COST`. Keep the metric, coefficient, operator, and limit-parameter identifiers explicit in the structured artifact.
+5. Execution Graph & Interface Dataflow:
+   - Execution sequencing must be semantically valid: inputs read before shape synthesis; cross-bucket global shape catalog (<=8 shapes) synthesized before per-bucket batch packing; batch packing precedes cost and SLA gate evaluation; all blocking gates evaluated before atomic commit; rollback handling cleans up staging on failure.
+   - Every step's `phase` must match its `operation_kind` (READ_INPUTS->INGEST_AND_VALIDATE, SYNTHESIZE_GLOBAL_SHAPES->GLOBAL_SHAPE_ALLOCATION, ASSIGN_BATCHES->BUCKET_BATCH_PACKING, EVALUATE_GATES->COST_AND_SLA_VALIDATION, COMMIT_OUTPUTS/ROLLBACK_ON_FAILURE->ATOMIC_COMMIT_AND_ROLLBACK).
+   - Component interfaces must form a connected dataflow: inputs to steps must be produced by ancestor steps; nonterminal outputs must be consumed by descendant steps; all declared components and interfaces must be used.
+6. Atomic Publication & Rollback:
+   - Atomic staged publication to `/app/task_file/output_data/plan_b1.jsonl` and `/app/task_file/output_data/plan_b2.jsonl`.
+   - Rollback step connected to staged outputs and gate verdicts, preserving immutable inputs and prior outputs without partial writes.
+
+# Submission Requirements
+Submit your design as a strict structured JSON plan artifact matching the schema in `plan_schema.json` with `schema_version: "rolebench.scheduler-plan/v1"`.

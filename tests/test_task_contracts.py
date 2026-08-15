@@ -421,18 +421,28 @@ class CanonicalPilotPackTests(TaskContractFixture):
         packs = dict(repository.task_packs)
         self.assertEqual(
             tuple(role for role, _ in repository.task_packs),
-            ("default", "task", "smol", "slow"),
+            ("default", "task", "smol", "slow", "plan", "advisor"),
         )
         default = packs["default"]
         self.assertEqual(default["status"], "calibration")
         self.assertIs(default["routing_eligible"], False)
         self.assertEqual(len(default["entries"]), 2)
-        for role in ("task", "smol", "slow"):
+        for role, entry_count in {
+            "task": 1,
+            "slow": 2,
+            "plan": 1,
+            "advisor": 1,
+        }.items():
             pack = packs[role]
             self.assertEqual(pack["role"], role)
-            self.assertEqual(pack["status"], "authoring")
+            self.assertEqual(pack["status"], "calibration")
             self.assertIs(pack["routing_eligible"], False)
-            self.assertEqual(pack["entries"], [])
+            self.assertEqual(len(pack["entries"]), entry_count)
+        smol = packs["smol"]
+        self.assertEqual(smol["role"], "smol")
+        self.assertEqual(smol["status"], "authoring")
+        self.assertIs(smol["routing_eligible"], False)
+        self.assertEqual(smol["entries"], [])
 
     def test_mapped_pack_changes_canonical_repository_digest(self) -> None:
         before = canonical_digest(load_repository(self.root))
@@ -918,7 +928,52 @@ class ArtifactSemanticTests(TaskContractFixture):
             self.messages(fail_closed),
         )
 
-    def test_executable_tasks_cannot_bypass_admission_or_enter_task_packs(self) -> None:
+    def test_executable_task_with_reviewed_source_separated_observer_qualifies_and_enters_pack(self) -> None:
+        task, qualification = self.make_task_and_qualification()
+        task["objective"]["observation"]["artifact_kind"] = "executable"  # type: ignore[index]
+        task["objective"]["observation"]["authority"] = "source-separated-service"  # type: ignore[index]
+        verifier_evidence_path = self.root / "contracts/tasks/example/reviews/verifier.json"
+        verifier_evidence = json.loads(verifier_evidence_path.read_text(encoding="utf-8"))
+        verifier_evidence["checks"]["source_separated_observer"] = "pass"
+        self.write_json("contracts/tasks/example/reviews/verifier.json", verifier_evidence)
+        new_verifier_digest = canonical_sha256(verifier_evidence)
+        task["reviews"]["verifier"]["evidence_digest_sha256"] = new_verifier_digest  # type: ignore[index]
+        qualification["reviews"]["verifier"]["evidence_digest_sha256"] = new_verifier_digest  # type: ignore[index]
+        qualification["evaluation_provenance"]["review_digest_sha256"] = new_verifier_digest  # type: ignore[index]
+        task_digest = canonical_sha256(task)
+        qualification["source_task"]["digest_sha256"] = task_digest  # type: ignore[index]
+        qualification["observed_mapping"]["task_digest_sha256"] = task_execution_sha256(task)  # type: ignore[index]
+        self.write_json("contracts/tasks/example/task.json", task)
+        self.write_json("contracts/tasks/example/qualification.json", qualification)
+
+        task_result = validate_value(self.root, "diagnostic-task", task, Path("contracts/tasks/example/task.json"))
+        self.assertTrue(task_result.valid, self.messages(task_result))
+
+        qual_result = validate_value(self.root, "task-qualification", qualification, Path("contracts/tasks/example/qualification.json"))
+        self.assertTrue(qual_result.valid, self.messages(qual_result))
+
+        contract = json.loads((self.root / "contracts/roles/task.json").read_text(encoding="utf-8"))
+        pack = {
+            "schema_version": "omp.task-pack/v1",
+            "pack_id": "task-calibration",
+            "role": "task",
+            "task_mix": "task-v1",
+            "role_contract": {"contract_id": contract["contract_id"], "digest_sha256": canonical_sha256(contract)},
+            "partition": "anchor",
+            "status": "calibration",
+            "routing_eligible": False,
+            "selection_method": "fixed-anchor",
+            "required_capabilities": contract["required_capabilities"],
+            "split_review": {"reviewer_id": "pack-reviewer-1", "independent": True, "review_digest_sha256": SHA_A},
+            "entries": [{
+                "task": {"path": "contracts/tasks/example/task.json", "digest_sha256": task_digest},
+                "qualification": {"path": "contracts/tasks/example/qualification.json", "digest_sha256": canonical_sha256(qualification)},
+            }],
+        }
+        pack_result = validate_value(self.root, "task-pack", pack, Path("private/task-pack.json"))
+        self.assertTrue(pack_result.valid, self.messages(pack_result))
+
+    def test_executable_tasks_without_reviewed_observer_fail_closed(self) -> None:
         task, qualification = self.make_task_and_qualification()
         task["objective"]["observation"]["artifact_kind"] = "executable"  # type: ignore[index]
         task["objective"]["observation"]["authority"] = "source-separated-service"  # type: ignore[index]
@@ -928,6 +983,12 @@ class ArtifactSemanticTests(TaskContractFixture):
         self.write_json("contracts/tasks/example/task.json", task)
         self.write_json("contracts/tasks/example/qualification.json", qualification)
 
+        # 1. Unreviewed executable task fails diagnostic task validation
+        task_result = validate_value(self.root, "diagnostic-task", task, Path("contracts/tasks/example/task.json"))
+        self.assertFalse(task_result.valid)
+        self.assertIn("source_separated_observer", self.messages(task_result))
+
+        # 2. Qualification with observation_authority = pass fails qualification validation
         qual_result = validate_value(self.root, "task-qualification", qualification, Path("contracts/tasks/example/qualification.json"))
         self.assertFalse(qual_result.valid)
         self.assertIn(
@@ -959,7 +1020,17 @@ class ArtifactSemanticTests(TaskContractFixture):
         }
         pack_result = validate_value(self.root, "task-pack", pack, Path("private/task-pack.json"))
         self.assertFalse(pack_result.valid)
-        self.assertIn("task packs must reject executable artifact tasks", self.messages(pack_result))
+
+        # 3. Failing review check (source_separated_observer: fail) also fails closed
+        verifier_evidence_path = self.root / "contracts/tasks/example/reviews/verifier.json"
+        verifier_evidence = json.loads(verifier_evidence_path.read_text(encoding="utf-8"))
+        verifier_evidence["checks"]["source_separated_observer"] = "fail"
+        self.write_json("contracts/tasks/example/reviews/verifier.json", verifier_evidence)
+        new_verifier_digest = canonical_sha256(verifier_evidence)
+        task["reviews"]["verifier"]["evidence_digest_sha256"] = new_verifier_digest  # type: ignore[index]
+        self.write_json("contracts/tasks/example/task.json", task)
+        task_fail_check = validate_value(self.root, "diagnostic-task", task, Path("contracts/tasks/example/task.json"))
+        self.assertFalse(task_fail_check.valid)
     def test_qualification_rejects_non_deterministic_decision_and_stale_evidence_mapping(self) -> None:
         _, qualification = self.make_task_and_qualification()
         bad = deepcopy(qualification)

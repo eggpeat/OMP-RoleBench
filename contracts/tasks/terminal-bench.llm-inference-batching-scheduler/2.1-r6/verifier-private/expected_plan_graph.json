@@ -1,0 +1,77 @@
+{
+  "schema_version": "rolebench.expected-scheduler-plan-graph/v1",
+  "task_domain": "llm-inference-batching-scheduler",
+  "required_capabilities": [
+    "system-architecture",
+    "task-decomposition",
+    "dependency-sequencing",
+    "interface-design",
+    "risk-identification"
+  ],
+  "required_phases": [
+    "INGEST_AND_VALIDATE",
+    "GLOBAL_SHAPE_ALLOCATION",
+    "BUCKET_BATCH_PACKING",
+    "COST_AND_SLA_VALIDATION",
+    "ATOMIC_COMMIT_AND_ROLLBACK"
+  ],
+  "required_operation_kinds": [
+    "READ_INPUTS",
+    "SYNTHESIZE_GLOBAL_SHAPES",
+    "ASSIGN_BATCHES",
+    "EVALUATE_GATES",
+    "COMMIT_OUTPUTS",
+    "ROLLBACK_ON_FAILURE"
+  ],
+  "required_invariant_categories": [
+    "EXACT_ONCE_ASSIGNMENT",
+    "TENSOR_SHAPE_ALIGNMENT",
+    "GLOBAL_SHAPE_BUDGET_LE_8",
+    "COST_AND_LATENCY_GATES",
+    "IMMUTABLE_INPUTS",
+    "ATOMIC_TRANSACTION_OR_ROLLBACK",
+    "DETERMINISTIC_TIE_BREAKING"
+  ],
+  "required_gate_categories": [
+    "REQUEST_INTEGRITY",
+    "GLOBAL_SHAPE_BUDGET",
+    "SLA_AND_COST_BOUNDS",
+    "ATOMIC_WRITE_VERIFICATION"
+  ],
+  "required_interface_kinds": [
+    "RAW_REQUEST_FEEDS",
+    "GLOBAL_SHAPE_CATALOG",
+    "STAGED_BATCH_PLANS_B1",
+    "STAGED_BATCH_PLANS_B2",
+    "GATE_VERDICT_REPORT",
+    "COMMITTED_PLAN_MANIFESTS"
+  ],
+  "required_service_level_model": {
+    "compiled_shape_metric_id": "UNIQUE_COMPILED_GRAPHS",
+    "compiled_shape_operator": "LESS_THAN_OR_EQUAL",
+    "compiled_shape_limit": 8,
+    "latency_metric_id": "REQUEST_LATENCY_MS",
+    "latency_aggregation": "P95",
+    "latency_operator": "LESS_THAN_OR_EQUAL",
+    "latency_limit_parameter_id": "REQUEST_SLA_MAX_LATENCY_MS",
+    "padding_metric_id": "PADDED_TOKEN_WORK",
+    "padding_operator": "LESS_THAN_OR_EQUAL",
+    "padding_limit_parameter_id": "REQUEST_SLA_MAX_PADDED_TOKENS",
+    "cost_metric_id": "TOTAL_COST",
+    "cost_equation_id": "GPU_TIME_COST_PLUS_QUEUE_OVERHEAD",
+    "gpu_time_metric_id": "TOTAL_ACTIVE_GPU_SECONDS",
+    "gpu_time_coefficient_parameter_id": "GPU_RATE_PER_SECOND",
+    "queue_overhead_metric_id": "QUEUE_OVERHEAD_COST",
+    "queue_overhead_coefficient": 1,
+    "cost_operator": "LESS_THAN_OR_EQUAL",
+    "cost_limit_parameter_id": "REQUEST_SLA_MAX_COST"
+  },
+  "target_output_files": [
+    "/app/task_file/output_data/plan_b1.jsonl",
+    "/app/task_file/output_data/plan_b2.jsonl"
+  ],
+  "immutable_input_files": [
+    "/app/task_file/input_data/requests_bucket_1.jsonl",
+    "/app/task_file/input_data/requests_bucket_2.jsonl"
+  ]
+}

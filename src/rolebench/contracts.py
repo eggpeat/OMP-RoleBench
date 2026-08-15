@@ -52,7 +52,14 @@ _TASK_QUALIFICATION_SCHEMA = "task-qualification.schema.json"
 _TASK_REVIEW_EVIDENCE_SCHEMA = "task-review-evidence.schema.json"
 _EXPERIMENT_LEDGER_ENTRY_SCHEMA = "experiment-ledger-entry.schema.json"
 _V1_TASK_PACKS: tuple[str, ...] = ("task", "smol", "slow")
-_PILOT_TASK_PACKS: tuple[str, ...] = ("default", "task", "smol", "slow")
+_PILOT_TASK_PACKS: tuple[str, ...] = (
+    "default",
+    "task",
+    "smol",
+    "slow",
+    "plan",
+    "advisor",
+)
 _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
     "attempt-observation": {
         "omp.attempt-observation/v1": "attempt-observation-v1",
@@ -350,6 +357,29 @@ def task_content_sha256(
             ),
         }
     )
+
+
+def is_supported_observation(
+    artifact_kind: str | None,
+    authority: str | None,
+    verifier_evidence: JSONObject | None = None,
+) -> bool:
+    """Determine if the artifact kind, observation authority, and verifier evidence are supported."""
+
+    if artifact_kind == "data-only" and authority == "host-process":
+        return True
+    if artifact_kind == "executable" and authority == "source-separated-service":
+        if (
+            isinstance(verifier_evidence, dict)
+            and verifier_evidence.get("decision") == "approved"
+        ):
+            checks = verifier_evidence.get("checks")
+            return (
+                isinstance(checks, dict)
+                and checks.get("source_separated_observer") == "pass"
+            )
+        return False
+    return False
 
 
 def _digest_path(path: Path) -> Path:
@@ -1927,6 +1957,29 @@ def _task_review_evidence_semantics(
                 else None
             ),
         }
+        objective = task.get("objective")
+        observation = (
+            objective.get("observation")
+            if isinstance(objective, dict)
+            else None
+        )
+        artifact_kind = (
+            observation.get("artifact_kind")
+            if isinstance(observation, dict)
+            else None
+        )
+        if artifact_kind == "executable":
+            checks = evidence.get("checks")
+            if (
+                not isinstance(checks, dict)
+                or checks.get("source_separated_observer") != "pass"
+                or evidence.get("decision") != "approved"
+            ):
+                yield Diagnostic(
+                    evidence_relative.as_posix(),
+                    "$.checks.source_separated_observer",
+                    "executable tasks require approved verifier review attesting source_separated_observer: pass",
+                )
     elif review_name == "split":
         assignment = evidence.get("assignment")
         expected_assignment = {
@@ -2064,6 +2117,23 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
                     relative,
                     name,
                     review,
+                )
+        if version_v2:
+            objective = task.get("objective")
+            obs = (
+                objective.get("observation")
+                if isinstance(objective, dict)
+                else None
+            )
+            if (
+                isinstance(obs, dict)
+                and obs.get("artifact_kind") == "executable"
+                and not isinstance(reviews.get("verifier"), dict)
+            ):
+                yield Diagnostic(
+                    relative.as_posix(),
+                    "$.reviews.verifier",
+                    "executable tasks require an approved verifier review",
                 )
         license_review = reviews.get("license")
         license_value = task.get("license")
@@ -2388,9 +2458,28 @@ def _task_qualification_semantics(root: Path, qualification: JSONObject, relativ
             if isinstance(observation, dict)
             else None
         )
-        observer_supported = (
-            artifact_kind == "data-only"
-            and authority == "host-process"
+        verifier_evidence = None
+        reviews = task.get("reviews")
+        verifier_review = (
+            reviews.get("verifier") if isinstance(reviews, dict) else None
+        )
+        if isinstance(verifier_review, dict):
+            ref = {
+                "path": verifier_review.get("evidence_path"),
+                "digest_sha256": verifier_review.get("evidence_digest_sha256"),
+            }
+            captured = _reference_object(
+                root,
+                ref,
+                owner=task_relative,
+                json_path="$.reviews.verifier.evidence",
+            )
+            if not isinstance(captured, Diagnostic):
+                _, verifier_evidence = captured
+        observer_supported = is_supported_observation(
+            artifact_kind,
+            authority,
+            verifier_evidence,
         )
         checks = qualification.get("checks")
         observation_check = (
@@ -2690,17 +2779,6 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
                     relative.as_posix(),
                     f"$.entries[{index}].task",
                     "synthetic fixtures cannot enter task packs",
-                )
-            objective = task.get("objective")
-            observation = objective.get("observation") if isinstance(objective, dict) else None
-            if (
-                isinstance(observation, dict)
-                and observation.get("artifact_kind") == "executable"
-            ):
-                yield Diagnostic(
-                    relative.as_posix(),
-                    f"$.entries[{index}].task",
-                    "task packs must reject executable artifact tasks until source-separated observer evidence is supported",
                 )
             yield from _instance_diagnostics(qualification, qualification_schema, qualification_path.relative_to(root))
             yield from _task_qualification_semantics(root, qualification, qualification_path.relative_to(root))

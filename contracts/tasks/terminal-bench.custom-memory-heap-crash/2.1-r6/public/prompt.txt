@@ -1,0 +1,94 @@
+Task: C++ Application Release Exit Crash Diagnostic Investigation
+
+Overview:
+You are investigating a failure in a C++ numerical application located in `public/workspace`.
+When built in DEBUG mode (`make debug`), the program completes its Monte Carlo π estimation and exits cleanly with returncode 0.
+When built in RELEASE mode (`make release`), the computation finishes and prints output normally, but the process crashes during exit with a segmentation fault (exit code 139 / SIGSEGV).
+
+Provided Artifacts in Workspace:
+- `main.cpp`: Application entrypoint, Monte Carlo simulation, application lifecycle management, and custom heap allocator overriding global operator new/delete.
+- `user.h` and `user.cpp`: User lifecycle hooks (`user_init`, `user_cleanup`, `user_main`).
+- `Makefile`: Build rules and flags for debug and release configurations.
+- `traces/debug_run.log`: Terminal output of successful debug build execution.
+- `traces/release_run.log`: Terminal output of release build execution demonstrating the exit crash.
+- `traces/gdb_backtrace.txt`: Full GDB coredump backtrace captured at the moment of the crash.
+- `traces/valgrind_summary.txt`: Memory detector analysis of the release binary exit crash.
+
+Submission Contract:
+Submit your diagnosis as a strict JSON document matching schema `rolebench.diagnosis/v2`.
+Select the appropriate identifiers from the taxonomy enums below:
+
+Taxonomy Identifier Enums:
+
+1. `primary_hypothesis_id`:
+   - `HYP_MONTE_CARLO_STACK_CORRUPTION`
+   - `HYP_COMPILER_INLINING_REORDERING`
+   - `HYP_CUSTOM_HEAP_LOCALE_DESTRUCTION`
+   - `HYP_STATIC_MUTEX_DEADLOCK`
+
+2. `fault_category`:
+   - `BUFFER_OVERFLOW_STACK`
+   - `ALLOCATOR_LIFETIME_MISMATCH`
+   - `UNALIGNED_MEMORY_ACCESS`
+   - `DOUBLE_FREE_DURING_CLEANUP`
+   - `RECURSIVE_INITIALIZATION_DEADLOCK`
+
+3. `trigger_id`:
+   - `RANDOM_NUMBER_GENERATOR_INIT`
+   - `MATH_LIBRARY_LINK_ORDER`
+   - `OPTIMIZATION_LEVEL_INLINING`
+   - `STREAM_OUTPUT_FORMATTING`
+
+4. `failure_point_id`:
+   - `APPLICATION_CONSTRUCTOR`
+   - `STATIC_LOCALE_DESTRUCTOR`
+   - `MONTE_CARLO_LOOP`
+   - `APPLICATION_SHUTDOWN`
+
+5. `remediation_action_id`:
+   - `DISABLE_OPTIMIZATION_FLAGS`
+   - `CALL_QUICK_EXIT_IN_USER_CLEANUP`
+   - `INCREASE_CUSTOM_HEAP_CAPACITY`
+   - `DELETE_STATIC_DESTRUCTORS`
+   - `PREINITIALIZE_LOCALE_FACETS_IN_USER_INIT`
+
+6. `cited_evidence_ids` (select at least two applicable evidence IDs):
+   - `EVID_RELEASE_LOG_EXIT_139`
+   - `EVID_GDB_SIGSEGV_FREE`
+   - `EVID_DEBUG_LOG_EXIT_0`
+   - `EVID_MAIN_OPERATOR_NEW_DELEGATION`
+   - `EVID_VALGRIND_INVALID_FREE`
+   - `EVID_MAIN_SHUTDOWN_HEAP_FREE`
+
+Submission Document Template:
+{
+  "schema_version": "rolebench.diagnosis/v2",
+  "fault_summary": "<brief summary of the failure>",
+  "primary_hypothesis_id": "<primary_hypothesis_id enum>",
+  "fault_category": "<fault_category enum>",
+  "trigger_id": "<trigger_id enum>",
+  "failure_point_id": "<failure_point_id enum>",
+  "remediation_action_id": "<remediation_action_id enum>",
+  "cited_evidence_ids": [
+    "<evidence_id_1>",
+    "<evidence_id_2>"
+  ],
+  "hypotheses_ranking": [
+    {
+      "hypothesis_id": "<hypothesis_id enum>",
+      "rank": 1,
+      "likelihood": "high",
+      "rationale": "<supporting reasoning>"
+    },
+    {
+      "hypothesis_id": "<hypothesis_id enum>",
+      "rank": 2,
+      "likelihood": "low",
+      "rationale": "<falsification reasoning>"
+    }
+  ],
+  "technical_notes": {
+    "root_cause_explanation": "<technical explanation>",
+    "recovery_explanation": "<recovery procedure rationale>"
+  }
+}

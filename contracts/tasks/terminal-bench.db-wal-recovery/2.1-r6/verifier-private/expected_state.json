@@ -1,0 +1,72 @@
+{
+  "observed_raw_magic_hex": "753d44c0",
+  "valid_wal_magic_hex": "377f0682",
+  "canonical_solution": {
+    "corruption_mechanism": "xor-single-byte",
+    "transform_kind": "xor",
+    "parameter_int": 66,
+    "target_magic_hex": "377f0682"
+  },
+  "recovery_verification": {
+    "base_record_count": 5,
+    "recovered_record_count": 11,
+    "checkpoint_applied": true
+  },
+  "recovered_records": [
+    {
+      "id": 1,
+      "name": "apple",
+      "value": 150
+    },
+    {
+      "id": 2,
+      "name": "banana",
+      "value": 250
+    },
+    {
+      "id": 3,
+      "name": "cherry",
+      "value": 300
+    },
+    {
+      "id": 4,
+      "name": "date",
+      "value": 400
+    },
+    {
+      "id": 5,
+      "name": "elderberry",
+      "value": 500
+    },
+    {
+      "id": 6,
+      "name": "fig",
+      "value": 600
+    },
+    {
+      "id": 7,
+      "name": "grape",
+      "value": 700
+    },
+    {
+      "id": 8,
+      "name": "honeydew",
+      "value": 800
+    },
+    {
+      "id": 9,
+      "name": "kiwi",
+      "value": 900
+    },
+    {
+      "id": 10,
+      "name": "lemon",
+      "value": 1000
+    },
+    {
+      "id": 11,
+      "name": "mango",
+      "value": 1100
+    }
+  ]
+}

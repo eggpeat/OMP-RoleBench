@@ -57,7 +57,7 @@
         "runner_isolation": {"$ref": "#/$defs/check"},
         "verifier_isolation": {"$ref": "#/$defs/check"},
         "observation_authority": {
-          "description": "Pass only when the declared observation path has an implemented authoritative observer. In v2, only data-only host-process observation is supported; host-filesystem and executable source-separated-service observation remain fail-closed.",
+          "description": "Pass only when the declared observation path has an implemented authoritative observer. In v2, data-only host-process observation and executable source-separated-service observation attested by approved verifier review evidence are supported; host-filesystem observation remains fail-closed.",
           "$ref": "#/$defs/check"
         },
         "tamper_resistance": {"$ref": "#/$defs/command_check"},

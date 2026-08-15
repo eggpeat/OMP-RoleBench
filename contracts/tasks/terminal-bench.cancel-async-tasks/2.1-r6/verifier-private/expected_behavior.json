@@ -1,0 +1,16 @@
+{
+  "schema_version": "rolebench.concurrency-expected-behavior/v2",
+  "task_id": "terminal-bench.cancel-async-tasks",
+  "runner_snapshot_schema_version": "rolebench.source-separated-runner-snapshot/v1",
+  "observation_authority": "source-separated-service",
+  "expected_scenario_count": 7,
+  "expected_scenarios": [
+    "empty_tasks",
+    "invalid_bounds",
+    "concurrency_bound",
+    "under_limit_concurrency",
+    "cancellation_cleanup",
+    "exception_propagation",
+    "wave_timing"
+  ]
+}

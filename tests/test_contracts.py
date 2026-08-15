@@ -63,9 +63,10 @@ class SuccessfulRepositoryTests(ContractFixture):
         registry["schema_version"] = "omp.role-registry/v1"
         task_packs = registry["task_packs"]
         self.assertIsInstance(task_packs, dict)
-        task_packs.pop("default")
+        for role in ("default", "plan", "advisor"):
+            task_packs.pop(role)
+            (self.root / f"contracts/task-packs/{role}-v1.json").unlink()
         self.write_json("contracts/role-registry.json", registry)
-        (self.root / "contracts/task-packs/default-v1.json").unlink()
 
         result = validate_repository(self.root)
 

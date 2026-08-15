@@ -1,0 +1,15 @@
+FROM python:3.13-slim-bookworm@sha256:00faa2debb87529f9f0764e9491d8ba400a3678976616c3bd7cb193745ac20d1
+
+ARG PUBLIC_TREE_SHA256
+
+LABEL org.omp.rolebench.task.role="slow" \
+      org.omp.rolebench.task.stage="runner" \
+      org.omp.rolebench.task.public-tree-sha256="${PUBLIC_TREE_SHA256}"
+
+COPY public/ /opt/rolebench/task/public/
+COPY runner.py /usr/local/bin/rolebench-task-runner
+RUN chmod -R a+rX /opt/rolebench/task/public \
+    && chmod 0555 /usr/local/bin/rolebench-task-runner
+
+USER 1000:1000
+ENTRYPOINT ["/usr/local/bin/rolebench-task-runner"]

@@ -1,0 +1,39 @@
+You are tasked with implementing an asynchronous concurrency pool for managing batched task execution in Python.
+
+Inspect the repository layout in the workspace:
+- `run.py`: Contains the `run_tasks` stub function that you must implement.
+- `tests/test_concurrency.py`: Contains local unit tests for targeted verification.
+
+Function Signature:
+```python
+from typing import Callable, Awaitable
+
+async def run_tasks(
+    tasks: list[Callable[[], Awaitable[None]]],
+    max_concurrent: int,
+) -> None:
+    ...
+```
+
+Requirements:
+1. Concurrency Control:
+   - At most `max_concurrent` tasks may execute concurrently at any given moment.
+   - If `len(tasks) <= max_concurrent`, all tasks should run concurrently (`max_active == len(tasks)`).
+   - If `len(tasks) > max_concurrent`, tasks should execute with concurrency bounded by `max_concurrent`; as tasks complete, remaining waiting tasks must be scheduled.
+
+2. Input Validation:
+   - `max_concurrent` must be a positive integer (integer >= 1).
+   - If `max_concurrent` is <= 0, non-integer, non-finite (NaN, infinity), or boolean, raise a `ValueError` without starting any task callbacks.
+   - If `tasks` is empty, `run_tasks` must complete immediately without error.
+
+3. Cancellation and Cleanup Propagation:
+   - When the caller cancels `run_tasks`, all in-flight tasks must be cancelled and their cleanup handlers (e.g. `finally:` blocks) must finish before `run_tasks` exits.
+   - If any task raises an unhandled exception, peer active tasks must be cancelled and awaited for cleanup, and queued tasks must not be started.
+
+4. Source Constraints and Submission Format:
+   - Submission format: Submit the complete `run.py` source file as plain UTF-8 text on standard input (do NOT wrap in Markdown code fences and do NOT submit unified diffs).
+   - Permitted imports: `from __future__ import annotations`, `import asyncio`, `from asyncio import ...` (including `TaskGroup`, `Queue`, `Semaphore`, `Lock`, `Event`, `gather`, `as_completed`, `wait`, `wait_for`, `sleep`, `shield`, `create_task`, `current_task`), `import typing`, `from typing import ...`.
+   - Prohibited constructs: `class` definitions, positional-only (`/`) or keyword-only (`*`) parameter markers on `run_tasks`, dynamic introspection / execution (`eval`, `exec`, `getattr`, `setattr`, `__import__`), and non-standard libraries (`os`, `sys`, `subprocess`, `ctypes`, etc.).
+
+5. Targeted Verification:
+   - You may run `python3 -m unittest tests/test_concurrency.py` to verify your implementation locally before submitting.

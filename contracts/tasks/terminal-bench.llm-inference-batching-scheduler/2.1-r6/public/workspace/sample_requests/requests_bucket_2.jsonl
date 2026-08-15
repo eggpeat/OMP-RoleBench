@@ -1,0 +1,10 @@
+{"request_id": "r-002001", "prompt_len": 512, "gen_len": 256}
+{"request_id": "r-002002", "prompt_len": 720, "gen_len": 384}
+{"request_id": "r-002003", "prompt_len": 1024, "gen_len": 512}
+{"request_id": "r-002004", "prompt_len": 480, "gen_len": 300}
+{"request_id": "r-002005", "prompt_len": 890, "gen_len": 420}
+{"request_id": "r-002006", "prompt_len": 640, "gen_len": 350}
+{"request_id": "r-002007", "prompt_len": 1200, "gen_len": 600}
+{"request_id": "r-002008", "prompt_len": 950, "gen_len": 480}
+{"request_id": "r-002009", "prompt_len": 560, "gen_len": 280}
+{"request_id": "r-002010", "prompt_len": 1100, "gen_len": 550}

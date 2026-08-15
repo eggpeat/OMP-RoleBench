@@ -1,0 +1,31 @@
+$ valgrind --leak-check=full ./release
+==12350== Memcheck, a memory error detector
+==12350== Command: ./release
+==12350==
+=== Monte Carlo π Estimation Application ===
+
+=== Running Monte Carlo Simulation ===
+
+Estimating π using Monte Carlo method...
+Samples: 1000000
+Estimated π: 3.141388
+Actual π: 3.141593
+Error: 0.000205
+Accuracy: 99.99%
+
+=== Computation completed successfully ===
+==12350== Invalid free() / delete / delete[] / realloc()
+==12350==    at 0x48482F3: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==12350==    by 0x4018CA: operator delete(void*) (main.cpp:83)
+==12350==    by 0x4068AF: (anonymous namespace)::_Fac_node::~_Fac_node() (locale_init.cc:39)
+==12350==    by 0x406933: (anonymous namespace)::_Fac_tidy_reg_t::~_Fac_tidy_reg_t() (locale_init.cc:71)
+==12350==    by 0x48D7A46: __run_exit_handlers (exit.c:108)
+==12350==    by 0x48D7C19: exit (exit.c:139)
+==12350==    by 0x48B8254: (below main) (libc-start.c:360)
+==12350==  Address 0x7f9a1b200110 is inside a block of size 10485760 free'd
+==12350==    at 0x48482F3: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==12350==    by 0x4019E0: Application::shutdown() (main.cpp:162)
+==12350==    by 0x401570: Application::~Application() (main.cpp:169)
+==12350==    by 0x401540: main (main.cpp:177)
+==12350==
+==12350== Process terminating with default action of signal 11 (SIGSEGV)

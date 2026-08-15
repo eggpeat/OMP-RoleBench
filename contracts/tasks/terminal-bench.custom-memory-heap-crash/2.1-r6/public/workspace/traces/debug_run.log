@@ -1,0 +1,17 @@
+$ make debug
+g++ -std=c++17 -o debug main.cpp user.cpp -g -O0 -L/usr/local/gcc-custom-debug/lib64 -Wl,-Bstatic -lstdc++ -Wl,-Bdynamic -lm
+$ ./debug
+=== Monte Carlo π Estimation Application ===
+
+=== Running Monte Carlo Simulation ===
+
+Estimating π using Monte Carlo method...
+Samples: 1000000
+Estimated π: 3.141388
+Actual π: 3.141593
+Error: 0.000205
+Accuracy: 99.99%
+
+=== Computation completed successfully ===
+$ echo $?
+0

@@ -1,0 +1,24 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-15T07:35:52Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "34cb4c0499657db177651d4486d0a2a2d574c573505ca42d786fc4148684954d",
+    "public_tree_digest_sha256": "fcd556e69578de127ec573ed97a73e24564bd3cc1cd08d42b3a3d9706c85041d",
+    "verifier_digest_sha256": "e62e6f5cbdcfdd3ea399e8b0fe26be3f8389ffa08c8c41dc7c00672a209e9996",
+    "verifier_private_tree_digest_sha256": "2d7f666523d01ef89c7a4569c89eb46c327640701d1df6088c1b648bc1d4f2a0",
+    "workspace_digest_sha256": "3ca3a84fbcc7e378d1f6800adf28c4595e669f3258ebcfbfa73c5e6ffc926f3e"
+  },
+  "task_id": "terminal-bench.db-wal-recovery",
+  "task_version": "2.1-r6"
+}
