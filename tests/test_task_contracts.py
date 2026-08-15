@@ -1488,6 +1488,189 @@ class SanitizerRunnerTests(unittest.TestCase):
             self.assertIsNotNone(error)
             self.assertEqual(target.read_bytes(), b"secret=old")
 
+    def test_bare_unified_diff_handles_double_hyphen_deletion_line(
+        self,
+    ) -> None:
+        namespace = runpy.run_path(
+            str(
+                PRODUCT_ROOT
+                / "contracts/tasks/terminal-bench.sanitize-git-repo"
+                / "2.1-r6/runner.py"
+            )
+        )
+        apply_patch = namespace["_apply_patch"]
+
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            target = workspace / "config.yaml"
+            target.write_text(
+                "server:\n-- port: 8080\n-- debug: true\nmode: production\n",
+                encoding="utf-8",
+            )
+
+            bare_patch = (
+                "--- a/config.yaml\n"
+                "+++ b/config.yaml\n"
+                "@@ -1,4 +1,4 @@\n"
+                " server:\n"
+                "--- port: 8080\n"
+                "+-- port: 9090\n"
+                "--- debug: true\n"
+                "+-- debug: false\n"
+                " mode: production\n"
+            )
+            applied, error = apply_patch(bare_patch, workspace)
+            self.assertTrue(applied, error)
+            self.assertIsNone(error)
+            self.assertEqual(
+                target.read_text(encoding="utf-8"),
+                "server:\n-- port: 9090\n-- debug: false\nmode: production\n",
+            )
+
+    def test_bare_unified_diff_multi_file_structural_parsing(self) -> None:
+        namespace = runpy.run_path(
+            str(
+                PRODUCT_ROOT
+                / "contracts/tasks/terminal-bench.sanitize-git-repo"
+                / "2.1-r6/runner.py"
+            )
+        )
+        apply_patch = namespace["_apply_patch"]
+
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            first = workspace / "first.txt"
+            second = workspace / "second.txt"
+            first.write_text(
+                "alpha=1\n-- flag: old\nalpha=3\n",
+                encoding="utf-8",
+            )
+            second.write_text(
+                "beta=1\nbeta=2\nbeta=3\n",
+                encoding="utf-8",
+            )
+
+            multi_patch = (
+                "--- a/first.txt\n"
+                "+++ b/first.txt\n"
+                "@@ -1,3 +1,3 @@\n"
+                " alpha=1\n"
+                "--- flag: old\n"
+                "+-- flag: new\n"
+                " alpha=3\n"
+                "--- a/second.txt\n"
+                "+++ b/second.txt\n"
+                "@@ -1,3 +1,3 @@\n"
+                " beta=1\n"
+                "-beta=2\n"
+                "+beta=updated\n"
+                " beta=3\n"
+            )
+            applied, error = apply_patch(multi_patch, workspace)
+            self.assertTrue(applied, error)
+            self.assertIsNone(error)
+            self.assertEqual(
+                first.read_text(encoding="utf-8"),
+                "alpha=1\n-- flag: new\nalpha=3\n",
+            )
+            self.assertEqual(
+                second.read_text(encoding="utf-8"),
+                "beta=1\nbeta=updated\nbeta=3\n",
+            )
+
+    def test_bare_unified_diff_malformed_and_truncated_boundaries(
+        self,
+    ) -> None:
+        namespace = runpy.run_path(
+            str(
+                PRODUCT_ROOT
+                / "contracts/tasks/terminal-bench.sanitize-git-repo"
+                / "2.1-r6/runner.py"
+            )
+        )
+        apply_patch = namespace["_apply_patch"]
+
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            first = workspace / "first.txt"
+            second = workspace / "second.txt"
+            first.write_text("alpha=1\n-- flag: old\nalpha=3\n", encoding="utf-8")
+            second.write_text("beta=1\nbeta=2\nbeta=3\n", encoding="utf-8")
+
+            # 1. Truncated hunk body
+            p_trunc = (
+                "--- a/first.txt\n"
+                "+++ b/first.txt\n"
+                "@@ -1,3 +1,3 @@\n"
+                " alpha=1\n"
+                "--- flag: old\n"
+            )
+            applied, error = apply_patch(p_trunc, workspace)
+            self.assertFalse(applied)
+            self.assertIsNotNone(error)
+            self.assertEqual(
+                first.read_text(encoding="utf-8"),
+                "alpha=1\n-- flag: old\nalpha=3\n",
+            )
+
+            # 2. Garbage line between bare file patches
+            p_garbage = (
+                "--- a/first.txt\n"
+                "+++ b/first.txt\n"
+                "@@ -1,3 +1,3 @@\n"
+                " alpha=1\n"
+                "--- flag: old\n"
+                "+-- flag: new\n"
+                " alpha=3\n"
+                "invalid inter-patch content\n"
+                "--- a/second.txt\n"
+                "+++ b/second.txt\n"
+                "@@ -1,3 +1,3 @@\n"
+                " beta=1\n"
+                "-beta=2\n"
+                "+beta=updated\n"
+                " beta=3\n"
+            )
+            applied, error = apply_patch(p_garbage, workspace)
+            self.assertFalse(applied)
+            self.assertIsNotNone(error)
+            self.assertEqual(
+                first.read_text(encoding="utf-8"),
+                "alpha=1\n-- flag: old\nalpha=3\n",
+            )
+            self.assertEqual(
+                second.read_text(encoding="utf-8"),
+                "beta=1\nbeta=2\nbeta=3\n",
+            )
+
+            # 3. Truncated file header
+            applied, error = apply_patch("--- a/first.txt\n", workspace)
+            self.assertFalse(applied)
+            self.assertEqual(error, "truncated file patch header")
+
+            # 4. Invalid second header line
+            applied, error = apply_patch("--- a/first.txt\n@@ -1 +1 @@\n", workspace)
+            self.assertFalse(applied)
+            self.assertEqual(error, "invalid file patch header")
+
+            # 5. Unexpected prefix in hunk
+            p_bad_prefix = (
+                "--- a/first.txt\n"
+                "+++ b/first.txt\n"
+                "@@ -1,3 +1,3 @@\n"
+                " alpha=1\n"
+                "?-- flag: old\n"
+                " alpha=3\n"
+            )
+            applied, error = apply_patch(p_bad_prefix, workspace)
+            self.assertFalse(applied)
+            self.assertIsNotNone(error)
+            self.assertEqual(
+                first.read_text(encoding="utf-8"),
+                "alpha=1\n-- flag: old\nalpha=3\n",
+            )
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -95,6 +95,76 @@ def _clean_diff_path(raw: str) -> str:
     return p
 
 
+def _parse_bare_file_patches(
+    lines: list[str],
+) -> tuple[list[tuple[None, list[str]]] | None, str | None]:
+    idx = 0
+    n = len(lines)
+    file_patches: list[tuple[None, list[str]]] = []
+
+    while idx < n:
+        file_start = idx
+        if not lines[idx].startswith("--- "):
+            return None, "invalid file patch header"
+        idx += 1
+        if idx >= n:
+            return None, "truncated file patch header"
+        if not lines[idx].startswith("+++ "):
+            return None, "invalid file patch header"
+        idx += 1
+
+        hunk_count = 0
+        while idx < n and lines[idx].startswith("@@ "):
+            m = HUNK_HEADER_RE.match(lines[idx])
+            if not m:
+                return None, f"malformed hunk header: {lines[idx].strip()}"
+            old_count = int(m.group(2)) if m.group(2) is not None else 1
+            new_count = int(m.group(4)) if m.group(4) is not None else 1
+            idx += 1
+            hunk_count += 1
+
+            old_consumed = 0
+            new_emitted = 0
+            while old_consumed < old_count or new_emitted < new_count:
+                if idx >= n:
+                    return None, (
+                        "hunk line counts do not match header "
+                        f"(expected -{old_count}/+{new_count}, "
+                        f"observed -{old_consumed}/+{new_emitted})"
+                    )
+                hline = lines[idx]
+                if not hline:
+                    return None, "empty line in hunk"
+                if hline.startswith("\\"):
+                    idx += 1
+                    continue
+                tag = hline[0]
+                if tag == " ":
+                    old_consumed += 1
+                    new_emitted += 1
+                    idx += 1
+                elif tag == "-":
+                    old_consumed += 1
+                    idx += 1
+                elif tag == "+":
+                    new_emitted += 1
+                    idx += 1
+                else:
+                    return None, f"unexpected line prefix in hunk: {tag!r}"
+
+            while idx < n and lines[idx].startswith("\\"):
+                idx += 1
+
+        if hunk_count == 0:
+            if idx < n:
+                return None, "unexpected content before first hunk"
+            return None, "no hunks found in patch"
+
+        file_patches.append((None, lines[file_start:idx]))
+
+    return file_patches, None
+
+
 def _apply_patch(patch_text: str, workspace_dir: Path) -> tuple[bool, str | None]:
     """Parse and apply unified diff strictly within workspace_dir."""
     lines = patch_text.splitlines(keepends=True)
@@ -146,15 +216,11 @@ def _apply_patch(patch_text: str, workspace_dir: Path) -> tuple[bool, str | None
                 )
             )
     else:
-        current: list[str] = []
-        for line in lines:
-            if line.startswith("--- "):
-                if current:
-                    file_patches.append((None, current))
-                    current = []
-            current.append(line)
-        if current:
-            file_patches.append((None, current))
+        bare_patches, err = _parse_bare_file_patches(lines)
+        if err is not None:
+            return False, err
+        assert bare_patches is not None
+        file_patches = bare_patches
     staged_changes: dict[Path, str] = {}
     resolved_workspace = workspace_dir.resolve()
 
