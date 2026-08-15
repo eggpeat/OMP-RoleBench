@@ -747,6 +747,221 @@ def test_generate_qualification_uses_repeated_distinct_bound_reports(
         )
 
 
+def test_generate_task_qualification_v1_legacy_preserves_qualification_behavior(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    task["schema_version"] = "omp.diagnostic-task/v1"
+    task.pop("runner")
+    objective = task["objective"]  # type: ignore[assignment]
+    objective.pop("observation")  # type: ignore[union-attr]
+    reviews = task["reviews"]
+    for review in reviews.values():  # type: ignore[union-attr]
+        review.pop("evidence_path", None)
+    verifier_review = reviews["verifier"]  # type: ignore[index]
+    verifier_review["image"] = verifier_review.pop("verifier_image")  # type: ignore[union-attr]
+    verifier_review["config_digest_sha256"] = verifier_review.pop(  # type: ignore[union-attr]
+        "verifier_config_digest_sha256"
+    )
+    verifier_review["platform"] = verifier_review.pop("verifier_platform")  # type: ignore[union-attr]
+    for field in (
+        "runner_image",
+        "runner_config_digest_sha256",
+        "runner_platform",
+    ):
+        verifier_review.pop(field)  # type: ignore[union-attr]
+    _write_json(task_path, task)
+
+    def _v1_report(probe: str, trial: int, verifier_outcome: str, cmd_digest: str, art_digest: str) -> Path:
+        run_id = f"v1-{probe}-{trial}"
+        reward = 1 if verifier_outcome == "accepted" else 0
+        obs = {
+            "schema_version": "omp.attempt-observation/v1",
+            "observation_id": f"{run_id}-obs",
+            "observed_at": "2026-08-13T00:00:00Z",
+            "attempt": {"attempt_id": run_id, "number": 1, "previous_attempt_id": None},
+            "stage": "complete",
+            "lifecycle": {
+                "environment_started": True, "agent_started": True, "agent_finished": True,
+                "artifact_frozen": True, "verifier_started": True, "verifier_finished": True,
+            },
+            "readiness": {"environment": "ready", "runner": "healthy", "provider": "failed"},
+            "issues": [],
+            "provider": {"request_started": False, "http_status": None},
+            "termination": {"kind": "completed", "exit_code": 0, "signal": None, "oom_scope": "none"},
+            "verifier": {"outcome": verifier_outcome, "result_valid": True, "reward": reward},
+            "integrity": {"state": "verified"},
+            "evidence_use": "admission-only",
+            "digests": {
+                "task": canonical_sha256(task),
+                "config": "2" * 64,
+                "agent_image": "9" * 64 if probe == "baseline" else ("b" * 64 if probe == "reference" else "d" * 64),
+                "agent_image_config": cmd_digest,
+                "verifier_image": "7" * 64,
+                "verifier_image_config": "8" * 64,
+                "runtime_policy": "2" * 64,
+                "artifact": art_digest,
+                "trajectory": sha256(run_id.encode()).hexdigest(),
+                "task_public_tree": "3" * 64,
+                "verifier_private_tree": "4" * 64,
+            },
+        }
+        rep = {
+            "schema_version": "omp.worker-run-report/v1",
+            "run_id": run_id,
+            "passed": True,
+            "external_provider_calls": 0,
+            "policy_digest_sha256": "2" * 64,
+            "artifact_digest_sha256": art_digest,
+            "observation": obs,
+            "outcome": classify_attempt(obs),
+            "doctor": {"ready": True},
+            "isolation": {
+                "agent": {"verified": True}, "verifier": {"verified": True},
+                "distinct_images": True, "resource_enforcement": True,
+                "task_image_binding_verified": True, "artifact_frozen_after_agent_exit": True,
+                "immutable_handoff": True,
+            },
+            "diagnostics": [],
+        }
+        p = tmp_path / f"evidence/{run_id}.json"
+        _write_json(p, rep)
+        return p
+
+    v1_reports = {
+        "baseline": [
+            _v1_report("baseline", 1, "rejected", "a" * 64, "1" * 64),
+            _v1_report("baseline", 2, "rejected", "a" * 64, "1" * 64),
+            _v1_report("baseline", 3, "rejected", "a" * 64, "1" * 64),
+        ],
+        "reference": [
+            _v1_report("reference", 1, "accepted", "c" * 64, "5" * 64),
+            _v1_report("reference", 2, "accepted", "c" * 64, "5" * 64),
+            _v1_report("reference", 3, "accepted", "c" * 64, "5" * 64),
+        ],
+        "tamper": [
+            _v1_report("tamper", 1, "rejected", "e" * 64, "9" * 64),
+            _v1_report("tamper", 2, "rejected", "e" * 64, "9" * 64),
+            _v1_report("tamper", 3, "rejected", "e" * 64, "9" * 64),
+        ],
+    }
+
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+
+    out = tmp_path / "qualifications/v1-generated.json"
+    qualification = generate_task_qualification(
+        tmp_path,
+        task_path,
+        v1_reports["baseline"],
+        v1_reports["reference"],
+        v1_reports["tamper"],
+        out,
+        reviewer="reviewer",
+    )
+    assert qualification["schema_version"] == "omp.task-qualification/v1"
+    assert qualification["decision"] == "calibration-required"
+    assert "verifier_provenance" in qualification
+    assert "evaluation_provenance" not in qualification
+    assert qualification["verifier_provenance"]["reviewer_id"] == "reviewer"
+    assert qualification["verifier_provenance"]["verifier_image"] == task["verifier"]["image"]
+    assert "runner_image" not in qualification["verifier_provenance"]
+    assert qualification["observed_mapping"]["task_digest_sha256"] == canonical_sha256(task)
+    assert "runner_config_digest_sha256" not in qualification["observed_mapping"]
+    assert "runner_isolation" not in qualification["checks"]
+    assert "observation_authority" not in qualification["checks"]
+    assert len(qualification["checks"]["baseline_fails"]["evidence"]) == 3
+    assert len(qualification["checks"]["reference_passes"]["evidence"]) == 3
+    assert len(qualification["checks"]["tamper_resistance"]["evidence"]) == 3
+
+    checked = check_task_qualification(tmp_path, task_path, out)
+    assert checked["valid"] is True
+    assert checked["decision"] == "calibration-required"
+
+    with pytest.raises(TaskAdmissionError, match="two to eight runs"):
+        generate_task_qualification(
+            tmp_path,
+            task_path,
+            v1_reports["baseline"][:1],
+            v1_reports["reference"][:1],
+            v1_reports["tamper"][:1],
+            tmp_path / "qualifications/v1-too-few.json",
+            reviewer="reviewer",
+        )
+
+
+def test_generate_qualification_v2_fail_closed_assertions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_path, _, task, _ = _qualification_pair(tmp_path)
+    monkeypatch.setattr(
+        task_workflow,
+        "validate_value",
+        lambda *args: _Valid(),
+    )
+    reports = {
+        name: [
+            tmp_path / f"evidence/{name}-1.json",
+            tmp_path / f"evidence/{name}-2.json",
+        ]
+        for name in ("baseline", "reference", "tamper")
+    }
+
+    # Fail-closed: missing evidence_path in v2 verifier review
+    no_ev_task = json.loads(json.dumps(task))
+    no_ev_task["reviews"]["verifier"].pop("evidence_path")
+    no_ev_path = tmp_path / "tasks/no-evidence-task.json"
+    _write_json(no_ev_path, no_ev_task)
+    with pytest.raises(TaskAdmissionError, match="verifier review evidence path is missing"):
+        generate_task_qualification(
+            tmp_path,
+            no_ev_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/no-ev.json",
+            reviewer="reviewer",
+        )
+
+    # Fail-closed: forged / mismatched report digests in verifier review
+    forged_ev_file = tmp_path / "reviews/forged-evidence.json"
+    _write_json(forged_ev_file, {"report_digests_sha256": ["0" * 64] * 6})
+    forged_task = json.loads(json.dumps(task))
+    forged_task["reviews"]["verifier"]["evidence_path"] = "reviews/forged-evidence.json"
+    forged_task_path = tmp_path / "tasks/forged-task.json"
+    _write_json(forged_task_path, forged_task)
+    with pytest.raises(TaskAdmissionError, match="verifier review does not attest the exact qualification reports"):
+        generate_task_qualification(
+            tmp_path,
+            forged_task_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/forged.json",
+            reviewer="reviewer",
+        )
+
+    # Fail-closed: missing runner in v2 task
+    no_runner_task = json.loads(json.dumps(task))
+    no_runner_task.pop("runner")
+    no_runner_path = tmp_path / "tasks/no-runner-task.json"
+    _write_json(no_runner_path, no_runner_task)
+    with pytest.raises(TaskAdmissionError, match="task container or asset mapping is incomplete"):
+        generate_task_qualification(
+            tmp_path,
+            no_runner_path,
+            reports["baseline"],
+            reports["reference"],
+            reports["tamper"],
+            tmp_path / "qualifications/no-runner.json",
+            reviewer="reviewer",
+        )
+
 def test_host_filesystem_observation_authority_fails_closed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

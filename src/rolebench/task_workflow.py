@@ -1915,6 +1915,9 @@ def generate_task_qualification(
         task_file.relative_to(resolved_root),
     ).valid:
         raise TaskAdmissionError("diagnostic task is invalid")
+    is_v2 = (
+        task.get("schema_version") == "omp.diagnostic-task/v2"
+    )
     authorship = task.get("authorship")
     reviews = task.get("reviews")
     if (
@@ -1994,25 +1997,26 @@ def generate_task_qualification(
         raise TaskAdmissionError(
             "qualification reports must be content-distinct"
         )
-    report_digests = [
-        str(item["digest_sha256"])
-        for item in evidence
-    ]
-    verifier_evidence_path = verifier_review.get("evidence_path")
-    if not isinstance(verifier_evidence_path, str):
-        raise TaskAdmissionError(
-            "verifier review evidence path is missing"
+    if is_v2:
+        report_digests = [
+            str(item["digest_sha256"])
+            for item in evidence
+        ]
+        verifier_evidence_path = verifier_review.get("evidence_path")
+        if not isinstance(verifier_evidence_path, str):
+            raise TaskAdmissionError(
+                "verifier review evidence path is missing"
+            )
+        verifier_evidence = _object(
+            _artifact(resolved_root, Path(verifier_evidence_path))
         )
-    verifier_evidence = _object(
-        _artifact(resolved_root, Path(verifier_evidence_path))
-    )
-    if (
-        verifier_evidence.get("report_digests_sha256")
-        != report_digests
-    ):
-        raise TaskAdmissionError(
-            "verifier review does not attest the exact qualification reports"
-        )
+        if (
+            verifier_evidence.get("report_digests_sha256")
+            != report_digests
+        ):
+            raise TaskAdmissionError(
+                "verifier review does not attest the exact qualification reports"
+            )
     reports = (*baseline, *reference, *tamper)
     run_ids = {report.get("run_id") for report in reports}
     if None in run_ids or len(run_ids) != len(reports):
@@ -2050,89 +2054,166 @@ def generate_task_qualification(
     runner = task.get("runner")
     verifier = task.get("verifier")
     assets = task.get("assets")
-    if not isinstance(runner, dict) or not isinstance(verifier, dict) or not isinstance(assets, dict):
+    agent = task.get("agent")
+    if (
+        not isinstance(assets, dict)
+        or not isinstance(agent, dict)
+        or not isinstance(verifier, dict)
+        or (is_v2 and not isinstance(runner, dict))
+    ):
         raise TaskAdmissionError("task container or asset mapping is incomplete")
-    objective = task.get("objective")
-    obs = objective.get("observation") if isinstance(objective, dict) else None
-    artifact_kind = obs.get("artifact_kind") if isinstance(obs, dict) else None
-    authority = obs.get("authority") if isinstance(obs, dict) else None
-    if artifact_kind == "data-only" and authority == "host-process":
-        observation_authority = "pass"
-        decision = "calibration-required"
+    if is_v2:
+        objective = task.get("objective")
+        obs = (
+            objective.get("observation")
+            if isinstance(objective, dict)
+            else None
+        )
+        artifact_kind = (
+            obs.get("artifact_kind") if isinstance(obs, dict) else None
+        )
+        authority = (
+            obs.get("authority") if isinstance(obs, dict) else None
+        )
+        if artifact_kind == "data-only" and authority == "host-process":
+            observation_authority = "pass"
+            decision = "calibration-required"
+        else:
+            observation_authority = "fail"
+            decision = "rejected"
+        qualification: JSONObject = {
+            "schema_version": "omp.task-qualification/v2",
+            "task_id": task["task_id"],
+            "task_version": task["task_version"],
+            "content_digest_sha256": task["content_digest_sha256"],
+            "source_task": {
+                "path": task_file.relative_to(resolved_root).as_posix(),
+                "digest_sha256": canonical_sha256(task),
+            },
+            "reviews": reviews,
+            "evaluation_provenance": {
+                "reviewer_id": verifier_review["reviewer"],
+                "runner_image": runner["image"],
+                "runner_config_digest_sha256": runner[
+                    "config_digest_sha256"
+                ],
+                "runner_platform": runner["platform"],
+                "verifier_image": verifier["image"],
+                "verifier_config_digest_sha256": verifier[
+                    "config_digest_sha256"
+                ],
+                "verifier_platform": verifier["platform"],
+                "review_digest_sha256": verifier_review[
+                    "evidence_digest_sha256"
+                ],
+            },
+            "observed_mapping": {
+                "task_digest_sha256": task_execution_sha256(task),
+                "public_tree_digest_sha256": assets["public"][
+                    "digest_sha256"
+                ],
+                "verifier_private_tree_digest_sha256": assets[
+                    "verifier_private"
+                ]["digest_sha256"],
+                "agent_config_digest_sha256": agent[
+                    "config_digest_sha256"
+                ],
+                "runner_config_digest_sha256": runner[
+                    "config_digest_sha256"
+                ],
+                "verifier_config_digest_sha256": verifier[
+                    "config_digest_sha256"
+                ],
+            },
+            "checks": {
+                "privacy": "pass",
+                "license": "pass",
+                "baseline_fails": {
+                    "result": "pass",
+                    "command_digest_sha256": baseline_command,
+                    "evidence": baseline_evidence,
+                },
+                "reference_passes": {
+                    "result": "pass",
+                    "command_digest_sha256": reference_command,
+                    "evidence": reference_evidence,
+                },
+                "runner_isolation": "pass",
+                "verifier_isolation": "pass",
+                "observation_authority": observation_authority,
+                "tamper_resistance": {
+                    "result": "pass",
+                    "command_digest_sha256": tamper_command,
+                    "evidence": tamper_evidence,
+                },
+                "determinism": "pass",
+                "infrastructure_classification": "pass",
+                "discrimination": "calibration-required",
+            },
+            "decision": decision,
+        }
     else:
-        observation_authority = "fail"
-        decision = "rejected"
-    qualification: JSONObject = {
-        "schema_version": "omp.task-qualification/v2",
-        "task_id": task["task_id"],
-        "task_version": task["task_version"],
-        "content_digest_sha256": task["content_digest_sha256"],
-        "source_task": {
-            "path": task_file.relative_to(resolved_root).as_posix(),
-            "digest_sha256": canonical_sha256(task),
-        },
-        "reviews": reviews,
-        "evaluation_provenance": {
-            "reviewer_id": verifier_review["reviewer"],
-            "runner_image": runner["image"],
-            "runner_config_digest_sha256": runner[
-                "config_digest_sha256"
-            ],
-            "runner_platform": runner["platform"],
-            "verifier_image": verifier["image"],
-            "verifier_config_digest_sha256": verifier[
-                "config_digest_sha256"
-            ],
-            "verifier_platform": verifier["platform"],
-            "review_digest_sha256": verifier_review[
-                "evidence_digest_sha256"
-            ],
-        },
-        "observed_mapping": {
-            "task_digest_sha256": task_execution_sha256(task),
-            "public_tree_digest_sha256": assets["public"][
-                "digest_sha256"
-            ],
-            "verifier_private_tree_digest_sha256": assets[
-                "verifier_private"
-            ]["digest_sha256"],
-            "agent_config_digest_sha256": task["agent"][
-                "config_digest_sha256"
-            ],
-            "runner_config_digest_sha256": runner[
-                "config_digest_sha256"
-            ],
-            "verifier_config_digest_sha256": verifier[
-                "config_digest_sha256"
-            ],
-        },
-        "checks": {
-            "privacy": "pass",
-            "license": "pass",
-            "baseline_fails": {
-                "result": "pass",
-                "command_digest_sha256": baseline_command,
-                "evidence": baseline_evidence,
+        qualification = {
+            "schema_version": "omp.task-qualification/v1",
+            "task_id": task["task_id"],
+            "task_version": task["task_version"],
+            "content_digest_sha256": task["content_digest_sha256"],
+            "source_task": {
+                "path": task_file.relative_to(resolved_root).as_posix(),
+                "digest_sha256": canonical_sha256(task),
             },
-            "reference_passes": {
-                "result": "pass",
-                "command_digest_sha256": reference_command,
-                "evidence": reference_evidence,
+            "reviews": reviews,
+            "verifier_provenance": {
+                "reviewer_id": verifier_review["reviewer"],
+                "verifier_image": verifier["image"],
+                "verifier_config_digest_sha256": verifier[
+                    "config_digest_sha256"
+                ],
+                "verifier_platform": verifier["platform"],
+                "review_digest_sha256": verifier_review[
+                    "evidence_digest_sha256"
+                ],
             },
-            "runner_isolation": "pass",
-            "verifier_isolation": "pass",
-            "observation_authority": observation_authority,
-            "tamper_resistance": {
-                "result": "pass",
-                "command_digest_sha256": tamper_command,
-                "evidence": tamper_evidence,
+            "observed_mapping": {
+                "task_digest_sha256": canonical_sha256(task),
+                "public_tree_digest_sha256": assets["public"][
+                    "digest_sha256"
+                ],
+                "verifier_private_tree_digest_sha256": assets[
+                    "verifier_private"
+                ]["digest_sha256"],
+                "agent_config_digest_sha256": agent[
+                    "config_digest_sha256"
+                ],
+                "verifier_config_digest_sha256": verifier[
+                    "config_digest_sha256"
+                ],
             },
-            "determinism": "pass",
-            "infrastructure_classification": "pass",
-            "discrimination": "calibration-required",
-        },
-        "decision": decision,
-    }
+            "checks": {
+                "privacy": "pass",
+                "license": "pass",
+                "baseline_fails": {
+                    "result": "pass",
+                    "command_digest_sha256": baseline_command,
+                    "evidence": baseline_evidence,
+                },
+                "reference_passes": {
+                    "result": "pass",
+                    "command_digest_sha256": reference_command,
+                    "evidence": reference_evidence,
+                },
+                "verifier_isolation": "pass",
+                "tamper_resistance": {
+                    "result": "pass",
+                    "command_digest_sha256": tamper_command,
+                    "evidence": tamper_evidence,
+                },
+                "determinism": "pass",
+                "infrastructure_classification": "pass",
+                "discrimination": "calibration-required",
+            },
+            "decision": "calibration-required",
+        }
     if not validate_value(
         resolved_root,
         "task-qualification",
@@ -2144,7 +2225,6 @@ def generate_task_qualification(
         )
     _atomic_json(resolved_root, output, qualification)
     return qualification
-
 
 def _prepare_bound_manifest(
     root: Path,
