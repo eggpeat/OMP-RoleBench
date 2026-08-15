@@ -143,6 +143,7 @@ class FakeDocker:
             0, RUNNER_STDOUT, RUNNER_STDERR
         )
         self.verifier_stream: worker._StreamResult | None = None
+        self.image_export: worker._StreamResult | None = None
         self.verifier_outcome = "accepted"
         self.verifier_reward: float | None = 1.0
         self.custom_verifier_payload: dict[str, object] | None = None
@@ -248,6 +249,22 @@ class FakeDocker:
     ) -> worker._StreamResult:
         payload = input_source if isinstance(input_source, bytes) else None
         self.stream_calls.append((list(argv), payload, output_limit))
+        if argv[len(DOCKER_PREFIX) : len(DOCKER_PREFIX) + 2] == [
+            "image",
+            "save",
+        ]:
+            if self.image_export is None:
+                raise AssertionError("unexpected image export")
+            if output_sink is not None:
+                output_sink.write(self.image_export.stdout)
+                return worker._StreamResult(
+                    self.image_export.returncode,
+                    b"",
+                    self.image_export.stderr,
+                    self.image_export.timed_out,
+                    self.image_export.overflowed,
+                )
+            return self.image_export
         container = argv[-1]
         self.events.append(f"stream:{container}")
         self.finished[container] = True
@@ -755,6 +772,40 @@ class ImageBindingAndIsolationTests(WorkerRuntimeFixture):
         )
         self._assert_binding_rejected_before_stream()
 
+    def test_fallback_image_archive_export_is_bounded(self) -> None:
+        inspect = self.fake.image_inspects[AGENT_IMAGE]
+        descriptor = inspect["Descriptor"]
+        assert isinstance(descriptor, dict)
+        inspect["Id"] = descriptor["digest"]
+        self.fake.image_export = worker._StreamResult(
+            137,
+            b"",
+            b"",
+            overflowed=True,
+        )
+
+        with self.assertRaisesRegex(
+            worker._TaskBindingError,
+            "image-config-export-size-limit-exceeded",
+        ):
+            worker._inspect_image(
+                self.fake,
+                "docker-fixture",
+                AGENT_IMAGE,
+                timeout=5.0,
+            )
+
+        self.assertEqual(
+            self.fake.stream_calls,
+            [
+                (
+                    [*DOCKER_PREFIX, "image", "save", AGENT_IMAGE],
+                    None,
+                    worker._MAX_IMAGE_ARCHIVE_BYTES,
+                )
+            ],
+        )
+
     def test_effective_runner_container_config_id_mismatch_rejected(
         self,
     ) -> None:
@@ -1164,6 +1215,27 @@ class SubprocessAdapterCombinedLimitTests(unittest.TestCase):
         )
         self.assertTrue(result.overflowed)
         self.assertEqual(len(result.stderr), 20)
+        self.assertEqual(result.stdout, b"")
+
+    def test_stdout_sink_overflow_bounds_written_output(self) -> None:
+        adapter = worker._SubprocessAdapter()
+        code = (
+            "import sys; "
+            "sys.stdout.buffer.write(b'o' * 50); "
+            "sys.stdout.flush()"
+        )
+        with tempfile.TemporaryFile() as sink:
+            result = adapter.stream(
+                ["python3", "-c", code],
+                input_source=None,
+                timeout=5.0,
+                output_limit=20,
+                output_sink=sink,
+            )
+            sink.seek(0)
+            written = sink.read()
+        self.assertTrue(result.overflowed)
+        self.assertEqual(written, b"o" * 20)
         self.assertEqual(result.stdout, b"")
 
 

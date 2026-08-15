@@ -52,6 +52,9 @@ _SINGLE_PLATFORM_MANIFEST_MEDIA_TYPES = frozenset(
     }
 )
 
+# Explicit host-safety ceiling for the fallback Docker image archive.
+_MAX_IMAGE_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
+
 
 class _TaskBindingError(RuntimeError):
     """An effective task image differs from its prepared binding."""
@@ -163,44 +166,55 @@ class _SubprocessAdapter:
         deadline = time.monotonic() + timeout
         timed_out = False
         overflowed = False
-        while selector.get_map():
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                timed_out = True
-                process.kill()
-                break
-            events = selector.select(min(remaining, 0.1))
-            if not events and process.poll() is not None:
-                continue
-            for key, _ in events:
-                chunk = os.read(key.fileobj.fileno(), 64 * 1024)
-                if not chunk:
-                    selector.unregister(key.fileobj)
-                    continue
-                if total_output_size + len(chunk) > output_limit:
-                    keep = max(0, output_limit - total_output_size)
-                    if key.data == "stdout":
-                        if output_sink is None:
-                            out.extend(chunk[:keep])
-                        else:
-                            output_sink.write(chunk[:keep])
-                    else:
-                        err.extend(chunk[:keep])
-                    total_output_size += keep
-                    overflowed = True
+        try:
+            while selector.get_map():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    timed_out = True
                     process.kill()
                     break
-                if key.data == "stdout":
-                    if output_sink is None:
-                        out.extend(chunk)
+                events = selector.select(min(remaining, 0.1))
+                if not events and process.poll() is not None:
+                    continue
+                for key, _ in events:
+                    chunk = os.read(key.fileobj.fileno(), 64 * 1024)
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    if total_output_size + len(chunk) > output_limit:
+                        keep = max(0, output_limit - total_output_size)
+                        if key.data == "stdout":
+                            if output_sink is None:
+                                out.extend(chunk[:keep])
+                            else:
+                                output_sink.write(chunk[:keep])
+                        else:
+                            err.extend(chunk[:keep])
+                        total_output_size += keep
+                        overflowed = True
+                        process.kill()
+                        break
+                    if key.data == "stdout":
+                        if output_sink is None:
+                            out.extend(chunk)
+                        else:
+                            output_sink.write(chunk)
                     else:
-                        output_sink.write(chunk)
-                else:
-                    err.extend(chunk)
-                total_output_size += len(chunk)
-            if timed_out or overflowed:
-                break
-        selector.close()
+                        err.extend(chunk)
+                    total_output_size += len(chunk)
+                if timed_out or overflowed:
+                    break
+        except BaseException:
+            if process.poll() is None:
+                process.kill()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            raise
+        finally:
+            selector.close()
         try:
             returncode = process.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -640,25 +654,42 @@ def _inspect_image(
             prefix="rolebench-image-identity-"
         ) as temporary:
             archive_path = Path(temporary) / "image.tar"
-            exported = _run(
-                adapter,
-                local_docker_argv(
-                    docker,
-                    "image",
-                    "save",
-                    "--output",
-                    str(archive_path),
-                    image,
-                ),
-                timeout=remaining,
-            )
-            if exported.returncode != 0:
-                raise _TaskBindingError("image-config-export-failed")
             try:
+                with archive_path.open("w+b") as archive:
+                    exported = adapter.stream(
+                        local_docker_argv(
+                            docker,
+                            "image",
+                            "save",
+                            image,
+                        ),
+                        input_source=None,
+                        timeout=remaining,
+                        output_limit=_MAX_IMAGE_ARCHIVE_BYTES,
+                        output_sink=archive,
+                    )
+                    if exported.timed_out:
+                        raise subprocess.TimeoutExpired(
+                            "image-identity",
+                            remaining,
+                        )
+                    if exported.overflowed:
+                        raise _TaskBindingError(
+                            "image-config-export-size-limit-exceeded"
+                        )
+                    if exported.returncode != 0:
+                        raise _TaskBindingError(
+                            "image-config-export-failed"
+                        )
+                    archive.flush()
                 config_digest = image_config_digest_from_archive(
                     archive_path,
                     _image_digest(image),
                 )
+            except OSError as exc:
+                raise _TaskBindingError(
+                    "image-config-export-failed"
+                ) from exc
             except ImageIdentityError as exc:
                 raise _TaskBindingError(
                     "image-config-identity-invalid"
