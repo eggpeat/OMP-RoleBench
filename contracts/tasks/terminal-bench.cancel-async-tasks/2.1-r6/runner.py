@@ -46,6 +46,7 @@ _ALLOWED_ASYNCIO_ATTRIBUTES = frozenset(
         "current_task",
         "ensure_future",
         "gather",
+        "get_running_loop",
         "shield",
         "sleep",
         "timeout",
