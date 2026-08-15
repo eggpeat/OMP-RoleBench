@@ -681,6 +681,15 @@ class ArtifactSemanticTests(TaskContractFixture):
     ) -> None:
         task, qualification = self.make_task_and_qualification()
         task["schema_version"] = "omp.diagnostic-task/v1"
+        v1_policy = json.loads(
+            (self.root / "contracts/scored-worker-policy.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        task["policy"] = {
+            "path": "contracts/scored-worker-policy.json",
+            "digest_sha256": canonical_sha256(v1_policy),
+        }
         task.pop("runner")
         objective = task["objective"]
         assert isinstance(objective, dict)

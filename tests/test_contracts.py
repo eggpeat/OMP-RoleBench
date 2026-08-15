@@ -14,6 +14,7 @@ from rolebench.contracts import (
     BUILTIN_ROLES,
     canonical_digest,
     canonical_json,
+    canonical_sha256,
     discover_root,
     load_repository,
     validate_artifact,
