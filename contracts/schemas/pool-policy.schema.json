@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:omp-rolebench:schema:pool-policy:v1",
   "title": "OMP Weighted Pool Policy v1",
-  "$comment": "Only smol, commit, tiny, and task may appear. Default is manual; plan, slow, vision, and designer use configured primaries with ordinary retry fallback chains; advisor and reviewer are dedicated. Semantic validation enforces unique route IDs, exact 10000-bps totals, known task lanes, and exact inheritance for non-specialized lanes.",
+  "$comment": "Only smol, commit, tiny, and task may appear. Default is manual; plan, slow, vision, designer, advisor, and reviewer use configured primaries with ordinary retry fallback chains. Semantic validation enforces unique route IDs, exact 10000-bps totals, known task lanes, and exact inheritance for non-specialized lanes.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "policy_id", "created_at", "valid_from", "valid_until", "routing_topology", "lane_registry", "evidence_snapshot", "capacity_snapshot", "fixed_load_snapshot", "optimizer_version", "allocation_algorithm", "allocation_seed", "pools", "checksum_sha256"],
