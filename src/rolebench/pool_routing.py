@@ -1,4 +1,9 @@
-"""Task lanes and weighted-pool policy validation for OMP RoleBench."""
+"""Task lanes and weighted-selection policy validation for OMP RoleBench.
+
+All native OMP roles may use weighted selection. Retry fallback chains are a
+separate recovery layer and are required for weighted allocations just as they
+are for configured-primary routing.
+"""
 
 from __future__ import annotations
 
@@ -11,8 +16,7 @@ from typing import Mapping, Sequence
 from jsonschema import Draft202012Validator, FormatChecker
 
 from .contracts import ContractError, resolve_root
-from .routing_topology import POOL_ROLES, RoutingTopology, load_routing_topology
-
+from .routing_topology import ROUTING_ROLES, RoutingTopology, load_routing_topology
 
 _LANE_REGISTRY_FILE = Path("contracts/pool-lane-registry.json")
 _LANE_REGISTRY_SCHEMA = Path("contracts/schemas/pool-lane-registry.schema.json")
@@ -59,12 +63,7 @@ def _load_object(path: Path) -> dict[str, object]:
     return value
 
 
-def _schema_validate(
-    instance: Mapping[str, object],
-    schema: Mapping[str, object],
-    *,
-    label: str,
-) -> None:
+def _schema_validate(instance: Mapping[str, object], schema: Mapping[str, object], *, label: str) -> None:
     errors = sorted(
         Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(instance),
         key=lambda error: list(error.absolute_path),
@@ -73,25 +72,22 @@ def _schema_validate(
         return
     error = errors[0]
     json_path = "$" + "".join(
-        f"[{part}]" if isinstance(part, int) else f".{part}"
-        for part in error.absolute_path
+        f"[{part}]" if isinstance(part, int) else f".{part}" for part in error.absolute_path
     )
     raise ContractError(error.message, label, json_path)
 
 
 def normalize_lane_id(role: str, lane: str) -> str:
-    if role not in POOL_ROLES:
-        raise ContractError(f"role {role!r} is not weighted-pool eligible")
+    if role != "task":
+        raise ContractError("v1 routing lanes are supported only for the task role")
     candidate = lane.strip()
     if not candidate:
-        raise ContractError("pool lane must not be empty")
+        raise ContractError("routing lane must not be empty")
     if "/" not in candidate:
         candidate = f"{role}/{candidate}"
     owner, separator, slug = candidate.partition("/")
     if not separator or owner != role or not slug or "/" in slug:
-        raise ContractError(f"pool lane {candidate!r} does not belong to role {role!r}")
-    if role != "task":
-        raise ContractError("v1 pool lanes are supported only for the task role")
+        raise ContractError(f"routing lane {candidate!r} does not belong to role {role!r}")
     return candidate
 
 
@@ -100,7 +96,6 @@ def load_pool_lane_registry(root: Path | None = None) -> PoolLaneRegistry:
     document = _load_object(resolved / _LANE_REGISTRY_FILE)
     schema = _load_object(resolved / _LANE_REGISTRY_SCHEMA)
     _schema_validate(document, schema, label=_LANE_REGISTRY_FILE.as_posix())
-
     values = document.get("lanes")
     if not isinstance(values, dict):
         raise ContractError("lanes must be an object", _LANE_REGISTRY_FILE.as_posix(), "$.lanes")
@@ -128,19 +123,13 @@ def load_pool_lane_registry(root: Path | None = None) -> PoolLaneRegistry:
             minimum_regret_reduction=float(inheritance["minimum_regret_reduction"]),
             status=str(value["status"]),
         )
-
     registry_id = document.get("registry_id")
     if not isinstance(registry_id, str):
         raise ContractError("registry_id must be a string", _LANE_REGISTRY_FILE.as_posix())
     return PoolLaneRegistry(registry_id=registry_id, lanes=lanes)
 
 
-def should_specialize(
-    lane: PoolLane,
-    *,
-    direct_sample_count: int,
-    estimated_regret_reduction: float,
-) -> bool:
+def should_specialize(lane: PoolLane, *, direct_sample_count: int, estimated_regret_reduction: float) -> bool:
     return (
         lane.status == "active"
         and direct_sample_count >= lane.min_direct_samples
@@ -159,25 +148,22 @@ def _validate_route_list(routes: object, *, label: str) -> None:
         route_id = item.get("route_id")
         weight = item.get("weight_bps")
         if not isinstance(route_id, str) or not isinstance(weight, int):
-            raise ContractError(
-                "route_id and integer weight_bps are required",
-                label,
-                f"$.routes[{index}]",
-            )
+            raise ContractError("route_id and integer weight_bps are required", label, f"$.routes[{index}]")
         if route_id in seen:
-            raise ContractError(
-                f"duplicate route_id {route_id!r}",
-                label,
-                f"$.routes[{index}].route_id",
-            )
+            raise ContractError(f"duplicate route_id {route_id!r}", label, f"$.routes[{index}].route_id")
         seen.add(route_id)
         total += weight
     if total != 10_000:
-        raise ContractError(
-            f"route weights must sum to 10000 bps, got {total}",
-            label,
-            "$.routes",
-        )
+        raise ContractError(f"route weights must sum to 10000 bps, got {total}", label, "$.routes")
+
+
+def _validate_fallback_chain(chain: object, *, label: str) -> None:
+    if not isinstance(chain, Sequence) or isinstance(chain, (str, bytes)) or len(chain) == 0:
+        raise ContractError("fallback_chain must be a non-empty array", label)
+    if not all(isinstance(item, str) and item.strip() for item in chain):
+        raise ContractError("fallback_chain entries must be non-empty selector strings", label)
+    if len(set(chain)) != len(chain):
+        raise ContractError("fallback_chain entries must be unique", label)
 
 
 def _parse_time(value: object, *, label: str) -> datetime:
@@ -194,79 +180,43 @@ def _parse_time(value: object, *, label: str) -> datetime:
 
 
 def validate_pool_policy(
-    policy: Mapping[str, object],
-    *,
-    root: Path | None = None,
-    topology: RoutingTopology | None = None,
-    lanes: PoolLaneRegistry | None = None,
+    policy: Mapping[str, object], *, root: Path | None = None,
+    topology: RoutingTopology | None = None, lanes: PoolLaneRegistry | None = None,
 ) -> None:
-    """Validate weighted-pool boundaries, task lanes, weights, and inheritance."""
-
+    """Validate weighted selection, retry fallbacks, task lanes, and inheritance."""
     resolved = resolve_root(root)
-    _schema_validate(
-        policy,
-        _load_object(resolved / _POOL_POLICY_SCHEMA),
-        label="omp.pool-policy/v1",
-    )
+    _schema_validate(policy, _load_object(resolved / _POOL_POLICY_SCHEMA), label="omp.pool-policy/v1")
     active_topology = topology or load_routing_topology(resolved)
     active_lanes = lanes or load_pool_lane_registry(resolved)
-
     topology_reference = policy.get("routing_topology")
     lane_reference = policy.get("lane_registry")
-    if (
-        not isinstance(topology_reference, Mapping)
-        or topology_reference.get("topology_id") != active_topology.topology_id
-    ):
-        raise ContractError(
-            "policy must bind the active routing topology",
-            "omp.pool-policy/v1",
-            "$.routing_topology",
-        )
-    if (
-        not isinstance(lane_reference, Mapping)
-        or lane_reference.get("registry_id") != active_lanes.registry_id
-    ):
-        raise ContractError(
-            "policy must bind the active pool lane registry",
-            "omp.pool-policy/v1",
-            "$.lane_registry",
-        )
-
+    if not isinstance(topology_reference, Mapping) or topology_reference.get("topology_id") != active_topology.topology_id:
+        raise ContractError("policy must bind the active routing topology", "omp.pool-policy/v1", "$.routing_topology")
+    if not isinstance(lane_reference, Mapping) or lane_reference.get("registry_id") != active_lanes.registry_id:
+        raise ContractError("policy must bind the active pool lane registry", "omp.pool-policy/v1", "$.lane_registry")
     created = _parse_time(policy.get("created_at"), label="$.created_at")
     valid_from = _parse_time(policy.get("valid_from"), label="$.valid_from")
     valid_until = _parse_time(policy.get("valid_until"), label="$.valid_until")
     if not created <= valid_from < valid_until:
-        raise ContractError(
-            "timestamps must satisfy created_at <= valid_from < valid_until",
-            "omp.pool-policy/v1",
-        )
-
+        raise ContractError("timestamps must satisfy created_at <= valid_from < valid_until", "omp.pool-policy/v1")
     pools = policy.get("pools")
     if not isinstance(pools, Mapping):
         raise ContractError("pools must be an object", "omp.pool-policy/v1", "$.pools")
     for role, pool in pools.items():
-        if role not in POOL_ROLES or not active_topology.is_pool_eligible(str(role)):
-            raise ContractError(
-                f"role {role!r} is not eligible for weighted pooling",
-                "omp.pool-policy/v1",
-                f"$.pools.{role}",
-            )
+        if role not in ROUTING_ROLES or not active_topology.supports_strategy(str(role), "weighted"):
+            raise ContractError(f"role {role!r} does not support weighted selection", "omp.pool-policy/v1", f"$.pools.{role}")
         if not isinstance(pool, Mapping):
             raise ContractError("pool must be an object", "omp.pool-policy/v1")
         default = pool.get("default")
         if not isinstance(default, Mapping):
             raise ContractError("pool default allocation is required", "omp.pool-policy/v1")
         _validate_route_list(default.get("routes"), label=f"omp.pool-policy/v1:{role}:default")
-
+        _validate_fallback_chain(default.get("fallback_chain"), label=f"omp.pool-policy/v1:{role}:default")
         lane_values = pool.get("lanes")
         if lane_values is None:
             continue
         if role != "task":
-            raise ContractError(
-                "only task may define pool lanes",
-                "omp.pool-policy/v1",
-                f"$.pools.{role}.lanes",
-            )
+            raise ContractError("only task may define routing lanes in v1", "omp.pool-policy/v1", f"$.pools.{role}.lanes")
         if not isinstance(lane_values, Mapping):
             raise ContractError("task lanes must be an object", "omp.pool-policy/v1")
         for slug, allocation in lane_values.items():
@@ -275,15 +225,9 @@ def validate_pool_policy(
             lane_id = normalize_lane_id("task", slug)
             lane = active_lanes.lanes.get(lane_id)
             if lane is None:
-                raise ContractError(
-                    f"policy references unknown pool lane {lane_id!r}",
-                    "omp.pool-policy/v1",
-                    f"$.pools.task.lanes.{slug}",
-                )
-            _validate_route_list(
-                allocation.get("routes"),
-                label=f"omp.pool-policy/v1:{lane_id}",
-            )
+                raise ContractError(f"policy references unknown routing lane {lane_id!r}", "omp.pool-policy/v1")
+            _validate_route_list(allocation.get("routes"), label=f"omp.pool-policy/v1:{lane_id}")
+            _validate_fallback_chain(allocation.get("fallback_chain"), label=f"omp.pool-policy/v1:{lane_id}")
             evidence = allocation.get("evidence")
             if not isinstance(evidence, Mapping):
                 raise ContractError("lane evidence is required", "omp.pool-policy/v1")
@@ -291,58 +235,34 @@ def validate_pool_policy(
             direct_samples = evidence.get("direct_sample_count")
             regret = evidence.get("estimated_regret_reduction")
             if specialized:
-                if not isinstance(direct_samples, int) or not isinstance(regret, (int, float)):
-                    raise ContractError("specialized lane evidence is incomplete", "omp.pool-policy/v1")
-                if not should_specialize(
-                    lane,
-                    direct_sample_count=direct_samples,
-                    estimated_regret_reduction=float(regret),
+                if not isinstance(direct_samples, int) or not isinstance(regret, (int, float)) or not should_specialize(
+                    lane, direct_sample_count=direct_samples, estimated_regret_reduction=float(regret)
                 ):
-                    raise ContractError(
-                        f"lane {lane_id!r} lacks evidence required for specialization",
-                        "omp.pool-policy/v1",
-                        f"$.pools.task.lanes.{slug}.evidence",
-                    )
+                    raise ContractError(f"lane {lane_id!r} lacks evidence required for specialization", "omp.pool-policy/v1")
             else:
-                if allocation.get("routes") != default.get("routes"):
-                    raise ContractError(
-                        f"non-specialized lane {lane_id!r} must inherit task default routes exactly",
-                        "omp.pool-policy/v1",
-                        f"$.pools.task.lanes.{slug}.routes",
-                    )
-                if allocation.get("emergency_fallback") != default.get("emergency_fallback"):
-                    raise ContractError(
-                        f"non-specialized lane {lane_id!r} must inherit task emergency fallback exactly",
-                        "omp.pool-policy/v1",
-                        f"$.pools.task.lanes.{slug}.emergency_fallback",
-                    )
+                if allocation.get("routes") != default.get("routes") or allocation.get("fallback_chain") != default.get("fallback_chain"):
+                    raise ContractError(f"non-specialized lane {lane_id!r} must inherit task default routes and fallback_chain exactly", "omp.pool-policy/v1")
 
 
 def resolve_pool_allocation(
-    policy: Mapping[str, object],
-    *,
-    role: str,
-    lane: str | None = None,
+    policy: Mapping[str, object], *, role: str, lane: str | None = None,
     registry: PoolLaneRegistry | None = None,
 ) -> Mapping[str, object]:
-    """Return a specialized task allocation or the role default allocation."""
-
     if policy.get("schema_version") != "omp.pool-policy/v1":
         raise ContractError("weighted resolution requires omp.pool-policy/v1")
-    if role not in POOL_ROLES:
-        raise ContractError(f"role {role!r} is not weighted-pool eligible")
+    if role not in ROUTING_ROLES:
+        raise ContractError(f"unknown routing role {role!r}")
     pools = policy.get("pools")
     if not isinstance(pools, Mapping):
         raise ContractError("pool policy pools must be an object")
     pool = pools.get(role)
     if not isinstance(pool, Mapping):
-        raise ContractError(f"pool policy has no allocation for role {role!r}")
+        raise ContractError(f"pool policy has no weighted allocation for role {role!r}")
     default = pool.get("default")
     if not isinstance(default, Mapping):
         raise ContractError(f"pool {role!r} has no default allocation")
     if lane is None or role != "task":
         return default
-
     lane_id = normalize_lane_id(role, lane)
     if registry is not None and lane_id not in registry.lanes:
         return default
