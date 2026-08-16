@@ -144,18 +144,68 @@ AUDIT = r"""
       ? contrast(blend(rgba(getComputedStyle(node).color), background), background)
       : 0;
   };
-  const focusIndicatorFor = (node) => {
-    if (!node || document.activeElement !== node || !visible(node)) return false;
+  const focusStyle = (node) => {
+    if (!node) return null;
     const style = getComputedStyle(node);
-    const background = effectiveBackground(node.parentElement || node) || [255, 255, 255];
-    const outline = rgba(style.outlineColor);
-    return (
-      style.outlineStyle !== 'none'
-      && Number.parseFloat(style.outlineWidth) >= 2
-      && Number.parseFloat(style.outlineOffset) >= 0
+    return {
+      background: effectiveBackground(node),
+      boxShadow: style.boxShadow,
+      outlineColor: style.outlineColor,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+      borders: ['Top', 'Right', 'Bottom', 'Left'].map((side) => ({
+        color: style[`border${side}Color`],
+        style: style[`border${side}Style`],
+        width: Number.parseFloat(style[`border${side}Width`]),
+      })),
+    };
+  };
+  const focusIndicatorFor = (node, before) => {
+    if (!node || !before || document.activeElement !== node || !visible(node)) return false;
+    const after = focusStyle(node);
+    const background = after.background
+      || effectiveBackground(node.parentElement || node)
+      || [255, 255, 255];
+    const outline = rgba(after.outlineColor);
+    const outlineChanged =
+      after.outlineColor !== before.outlineColor
+      || after.outlineStyle !== before.outlineStyle
+      || after.outlineWidth !== before.outlineWidth;
+    const outlineSignal =
+      outlineChanged
+      && after.outlineStyle !== 'none'
+      && after.outlineWidth >= 2
       && outline[3] > 0
-      && contrast(blend(outline, background), background) >= 3
-    );
+      && contrast(blend(outline, background), background) >= 3;
+    const borderSignal = after.borders.some((border, index) => {
+      const previous = before.borders[index];
+      const changed =
+        border.color !== previous.color
+        || border.style !== previous.style
+        || border.width !== previous.width;
+      const color = rgba(border.color);
+      return (
+        changed
+        && !['none', 'hidden'].includes(border.style)
+        && border.width >= 2
+        && color[3] > 0
+        && contrast(blend(color, background), background) >= 3
+      );
+    });
+    const backgroundSignal =
+      before.background !== null
+      && after.background !== null
+      && contrast(before.background, after.background) >= 3;
+    const shadowColors = [
+      ...after.boxShadow.matchAll(/rgba?\([^)]+\)/g),
+    ].map((match) => rgba(match[0]));
+    const shadowSignal =
+      after.boxShadow !== before.boxShadow
+      && after.boxShadow !== 'none'
+      && shadowColors.some((color) =>
+        color[3] > 0 && contrast(blend(color, background), background) >= 3
+      );
+    return outlineSignal || borderSignal || backgroundSignal || shadowSignal;
   };
 
   const sidebar = document.querySelector('[data-role="sidebar"]');
@@ -168,6 +218,8 @@ AUDIT = r"""
     && Boolean((menu.getAttribute('aria-label') || '').trim())
     && !menu.disabled;
   const disclosures = [...document.querySelectorAll('details')];
+  const primaryUnfocusedStyle = focusStyle(primary);
+  const menuUnfocusedStyle = focusStyle(menu);
   let primaryFocused = false;
   if (primary) {
     primary.focus();
@@ -175,7 +227,8 @@ AUDIT = r"""
   }
 
   const primaryRect = primary ? primary.getBoundingClientRect() : {width: 0, height: 0};
-  const focusIndicator = primaryFocused && focusIndicatorFor(primary);
+  const focusIndicator =
+    primaryFocused && focusIndicatorFor(primary, primaryUnfocusedStyle);
 
   const cards = grid ? [...grid.querySelectorAll('article')].filter(rendered) : [];
   const cardRects = cards.map((card) => card.getBoundingClientRect());
@@ -194,7 +247,8 @@ AUDIT = r"""
   if (mobileMenuButton && visible(menu)) {
     menu.focus({preventScroll: true});
     mobileMenuFocusable = document.activeElement === menu && menu.tabIndex >= 0;
-    mobileMenuFocusIndicator = mobileMenuFocusable && focusIndicatorFor(menu);
+    mobileMenuFocusIndicator =
+      mobileMenuFocusable && focusIndicatorFor(menu, menuUnfocusedStyle);
   }
   const productRendered = normalize(document.querySelector('header')).includes(brief.product);
   const navigationRendered =
@@ -247,10 +301,20 @@ AUDIT = r"""
     });
 
   const textElements = new Set();
+  let requiredTextPainted = true;
   const textWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   while (textWalker.nextNode()) {
-    const parent = textWalker.currentNode.parentElement;
-    if (parent && textWalker.currentNode.nodeValue.trim() && rendered(parent)) {
+    const textNode = textWalker.currentNode;
+    const parent = textNode.parentElement;
+    if (parent && textNode.nodeValue.trim() && rendered(parent)) {
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      const textRect = range.getBoundingClientRect();
+      const fontSize = Number.parseFloat(getComputedStyle(parent).fontSize);
+      requiredTextPainted = requiredTextPainted
+        && fontSize > 0
+        && textRect.width > 0
+        && textRect.height > 0;
       textElements.add(parent);
     }
   }
@@ -259,6 +323,8 @@ AUDIT = r"""
       rendered(control) &&
       (normalize(control) || String(control.value || '').trim() || String(control.placeholder || '').trim())
     ) {
+      requiredTextPainted =
+        requiredTextPainted && Number.parseFloat(getComputedStyle(control).fontSize) > 0;
       textElements.add(control);
     }
   }
@@ -314,6 +380,7 @@ AUDIT = r"""
     minimum_text_contrast: minimumTextContrast,
     solid_text_backgrounds: solidTextBackgrounds,
     text_contrast_aa: textContrastAa,
+    required_text_painted: requiredTextPainted && textElements.size > 0,
     focus_indicator: focusIndicator,
     disclosure_visible_after_open: disclosureVisible,
     navigation_rendered: navigationRendered,
@@ -642,39 +709,47 @@ def _exercise_disclosures(client: CDPClient, expected_count: int) -> None:
             not isinstance(state, dict)
             or set(state) != {"focused", "open"}
             or state.get("focused") is not True
-            or state.get("open") is not False
+            or not isinstance(state.get("open"), bool)
         ):
-            raise SubmissionError("UI disclosure summary is not keyboard-focusable and closed")
-        client.command(
-            "Input.dispatchKeyEvent",
-            {
-                "type": "keyDown",
-                "key": "Enter",
-                "code": "Enter",
-                "text": "\r",
-                "unmodifiedText": "\r",
-                "windowsVirtualKeyCode": 13,
-                "nativeVirtualKeyCode": 13,
-            },
-        )
-        client.command(
-            "Input.dispatchKeyEvent",
-            {
-                "type": "keyUp",
+            raise SubmissionError("UI disclosure summary is not keyboard-focusable")
+        initially_open = state["open"]
+        for event_type in ("keyDown", "keyUp"):
+            event = {
+                "type": event_type,
                 "key": "Enter",
                 "code": "Enter",
                 "windowsVirtualKeyCode": 13,
                 "nativeVirtualKeyCode": 13,
-            },
+            }
+            if event_type == "keyDown":
+                event.update({"text": "\r", "unmodifiedText": "\r"})
+            client.command("Input.dispatchKeyEvent", event)
+        toggled_open = _runtime_value(
+            client,
+            f"document.querySelectorAll('details')[{index}].open",
         )
-        if (
-            _runtime_value(
-                client,
-                f"document.querySelectorAll('details')[{index}].open",
-            )
-            is not True
-        ):
-            raise SubmissionError("UI disclosure did not open through its summary")
+        if toggled_open is initially_open or not isinstance(toggled_open, bool):
+            raise SubmissionError("UI disclosure did not toggle through its summary")
+        if not toggled_open:
+            for event_type in ("keyDown", "keyUp"):
+                event = {
+                    "type": event_type,
+                    "key": "Enter",
+                    "code": "Enter",
+                    "windowsVirtualKeyCode": 13,
+                    "nativeVirtualKeyCode": 13,
+                }
+                if event_type == "keyDown":
+                    event.update({"text": "\r", "unmodifiedText": "\r"})
+                client.command("Input.dispatchKeyEvent", event)
+            if (
+                _runtime_value(
+                    client,
+                    f"document.querySelectorAll('details')[{index}].open",
+                )
+                is not True
+            ):
+                raise SubmissionError("UI disclosure did not reopen through its summary")
     _runtime_value(client, "scrollTo(0, 0); true")
 
 

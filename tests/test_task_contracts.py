@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import re
 import shutil
 import subprocess
 import tempfile
@@ -1812,6 +1813,58 @@ class RoleAnchorSemanticTests(unittest.TestCase):
         ):
             validate_script("\n".join(lines) + "\n")
 
+    def test_vim_runner_decodes_character_keys_before_safety_checks(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
+        )
+        namespace = runpy.run_path(str(task_dir / "runner.py"))
+        decode_vim_string = namespace["_decode_vim_string"]
+        validate_script = namespace["_validate_script"]
+        submission_error = namespace["SubmissionError"]
+        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
+
+        self.assertEqual(decode_vim_string(r"\<Char-40>"), "(")
+        self.assertEqual(decode_vim_string(r"\\<Char-40>"), r"\<Char-40>")
+        self.assertEqual(decode_vim_string(r"\<Bar>"), "|")
+        with self.assertRaisesRegex(
+            submission_error,
+            "encoded Vim command separators are forbidden",
+        ):
+            decode_vim_string(r"\<Char-124>")
+
+        lines = valid_script.splitlines()
+        lines[0] = (
+            "call setreg('a', \":call setline\\<Char-40>'.', 'bypass'"
+            "\\<Char-41>\\<CR>j\")"
+        )
+        with self.assertRaisesRegex(
+            submission_error,
+            "Vimscript function calls are forbidden",
+        ):
+            validate_script("\n".join(lines) + "\n")
+
+    def test_vim_runner_rejects_ranged_shell_filters(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
+        )
+        namespace = runpy.run_path(str(task_dir / "runner.py"))
+        validate_script = namespace["_validate_script"]
+        submission_error = namespace["SubmissionError"]
+        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
+
+        lines = valid_script.splitlines()
+        lines[0] = (
+            "call setreg('a', \":set shell=/bin/sh\\<CR>"
+            ":.!awk '{print toupper($0)}'\\<CR>j\")"
+        )
+        with self.assertRaisesRegex(
+            submission_error,
+            "macro contains a forbidden command or character",
+        ):
+            validate_script("\n".join(lines) + "\n")
+
     def test_commit_verifier_rejects_negated_required_actions(self) -> None:
         task_dir = (
             PRODUCT_ROOT
@@ -2164,6 +2217,72 @@ class ResponsiveIncidentRunnerTests(unittest.TestCase):
                 }
                 _, _, tampered_checks = validate_submission(tampered, brief)
                 self.assertFalse(tampered_checks[failed_check])
+
+    def test_disclosure_exercise_accepts_either_initial_state(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/omp-native.responsive-incident-console/1.0.0"
+        )
+        namespace = runpy.run_path(str(task_dir / "runner.py"))
+        exercise_disclosures = namespace["_exercise_disclosures"]
+
+        class DisclosureClient:
+            def __init__(self) -> None:
+                self.states = [False, True]
+                self.focused_index = 0
+
+            @staticmethod
+            def _result(value: object) -> dict[str, object]:
+                return {"result": {"value": value}}
+
+            def command(
+                self,
+                method: str,
+                params: dict[str, object] | None = None,
+            ) -> dict[str, object]:
+                params = params or {}
+                if method == "Input.dispatchKeyEvent":
+                    if params.get("type") == "keyDown":
+                        self.states[self.focused_index] = not self.states[
+                            self.focused_index
+                        ]
+                    return {}
+                self.assert_runtime_evaluate(method)
+                expression = str(params.get("expression", ""))
+                if expression == "document.querySelectorAll('details > summary').length":
+                    return self._result(len(self.states))
+                if "return {focused:" in expression:
+                    match = re.search(
+                        r"document\.querySelectorAll\('details'\)\[([0-9]+)\]",
+                        expression,
+                    )
+                    if match is None:
+                        raise AssertionError("missing disclosure index")
+                    self.focused_index = int(match.group(1))
+                    return self._result(
+                        {
+                            "focused": True,
+                            "open": self.states[self.focused_index],
+                        }
+                    )
+                if expression == "scrollTo(0, 0); true":
+                    return self._result(True)
+                match = re.fullmatch(
+                    r"document\.querySelectorAll\('details'\)\[([0-9]+)\]\.open",
+                    expression,
+                )
+                if match is None:
+                    raise AssertionError(f"unexpected expression: {expression}")
+                return self._result(self.states[int(match.group(1))])
+
+            @staticmethod
+            def assert_runtime_evaluate(method: str) -> None:
+                if method != "Runtime.evaluate":
+                    raise AssertionError(f"unexpected method: {method}")
+
+        client = DisclosureClient()
+        exercise_disclosures(client, 2)
+        self.assertEqual(client.states, [True, True])
 
 
 class PublishedCandidateRegressionTests(unittest.TestCase):

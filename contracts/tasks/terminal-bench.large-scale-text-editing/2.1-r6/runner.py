@@ -43,7 +43,18 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 def _decode_vim_string(value: str) -> str:
-    """Decode only the escapes needed to count literal Vim macro keystrokes."""
+    """Decode the safe Vim key notation accepted inside macro strings."""
+    named_keys = {
+        "bslash": "\\",
+        "cr": "\r",
+        "enter": "\r",
+        "esc": "\x1b",
+        "lt": "<",
+        "nl": "\n",
+        "return": "\r",
+        "space": " ",
+        "bar": "|",
+    }
     output: list[str] = []
     index = 0
     while index < len(value):
@@ -55,7 +66,22 @@ def _decode_vim_string(value: str) -> str:
             end = value.find(">", index + 2)
             if end < 0:
                 raise SubmissionError("unterminated Vim key notation")
-            output.append("\x01")
+            name = value[index + 2 : end]
+            char_match = re.fullmatch(r"(?i)char-([0-9]+)", name)
+            if char_match:
+                codepoint = int(char_match.group(1))
+                if codepoint > 0x10FFFF or 0xD800 <= codepoint <= 0xDFFF:
+                    raise SubmissionError("invalid Vim character code")
+                char = chr(codepoint)
+                if codepoint == 124:
+                    raise SubmissionError("encoded Vim command separators are forbidden")
+                if codepoint < 32 and char not in {"\r", "\t", "\x1b"}:
+                    raise SubmissionError("unsupported Vim control character")
+                output.append(char)
+            elif name.casefold() in named_keys:
+                output.append(named_keys[name.casefold()])
+            else:
+                raise SubmissionError("unsupported Vim key notation")
             index = end + 1
             continue
         if value.startswith("\\\\", index) or value.startswith('\\"', index):
@@ -90,6 +116,8 @@ def _validate_script(script: object) -> tuple[str, int]:
             decoded = _decode_vim_string(content)
             if not decoded:
                 raise SubmissionError("macro content must be non-empty")
+            if FORBIDDEN.search(decoded) or "!" in decoded:
+                raise SubmissionError("macro contains a forbidden command or character")
             if VIMSCRIPT_FUNCTION_CALL.search(decoded):
                 raise SubmissionError("Vimscript function calls are forbidden in macros")
             macros[register] = decoded

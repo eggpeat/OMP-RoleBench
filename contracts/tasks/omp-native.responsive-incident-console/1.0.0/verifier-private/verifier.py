@@ -276,6 +276,7 @@ def main() -> int:
         "body_contrast",
         "solid_text_backgrounds",
         "text_contrast_aa",
+        "required_text_painted",
         "focus_indicator",
         "disclosure_visible_after_open",
         "navigation_rendered",
@@ -316,6 +317,7 @@ def main() -> int:
                     "solid_text_backgrounds",
                     "cards_horizontally_in_view",
                     "text_contrast_aa",
+                    "required_text_painted",
                 )
             )
             or isinstance(surface.get("screenshot_bytes"), bool)
