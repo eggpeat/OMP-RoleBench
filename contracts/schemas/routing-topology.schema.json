@@ -13,7 +13,7 @@
       "additionalProperties": false,
       "required": ["default", "plan", "advisor", "reviewer", "smol", "slow", "vision", "designer", "commit", "tiny", "task"],
       "properties": {
-        "default": {"$ref": "#/$defs/manual"},
+        "default": {"$ref": "#/$defs/fallbackMainSession"},
         "plan": {"$ref": "#/$defs/fallbackRoleSession"},
         "advisor": {"$ref": "#/$defs/fallbackAdvisor"},
         "reviewer": {"$ref": "#/$defs/fallbackReviewer"},
@@ -29,12 +29,12 @@
   },
   "$defs": {
     "description": {"type": "string", "minLength": 1},
-    "manual": {
+    "fallbackMainSession": {
       "type": "object",
       "additionalProperties": false,
       "required": ["strategy", "pool_eligible", "selection_scope", "description"],
       "properties": {
-        "strategy": {"const": "manual"},
+        "strategy": {"const": "fallback-chain"},
         "pool_eligible": {"const": false},
         "selection_scope": {"const": "main-session"},
         "description": {"$ref": "#/$defs/description"}
