@@ -22,9 +22,6 @@ def main() -> int:
                 "fallback_chain_roles": [
                     role for role in FIXED_ROLES if topology.strategy_for(role) == "fallback-chain"
                 ],
-                "dedicated_roles": [
-                    role for role in FIXED_ROLES if topology.strategy_for(role) == "dedicated"
-                ],
                 "manual_roles": [
                     role for role in FIXED_ROLES if topology.strategy_for(role) == "manual"
                 ],
