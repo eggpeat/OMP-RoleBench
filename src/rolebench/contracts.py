@@ -52,14 +52,8 @@ _TASK_QUALIFICATION_SCHEMA = "task-qualification.schema.json"
 _TASK_REVIEW_EVIDENCE_SCHEMA = "task-review-evidence.schema.json"
 _EXPERIMENT_LEDGER_ENTRY_SCHEMA = "experiment-ledger-entry.schema.json"
 _V1_TASK_PACKS: tuple[str, ...] = ("task", "smol", "slow")
-_PILOT_TASK_PACKS: tuple[str, ...] = (
-    "default",
-    "task",
-    "smol",
-    "slow",
-    "plan",
-    "advisor",
-)
+_V2_TASK_PACKS: tuple[str, ...] = ("default", "task", "smol", "slow", "plan", "advisor")
+_V3_TASK_PACKS: tuple[str, ...] = BUILTIN_ROLES
 _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
     "attempt-observation": {
         "omp.attempt-observation/v1": "attempt-observation-v1",
@@ -75,7 +69,8 @@ _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
     },
     "role-registry": {
         "omp.role-registry/v1": "role-registry-v1",
-        "omp.role-registry/v2": "role-registry",
+        "omp.role-registry/v2": "role-registry-v2",
+        "omp.role-registry/v3": "role-registry",
     },
     "task-qualification": {
         "omp.task-qualification/v1": "task-qualification-v1",
@@ -104,6 +99,7 @@ _REQUIRED_SCHEMAS: tuple[str, ...] = (
     "experiment-ledger-entry.schema.json",
     "role-contract.schema.json",
     "role-registry-v1.schema.json",
+    "role-registry-v2.schema.json",
     "role-registry.schema.json",
     "route-policy.schema.json",
     "route.schema.json",
@@ -265,9 +261,12 @@ def _load_object(root: Path, relative: Path) -> JSONObject:
 
 
 def _task_pack_roles(registry: JSONObject) -> tuple[str, ...]:
-    if registry.get("schema_version") == "omp.role-registry/v1":
+    schema_version = registry.get("schema_version")
+    if schema_version == "omp.role-registry/v1":
         return _V1_TASK_PACKS
-    return _PILOT_TASK_PACKS
+    if schema_version == "omp.role-registry/v2":
+        return _V2_TASK_PACKS
+    return _V3_TASK_PACKS
 
 
 def load_repository(root: Path | None = None) -> Repository:

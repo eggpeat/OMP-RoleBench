@@ -2,7 +2,7 @@
 
 RoleBench turns a fixed OMP role benchmark profile and exact candidate model routes into reviewable evidence and ranked model-to-role recommendations. Optional capacity inputs can extend qualified recommendations into allocation policies; optional session-derived tasks can extend the default benchmark profile. Contributions must preserve four properties: **measured quality**, **reproducibility**, **canonical defaults**, and **data minimization**.
 
-The project is currently building its contract, worker, and diagnostic-authoring layers. It ships one reviewed, routing-ineligible `default` calibration pack, but not a complete ten-role benchmark corpus, provider-backed evaluation, model-route recommendations, session-to-task synthesis, an optimizer, or OMP runtime integration. Read the [target architecture](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, benchmark-profile, estimator, optimizer, or OMP integration change, and keep planned behavior distinct from implemented behavior in user-facing documentation.
+The project is currently building its worker, calibration, and diagnostic-authoring layers. It ships 14 reviewed, routing-ineligible anchors across all ten fixed role packs, but not provider-backed evaluation, model-route recommendations, session-to-task synthesis, an optimizer, or OMP runtime integration. Read the [target architecture](docs/OMP_BENCHMARK_INFORMED_ROLE_ROUTING_SPEC.md) before proposing a schema, benchmark-profile, estimator, optimizer, or OMP integration change, and keep planned behavior distinct from implemented behavior in user-facing documentation.
 
 ## License of contributions
 
@@ -182,7 +182,7 @@ The default profile uses two kinds of scored task:
 
 Optional session-derived diagnostics are a third authoring source, not part of the standard workflow. Held-out task families are validation inputs and must remain outside task selection and estimator fitting.
 
-Every current `omp.diagnostic-task/v1` artifact must declare:
+Every current `omp.diagnostic-task/v2` artifact must declare:
 
 - its role contract, task mix, capability tags, difficulty, and partition;
 - task and source versions plus content and source digests;
@@ -193,7 +193,7 @@ Every current `omp.diagnostic-task/v1` artifact must declare:
 
 For `source.kind: "terminal-bench"`, `source.version` is the immutable Harbor dataset package reference with a numeric revision, `source.task` is the exact Harbor task package name, `source.digest_sha256` is that task version's Harbor content hash, and `source.dataset_digest_sha256` is the dataset version's Harbor content hash. Store both hashes as lowercase hexadecimal without the `sha256:` prefix. Mutable references such as `@latest` are invalid.
 
-A future default-profile or evidence contract should additionally bind the benchmark harness, runner, and verifier software versions used to produce a result. Do not add those undeclared fields to the closed v1 diagnostic-task object; version the schema and its consumers first.
+The v2 diagnostic-task object binds the executable environment through exact agent, admission-agent, runner, and verifier image identities and config digests, while the public and verifier-private tree digests bind task content. Any future contract that changes these provenance semantics must version the schema and its consumers first.
 
 ### Diagnostic-task authoring and admission
 

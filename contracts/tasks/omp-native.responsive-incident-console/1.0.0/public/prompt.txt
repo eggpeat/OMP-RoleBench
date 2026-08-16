@@ -1,0 +1,17 @@
+Implement the responsive dashboard described in `/opt/rolebench/task/public/workspace/brief.json` as a self-contained HTML and CSS pair.
+
+Requirements:
+- render every navigation item, filter, incident, severity, service, age, and timeline from the brief;
+- use semantic header, navigation, main, section, article, form/control, and native `details`/`summary` disclosure elements;
+- mark exactly one link inside the primary navigation as active with `aria-current="page"`, and implement the mobile menu control as one enabled native `button` with a non-empty accessible label;
+- use a persistent left navigation column and exactly three incident-card columns at 1280px;
+- at 390px, hide the left navigation, show the labelled mobile menu button, use one incident-card column, and avoid horizontal overflow;
+- provide visible `:focus-visible` treatment, at least 44px primary controls, and WCAG AA text contrast using the size-and-weight thresholds for normal and large text;
+- use only solid-color painted backgrounds: no CSS background images or gradients;
+- use no scripts, remote URLs, data URLs, external assets, embedded frames, or inline event handlers.
+
+Return exactly one UTF-8 JSON object and no markdown or commentary:
+
+{"schema_version":"rolebench.ui-implementation/v1","files":{"index.html":"<complete HTML document>","styles.css":"<complete stylesheet>"}}
+
+The HTML must link `styles.css`. Add these audit hooks without changing their semantics: `data-role="sidebar"` on the desktop navigation container, `data-role="mobile-menu"` on the mobile menu button, `data-role="incident-grid"` on the incident-card grid, and `data-role="primary-action"` on the filter control.

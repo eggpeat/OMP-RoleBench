@@ -1,0 +1,12 @@
+Normalize `/opt/rolebench/task/public/workspace/route_header.txt` into one compact routing record.
+
+Rules:
+- lowercase `RUN-ID` and `ROLE-HINT`;
+- map `SUCCESS` to `passed` and `FAILURE` to `failed`;
+- map `yes`/`no` to JSON booleans;
+- map latency below 100 ms to `under-100ms`, 100 through 999 ms to `100-999ms`, and 1000 ms or more to `at-least-1000ms`;
+- lowercase labels, remove duplicates, and preserve first occurrence order.
+
+Return exactly one UTF-8 JSON object and no whitespace outside it, markdown, or commentary. Use this exact key order:
+
+{"schema_version":"rolebench.metadata-normalization/v1","run_id":"<value>","outcome":"<passed|failed>","role":"<value>","retryable":<boolean>,"latency_bucket":"<value>","labels":["<value>"]}

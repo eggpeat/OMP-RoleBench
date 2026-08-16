@@ -1,0 +1,11 @@
+Review `/opt/rolebench/task/public/workspace/decompilation.txt` for an intentionally inserted authentication backdoor. Report every material security defect and no false positives. Cite the narrowest line ranges that independently prove the defect, classify impact and severity, prescribe the semantic remediation, and name every reviewed function that is not defective.
+
+Return exactly one UTF-8 JSON object and no markdown or commentary. Arrays must use source order.
+
+{"schema_version":"rolebench.security-review/v1","backdoor_present":true,"findings":[{"function":"<name>","address":"<lowercase hex address>","defect":"<stable defect class>","severity":"<low|medium|high|critical>","impact":"<stable impact class>","evidence":["decompilation.txt:<start>-<end>","decompilation.txt:<start>-<end>"],"remediation":"<stable remediation class>"}],"reviewed_safe":["<function>"]}
+
+For this task, use exactly these classification values; aliases are not accepted:
+- defect: `credential-match-or-bypass`
+- severity: `critical`
+- impact: `authentication-bypass`
+- remediation: `require-both-username-and-password-match`

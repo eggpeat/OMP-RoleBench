@@ -1,0 +1,5 @@
+Inspect `/opt/rolebench/task/public/workspace/code.png` and execute the depicted pseudocode exactly. The file bytes used by the pseudocode are the bytes of that same PNG. In the image, `||` means byte concatenation and Python-style slice bounds are start-inclusive and end-exclusive.
+
+Return exactly one UTF-8 JSON object and no markdown or commentary:
+
+{"schema_version":"rolebench.image-code-answer/v1","salt":"<transcribed ASCII salt without b-prefix or quotes>","slice_start":<integer>,"slice_end":<integer>,"digest_sha256":"<64 lowercase hexadecimal characters>"}

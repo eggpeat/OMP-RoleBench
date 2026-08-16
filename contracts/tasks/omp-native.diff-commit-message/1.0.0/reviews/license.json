@@ -1,0 +1,29 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "author-declaration",
+      "reference": "RoleBench repository-authored task under the repository MIT license."
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain the RoleBench MIT license notice when redistributing this authored task."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-16T01:16:48Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "source_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "source_task": null,
+    "verifier_private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090"
+  },
+  "task_id": "omp-native.diff-commit-message",
+  "task_version": "1.0.0"
+}

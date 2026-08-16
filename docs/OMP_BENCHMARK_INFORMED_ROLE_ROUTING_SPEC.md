@@ -400,14 +400,14 @@ The raw prompt, credentials, and sensitive account identifiers are not required.
 
 The default profile is a versioned mapping from every canonical role to required capabilities and fixed task packs. It is sufficient for the standard recommendation workflow and contains no user session data.
 
-1. **Terminal-Bench anchors:** pinned public tasks useful for `default`, `task`, and `slow`, with selected evidence for `plan` and `advisor` where justified.
-2. **Fixed OMP-native anchors:** small, purpose-built Terminal-Bench-style tasks for all roles, especially `smol`, `tiny`, `commit`, `vision`, and `designer`.
+1. **Terminal-Bench anchors:** pinned public tasks for `default`, `task`, `slow`, `plan`, `advisor`, `smol`, and `vision` where a benchmark workload directly exercises the role contract.
+2. **Fixed OMP-native anchors:** small, purpose-built Terminal-Bench-style tasks for the uncovered `tiny`, `commit`, and `designer` capabilities.
 3. **Held-out routing tests:** task families and model routes excluded from task selection and estimator fitting, used only to measure recommendation and allocation regret.
 4. **Optional session-derived diagnostics:** private supplemental tasks generated from recurring work in explicitly selected sessions. They are outside the default profile unless independently reviewed, licensed for redistribution, and deliberately published.
 
 Do not copy or relabel an official Terminal-Bench dataset in a way that implies an official score. Record the exact dataset release, task digest, harness, and route identity. Report results as RoleBench role estimates.
 
-An `omp.diagnostic-task/v1` Terminal-Bench source uses `source.version` for the immutable Harbor dataset package plus numeric revision and `source.task` for the exact Harbor task package. `source.digest_sha256` binds the Harbor task-version content hash; `source.dataset_digest_sha256` binds the Harbor dataset-version content hash. Both hashes omit the `sha256:` prefix, and mutable package references such as `@latest` are prohibited.
+An `omp.diagnostic-task/v2` Terminal-Bench source uses `source.version` for the immutable Harbor dataset package plus numeric revision and `source.task` for the exact Harbor task package. `source.digest_sha256` binds the Harbor task-version content hash; `source.dataset_digest_sha256` binds the dataset-version content hash. Both hashes omit the `sha256:` prefix, and mutable package references such as `@latest` are prohibited.
 
 ### Candidate authoring, admission, and evidence use
 
@@ -416,14 +416,14 @@ The task pipeline is source-agnostic and separates candidate acquisition, author
 1. A candidate may come from a pinned public task, a purpose-built OMP-native task, `import-omp-gym`, or the optional local session workflow.
 2. `import-omp-gym` parses only the public `task.toml` and `workspace/` format into a private candidate directory. It does not import OMP Gym code, follow links, infer licensing, or grant admission.
 3. For the optional local workflow, `scan-session` reads one caller-selected OMP JSONL session and returns a versioned privacy-minimized candidate with a fresh opaque reference, `entry_count` for parsed v3 message entries, and signal objects whose `ordinal` indexes those message entries and whose `kind` identifies the signal. Raw text, paths, IDs, model/provider/account fields, and stable session fingerprints are prohibited. A planned local generator may inspect selected content only inside the private boundary and synthesize de-identified task drafts; that synthesis is not implemented in v1.
-4. An operator turns a candidate into `omp.diagnostic-task/v1` with a canonical role binding, capability tags, public/private asset digests, exact single-platform agent, admission-agent, runner, and verifier image identities, objective criteria, and independent privacy, license, verifier, and split approvals.
+4. An operator turns a candidate into `omp.diagnostic-task/v2` with a canonical role binding, capability tags, public/private asset digests, exact single-platform agent, admission-agent, runner, and verifier image identities, objective criteria, and independent privacy, license, verifier, and split approvals.
 5. `prepare-admission-run` independently re-inspects the image manifest, config ID, platform, fixed role/content/stage labels, and in-image asset trees. The agent and runner images must expose the exact public tree and no verifier-private tree; the verifier image must expose the exact private tree and no public tree.
 6. At least two healthy runs for each distinct baseline, reference, and tamper image establish deterministic failure, success, and tamper rejection. `qualify` reparses every report, recomputes accounting, requires exact run/envelope/isolation/task/policy/probe-image mappings, and produces `evaluation_provenance` and `runner_isolation` while requiring identical artifact/reward results across repeats.
 7. V1 qualifications are `calibration-required`, not proof of cross-model discrimination. V1 cannot claim `admitted` or freeze a routing-eligible pack until a later contract defines independently reviewed discrimination evidence. `prepare-run` therefore permits only non-holdout `calibration-only` execution and preserves the observed task/image/policy bindings in `omp.worker-run-manifest/v1`.
 8. The normal rootless Docker/`runsc` worker executes admission and calibration manifests across a three-container isolation pipeline: agent -> candidate runner -> passive verifier. The candidate artifact is supplied only to and may execute only in the candidate runner; it never executes in or becomes instructions for the verifier container. Because runner output may reflect artifact bytes, the verifier receives those bytes only as bounded inert untrusted data inside a host-framed evidence envelope. The host seals that evidence with a per-attempt nonce, `run_id`, stream lengths and digests, and bound request digests. Verifiers may score the bytes only as observable output under declared authority. Verifier verdicts echo exact bindings and emit strict `omp.verifier-result/v1`. Candidate execution semantics remain untrusted unless externally observable; runner stdout/events/clocks are untrusted payloads and internally self-reported semantics remain inadmissible without source-separated observation. Tasks requiring semantic observation must declare an approved authority; the committed `cancel-async-tasks` anchor uses source-separated observation and binds its evidence through independent passive-verifier review. Its qualification remains `calibration-required` and is not routing evidence. No cheat-proof claim is made for internally self-reported execution.
 9. The append-only experiment ledger may journal immutable artifacts and worker reports locally, but it has no admission, calibration, recommendation, or routing authority. Every consumer revalidates source artifacts and recomputes worker outcomes.
 
-The public fixed profile contains seven independently reviewed, `calibration-required` Terminal-Bench 2.1 anchors across the populated `default`, `task`, `slow`, `plan`, and `advisor` packs; all remain routing-ineligible. The `smol` pack remains an empty `authoring` queue, and the other four role packs have not yet been created. Public repository validation rejects holdout content; confidential holdouts require an author-independent split outside the public tree. The `synthetic-fixture` source kind exists only for provider-disabled smoke tests and is mechanically excluded from all task packs. Raw runtime outputs, journals, image archives, and imported candidates stay under ignored `.rolebench/` or an external private artifact store. Only the small, normalized admission reports, qualifications, and verifier fixtures explicitly referenced by a reviewed public pack may be published.
+The public fixed profile contains 14 independently reviewed, `calibration-required` anchors: 11 pinned Terminal-Bench 2.1/3.0 tasks across the `default`, `task`, `slow`, `plan`, `advisor`, `smol`, and `vision` packs, plus three fixed OMP-native tasks for `tiny`, `commit`, and `designer`. All ten packs remain routing-ineligible. Public repository validation rejects holdout content; confidential holdouts require an author-independent split outside the public tree. The `synthetic-fixture` source kind exists only for provider-disabled smoke tests and is mechanically excluded from all task packs. Raw runtime outputs, journals, image archives, and imported candidates stay under ignored `.rolebench/` or an external private artifact store. Only the small, normalized, independently reviewed admission evidence and verifier fixtures explicitly referenced by a public pack are committed.
 
 ### Verifier philosophy by role
 
@@ -434,7 +434,7 @@ The public fixed profile contains seven independently reviewed, `calibration-req
 - `tiny`: exact classification/extraction/metadata outputs.
 - `commit`: changed-file facts and repository convention checks; penalize invented claims.
 - `vision`: objective image-grounded answers and capability checks.
-- `designer`: functional browser/DOM checks plus a separately identified visual-quality evaluator.
+- `designer`: functional browser/DOM checks, rendered desktop/mobile screenshot evidence, and objective content, responsive-layout, accessibility, focus, and contrast assertions.
 
 LLM judges may supplement objective verification, but cannot be the only verifier for core coding success.
 
@@ -780,7 +780,7 @@ These workstreams share the v1 role and artifact contracts. The default benchmar
 
 ### Milestone 1 — Default offline recommendation
 
-- Complete and independently review the fixed public task set for `smol`, `vision`, `designer`, `commit`, and `tiny`, building from the seven anchors already pinned across the other five role packs.
+- Keep the completed 14-anchor fixed profile immutable and routing-ineligible until independently reviewed cross-model discrimination evidence exists.
 - Run several exact candidate routes without using session logs.
 - Produce normalized evidence and calibrated capability snapshots.
 - Emit a ranked recommendation for each covered role, or an explicit insufficient-evidence result.

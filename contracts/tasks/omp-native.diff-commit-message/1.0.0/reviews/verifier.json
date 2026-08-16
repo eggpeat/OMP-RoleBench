@@ -1,0 +1,49 @@
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Verifier must remain passive and independent from candidate execution.",
+      "resolution": "Candidate behavior executes only in runner.py; verifier.py consumes bounded structured evidence and exact source-separated expectations."
+    },
+    {
+      "finding": "Semantic claims must not admit negated, reversed, or unbound action descriptions.",
+      "resolution": "The verifier full-matches a finite public grammar that binds L1 invalidation before backing-store deletion and exact hit/miss outcome templates; regression tests cover negation, reversal, inflection, modifier, and purpose-suffix bypasses."
+    }
+  ],
+  "report_digests_sha256": [
+    "f416a598a7442cf259e620b82f5496d7b50f2b73b00bf5a52d9edc6924f63569",
+    "3e54deed0e93bec4acb6424429601a366063efc529a25c097ffdf8d93fcd4f8f",
+    "645a8dfe81b243abab78b37df008d646c727ba728c7abe17cf04a3152c1a4386",
+    "d12bb9322fad66cb9bc8ae0bdfa33c580fbf17cc718f95c5c503261097215639",
+    "4ab62c4009d3f44ea3ea8b2ac3e455e9c38a3d119f48796c4d7584434884134a",
+    "e643add934f57713c835e40d2bbdbcb6e28f189cba98dd56fd9bd825980ee320"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-16T01:16:48Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "runner_config_digest_sha256": "68fb537fdd3790f5789a1a09b031c48298d3d9ab54d3d0df0211ac4399143b41",
+    "runner_image": "rolebench.local/diff-commit-message-commit-runner@sha256:f8c6b9ec51c4f4fc3ea30223ed28451ca248ffbbda812bd32a2872728f225717",
+    "verifier_config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
+    "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
+    "verifier_private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090"
+  },
+  "task_id": "omp-native.diff-commit-message",
+  "task_version": "1.0.0"
+}

@@ -1,0 +1,31 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Public prompt must state every deterministic semantic requirement without disclosing the private reference wording.",
+      "resolution": "Published the required semantic term families while keeping the reference wording and verifier implementation private."
+    }
+  ],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T01:16:48Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "b880139370dd97c719330548f8ebf93d8b44e40dd91ae3f618d58c919475b065",
+    "public_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "verifier_digest_sha256": "3a2296ce1a2aff6dc9370080bbb0d35312d9ac7a46575ec7cc839ac6eec14c2e",
+    "verifier_private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+    "workspace_digest_sha256": "877248bc085b5b0df27cf0df10f8c672493df1280e76b134465c718a33cb8dec"
+  },
+  "task_id": "omp-native.diff-commit-message",
+  "task_version": "1.0.0"
+}

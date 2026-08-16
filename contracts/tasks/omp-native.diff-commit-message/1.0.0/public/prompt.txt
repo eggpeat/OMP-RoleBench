@@ -1,0 +1,17 @@
+Read `/opt/rolebench/task/public/workspace/change.patch` and produce the conventional commit that describes only observable production behavior in the diff.
+
+Convention:
+- type is one of `fix`, `feat`, `refactor`, `test`, or `docs`;
+- scope is the first component below `src/`;
+- subject is imperative, lowercase, has no trailing punctuation, and is at most 72 characters;
+- body contains one concise sentence per distinct production behavior, in diff order; do not mention test implementation details;
+- The subject must begin with `invalidate` or `delete`. Both the subject and first body sentence must bind one L1-invalidation phrase directly to one backing-store-deletion phrase and state that invalidation occurs first.
+- Deterministic grading accepts these relation forms: invalidation `before`/`prior to`/`ahead of` deletion; invalidation `then` deletion; invalidation `after [a|the] [cache] lookup, then` deletion, with each bracketed part optional; deletion `after`/`following` invalidation; `before` deletion, invalidation; `after` invalidation, deletion; invalidation `precedes` deletion; deletion `follows` invalidation; invalidation `is`/`was`/`will be followed by` deletion; or deletion `is`/`was`/`will be preceded by` invalidation. `backing store` may be hyphenated. Invalidation and deletion words accept only the endings `e`, `es`, `ed`, `ing`, `ion`, and `ions`.
+- Either relation claim may end with exactly one of these purpose phrases: `to prevent stale reads`, `to preserve cache consistency`, `to avoid stale data`, `so that cache state remains consistent`, `so as to preserve cache consistency`, or `rather than leave stale data`. No other trailing clause is accepted. The first body sentence must end with one period.
+- The second body sentence must be exactly `<action> hit and miss outcomes for cache deletions.` where `<action>` is one of `capture`, `collect`, `count`, `emit`, `expose`, `increment`, `log`, `measure`, `observe`, `persist`, `publish`, `record`, `report`, `store`, or `track`; the alternative exact sentence `Increment cache deletion metrics with hit and miss outcomes.` is also accepted. Matching is case-insensitive.
+- evidence contains the narrowest `change.patch:<start>-<end>` line range for each body sentence, in the same order;
+- `breaking` is true only for a demonstrated incompatible public-interface change.
+
+Return exactly one UTF-8 JSON object and no markdown or commentary:
+
+{"schema_version":"rolebench.commit-message/v1","type":"<value>","scope":"<value>","subject":"<value>","body":["<sentence>"],"evidence":["change.patch:<start>-<end>"],"breaking":<boolean>}

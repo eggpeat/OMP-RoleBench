@@ -1,0 +1,24 @@
+{
+  "assignment": {
+    "assignment_method": "author-assigned",
+    "confidentiality": "public",
+    "family_id": "omp-native.diff-commit-message",
+    "partition": "anchor",
+    "role": "commit"
+  },
+  "capability_tags": [
+    "diff-comprehension",
+    "change-summarization",
+    "commit-convention-adherence",
+    "evidence-bounded-generation"
+  ],
+  "decision": "approved",
+  "findings": [],
+  "rationale": "Diff comprehension, evidence-bounded change summarization, and conventional-commit adherence directly exercise the commit role.",
+  "review_type": "split",
+  "reviewed_at": "2026-08-15T23:03:04Z",
+  "reviewer": "rolebench/reviewer/role-fit-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "task_id": "omp-native.diff-commit-message",
+  "task_version": "1.0.0"
+}

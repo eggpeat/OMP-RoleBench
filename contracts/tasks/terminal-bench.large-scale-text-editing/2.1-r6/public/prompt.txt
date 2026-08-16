@@ -1,0 +1,14 @@
+Create a headless Vim script that transforms a large CSV efficiently.
+
+Each input row has three comma-separated fields with irregular spaces. Your script must:
+1. remove leading/trailing whitespace from each field,
+2. reverse field order,
+3. uppercase all letters,
+4. replace commas with semicolons, and
+5. append `;OK`.
+
+The script must define three distinct, non-empty macros in registers `a`, `b`, and `c`; use each macro across the whole file; and use fewer than 200 total macro keystrokes. Only `call setreg(...)`, `%normal! @a`, `%normal! @b`, `%normal! @c`, and `wq` commands are allowed. Vimscript functions, shell escapes, external commands, file reads, and scripting-language integration are forbidden.
+
+Return exactly one UTF-8 JSON object and no markdown or commentary:
+
+{"schema_version":"rolebench.vim-macro-submission/v1","script":"<complete Vim script>"}

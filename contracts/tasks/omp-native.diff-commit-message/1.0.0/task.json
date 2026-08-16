@@ -1,0 +1,226 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+      "config_digest_sha256": "ab6ac15ea9a8e16497257b07055879b5a8aeb4c23c2df34b698771d6032cd929",
+      "image": "rolebench.local/diff-commit-message-commit-baseline@sha256:d3dca060df72838a4c482ee5622804495ad6944fd029d8dc8c646cccf9995254",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+      "config_digest_sha256": "2558bedfcae1c676e8e968d2f48ed31c080555f300392a79551c4789896eaa68",
+      "image": "rolebench.local/diff-commit-message-commit-reference@sha256:9e67be0199862952dd8a83d9ef3b2ced550e1dbeac545fbbbfbdf107eaff28ca",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+      "config_digest_sha256": "b49070aabc3ba43607020fb6ce866b92b2755da049d934fa5c026e2015aa538a",
+      "image": "rolebench.local/diff-commit-message-commit-tamper@sha256:9821ad1853a810d49e30eab05a5702fe747301657daa43b528ac7785d6022678",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "config_digest_sha256": "8d57d34f34093b5e76e9e05bbe6a5458e17a1d6b523c8b3f05ebf883fde7ddaa",
+    "image": "rolebench.local/diff-commit-message-commit-candidate@sha256:b8f4981b3a39181a2242e54c7c9d07f364f6a1083fcc7a17730c9820fbce761c",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+      "prompt": {
+        "digest_sha256": "b880139370dd97c719330548f8ebf93d8b44e40dd91ae3f618d58c919475b065",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.diff-commit-message/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "877248bc085b5b0df27cf0df10f8c672493df1280e76b134465c718a33cb8dec",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+      "root": "contracts/tasks/omp-native.diff-commit-message/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "3a2296ce1a2aff6dc9370080bbb0d35312d9ac7a46575ec7cc839ac6eec14c2e",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/diff-commit-message-commit-v1"
+  },
+  "capability_tags": [
+    "diff-comprehension",
+    "change-summarization",
+    "commit-convention-adherence",
+    "evidence-bounded-generation"
+  ],
+  "content_digest_sha256": "abc4a61ccb1ccc5770dc9fa6d494d302f80ed63775c3359a85a9a3365003acab",
+  "difficulty": "easy",
+  "family": {
+    "family_id": "omp-native.diff-commit-message",
+    "variant_id": "1.0.0-diff-commit-message-commit-v1"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Select the correct conventional-commit type and cache scope.",
+      "Describe the observable backing-store deletion fix in the subject.",
+      "Summarize the hit and miss outcome metrics added by the diff.",
+      "Cite only line ranges present in the supplied patch.",
+      "Return exactly the strict commit-message JSON schema."
+    ],
+    "mode": "diff-claim-alignment",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "11f4183ecd5cbb79874e8d34ecccb5d3edde0b1390902af0c3515b9276971cb4",
+      "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T01:16:48Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "47bd33d93745119b10720dcd9c775473786c64bc5b87088d5a0efb22493d5b49",
+      "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T01:16:48Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "75f9f928eeca9d05db1f363ef13777a2e44370c3dea31f6174cdd93d7002fed4",
+      "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/split.json",
+      "family_id": "omp-native.diff-commit-message",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-15T23:03:04Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "ac9bf3f2a3c3e0a503f5c916537510599388cbcb2d152844c32d8f60051f4543",
+      "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+      "reviewed_at": "2026-08-16T01:16:48Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "68fb537fdd3790f5789a1a09b031c48298d3d9ab54d3d0df0211ac4399143b41",
+      "runner_image": "rolebench.local/diff-commit-message-commit-runner@sha256:f8c6b9ec51c4f4fc3ea30223ed28451ca248ffbbda812bd32a2872728f225717",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
+      "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "commit",
+  "role_contract": {
+    "contract_id": "role-contract/commit/v1",
+    "digest_sha256": "e1780fa196635a887d664d2cad54368e738ec49d770bc0a734d4e7a8c4c7f9cb"
+  },
+  "routing_eligible": false,
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "config_digest_sha256": "68fb537fdd3790f5789a1a09b031c48298d3d9ab54d3d0df0211ac4399143b41",
+    "image": "rolebench.local/diff-commit-message-commit-runner@sha256:f8c6b9ec51c4f4fc3ea30223ed28451ca248ffbbda812bd32a2872728f225717",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
+    "kind": "authored",
+    "version": "omp-native/diff-commit-message@1"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/diff-commit-message-commit-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "75f9f928eeca9d05db1f363ef13777a2e44370c3dea31f6174cdd93d7002fed4",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.diff-commit-message",
+  "task_mix": "commit-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+    "config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
+    "image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

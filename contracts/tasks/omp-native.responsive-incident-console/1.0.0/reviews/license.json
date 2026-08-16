@@ -1,0 +1,29 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "author-declaration",
+      "reference": "RoleBench repository-authored task under the repository MIT license."
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain the RoleBench MIT license notice when redistributing this authored task."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-16T01:16:48Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+    "source_digest_sha256": "9cf68a265cb60c8a34a0d7bde0c9ac33456240d7e66b3e903fa3d3a1acbe04ee",
+    "source_task": null,
+    "verifier_private_tree_digest_sha256": "131117468679001b5815b534cc718094be52e4e6472b4936ad29eece65ad574b"
+  },
+  "task_id": "omp-native.responsive-incident-console",
+  "task_version": "1.0.0"
+}

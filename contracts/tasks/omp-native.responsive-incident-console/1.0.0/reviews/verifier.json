@@ -1,0 +1,132 @@
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "evidence": [
+    {
+      "agent_config_digest_sha256": "9f31e2acced6811e5e94027c0b4740db723226f9c02a14a927643ce16b848cd1",
+      "agent_image": "rolebench.local/responsive-incident-console-designer-baseline@sha256:29864594af0bf1b9210dcddb243c6cb70ee5b99a4b93eebe54e7f617588e528a",
+      "prepare_command": "PYTHONPATH=src python3 -m rolebench tasks prepare-admission-run contracts/tasks/omp-native.responsive-incident-console/1.0.0/task.json --probe baseline --run-id pr5r3-ui-baseline-1 --output .rolebench/review-fixes/pr5r3-ui-baseline-1.manifest.json",
+      "probe": "baseline",
+      "published_report": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/evidence/baseline-1.json",
+      "report_digest_sha256": "a2a81cccb76473ed443ef936abedc7573c6961514b4c1f4cd942ac320e37f809",
+      "run_command": "PYTHONPATH=src python3 -m rolebench worker run .rolebench/review-fixes/pr5r3-ui-baseline-1.manifest.json --json --report .rolebench/review-fixes/pr5r3-ui-baseline-1.report.json",
+      "run_id": "pr5r3-ui-baseline-1",
+      "runner_config_digest_sha256": "7e54ab7d95ef7dcff156df904de3c3228666775dd3514d8f4fa027c83c0ec35a",
+      "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:554a6daef5d2250ad1ea904f26ff9b1e0ab6f0b16761e152d21b9996a34acf72",
+      "verifier_config_digest_sha256": "af698f07e802822c6b85f47dba4f7e2a221f66968416e9ad98f9c29ef078fc2c",
+      "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:bf757eac4706e982d3fd2c50b3509b1bd359c494626bddc60e49391823d8b9c9"
+    },
+    {
+      "agent_config_digest_sha256": "9f31e2acced6811e5e94027c0b4740db723226f9c02a14a927643ce16b848cd1",
+      "agent_image": "rolebench.local/responsive-incident-console-designer-baseline@sha256:29864594af0bf1b9210dcddb243c6cb70ee5b99a4b93eebe54e7f617588e528a",
+      "prepare_command": "PYTHONPATH=src python3 -m rolebench tasks prepare-admission-run contracts/tasks/omp-native.responsive-incident-console/1.0.0/task.json --probe baseline --run-id pr5r3-ui-baseline-2 --output .rolebench/review-fixes/pr5r3-ui-baseline-2.manifest.json",
+      "probe": "baseline",
+      "published_report": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/evidence/baseline-2.json",
+      "report_digest_sha256": "ae7a5e52e6efb509e15fbdc32ca9a377a6f55635692527e458764ad2593a64fb",
+      "run_command": "PYTHONPATH=src python3 -m rolebench worker run .rolebench/review-fixes/pr5r3-ui-baseline-2.manifest.json --json --report .rolebench/review-fixes/pr5r3-ui-baseline-2.report.json",
+      "run_id": "pr5r3-ui-baseline-2",
+      "runner_config_digest_sha256": "7e54ab7d95ef7dcff156df904de3c3228666775dd3514d8f4fa027c83c0ec35a",
+      "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:554a6daef5d2250ad1ea904f26ff9b1e0ab6f0b16761e152d21b9996a34acf72",
+      "verifier_config_digest_sha256": "af698f07e802822c6b85f47dba4f7e2a221f66968416e9ad98f9c29ef078fc2c",
+      "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:bf757eac4706e982d3fd2c50b3509b1bd359c494626bddc60e49391823d8b9c9"
+    },
+    {
+      "agent_config_digest_sha256": "4611d7e96b8d43ba00f0375396eb373d9b4f7efc6d112780bd50fd4e6c68b2bb",
+      "agent_image": "rolebench.local/responsive-incident-console-designer-reference@sha256:198ed9d13e61941bb8654c7a90d0a1ac2b44e737cf319e2f978a0e89f0cef4c6",
+      "prepare_command": "PYTHONPATH=src python3 -m rolebench tasks prepare-admission-run contracts/tasks/omp-native.responsive-incident-console/1.0.0/task.json --probe reference --run-id pr5r3-ui-reference-1 --output .rolebench/review-fixes/pr5r3-ui-reference-1.manifest.json",
+      "probe": "reference",
+      "published_report": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/evidence/reference-1.json",
+      "report_digest_sha256": "424b6a92e07b1bb7f4327f1be123ea17ca39e39cf6f0fac2cb02a2727f365266",
+      "run_command": "PYTHONPATH=src python3 -m rolebench worker run .rolebench/review-fixes/pr5r3-ui-reference-1.manifest.json --json --report .rolebench/review-fixes/pr5r3-ui-reference-1.report.json",
+      "run_id": "pr5r3-ui-reference-1",
+      "runner_config_digest_sha256": "7e54ab7d95ef7dcff156df904de3c3228666775dd3514d8f4fa027c83c0ec35a",
+      "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:554a6daef5d2250ad1ea904f26ff9b1e0ab6f0b16761e152d21b9996a34acf72",
+      "verifier_config_digest_sha256": "af698f07e802822c6b85f47dba4f7e2a221f66968416e9ad98f9c29ef078fc2c",
+      "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:bf757eac4706e982d3fd2c50b3509b1bd359c494626bddc60e49391823d8b9c9"
+    },
+    {
+      "agent_config_digest_sha256": "4611d7e96b8d43ba00f0375396eb373d9b4f7efc6d112780bd50fd4e6c68b2bb",
+      "agent_image": "rolebench.local/responsive-incident-console-designer-reference@sha256:198ed9d13e61941bb8654c7a90d0a1ac2b44e737cf319e2f978a0e89f0cef4c6",
+      "prepare_command": "PYTHONPATH=src python3 -m rolebench tasks prepare-admission-run contracts/tasks/omp-native.responsive-incident-console/1.0.0/task.json --probe reference --run-id pr5r3-ui-reference-2 --output .rolebench/review-fixes/pr5r3-ui-reference-2.manifest.json",
+      "probe": "reference",
+      "published_report": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/evidence/reference-2.json",
+      "report_digest_sha256": "283edea0b28b7838a343a4edfdbc5c22a700bd09b734d43ac365e04f3daa5aca",
+      "run_command": "PYTHONPATH=src python3 -m rolebench worker run .rolebench/review-fixes/pr5r3-ui-reference-2.manifest.json --json --report .rolebench/review-fixes/pr5r3-ui-reference-2.report.json",
+      "run_id": "pr5r3-ui-reference-2",
+      "runner_config_digest_sha256": "7e54ab7d95ef7dcff156df904de3c3228666775dd3514d8f4fa027c83c0ec35a",
+      "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:554a6daef5d2250ad1ea904f26ff9b1e0ab6f0b16761e152d21b9996a34acf72",
+      "verifier_config_digest_sha256": "af698f07e802822c6b85f47dba4f7e2a221f66968416e9ad98f9c29ef078fc2c",
+      "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:bf757eac4706e982d3fd2c50b3509b1bd359c494626bddc60e49391823d8b9c9"
+    },
+    {
+      "agent_config_digest_sha256": "a65198b60b7f46866ae25f7e8de3b2d244cf25cd107c26e7a59606298699a335",
+      "agent_image": "rolebench.local/responsive-incident-console-designer-tamper@sha256:2d93f1c4a7687614d5f0dca50491b15357ff4f59e45e8dac119a4b345ae4c1bf",
+      "prepare_command": "PYTHONPATH=src python3 -m rolebench tasks prepare-admission-run contracts/tasks/omp-native.responsive-incident-console/1.0.0/task.json --probe tamper --run-id pr5r3-ui-tamper-1 --output .rolebench/review-fixes/pr5r3-ui-tamper-1.manifest.json",
+      "probe": "tamper",
+      "published_report": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/evidence/tamper-1.json",
+      "report_digest_sha256": "995284f7bbe0195a77d0d64f15de39fcbc8da2022414afd55722d3bec77d8f05",
+      "run_command": "PYTHONPATH=src python3 -m rolebench worker run .rolebench/review-fixes/pr5r3-ui-tamper-1.manifest.json --json --report .rolebench/review-fixes/pr5r3-ui-tamper-1.report.json",
+      "run_id": "pr5r3-ui-tamper-1",
+      "runner_config_digest_sha256": "7e54ab7d95ef7dcff156df904de3c3228666775dd3514d8f4fa027c83c0ec35a",
+      "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:554a6daef5d2250ad1ea904f26ff9b1e0ab6f0b16761e152d21b9996a34acf72",
+      "verifier_config_digest_sha256": "af698f07e802822c6b85f47dba4f7e2a221f66968416e9ad98f9c29ef078fc2c",
+      "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:bf757eac4706e982d3fd2c50b3509b1bd359c494626bddc60e49391823d8b9c9"
+    },
+    {
+      "agent_config_digest_sha256": "a65198b60b7f46866ae25f7e8de3b2d244cf25cd107c26e7a59606298699a335",
+      "agent_image": "rolebench.local/responsive-incident-console-designer-tamper@sha256:2d93f1c4a7687614d5f0dca50491b15357ff4f59e45e8dac119a4b345ae4c1bf",
+      "prepare_command": "PYTHONPATH=src python3 -m rolebench tasks prepare-admission-run contracts/tasks/omp-native.responsive-incident-console/1.0.0/task.json --probe tamper --run-id pr5r3-ui-tamper-2 --output .rolebench/review-fixes/pr5r3-ui-tamper-2.manifest.json",
+      "probe": "tamper",
+      "published_report": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/evidence/tamper-2.json",
+      "report_digest_sha256": "2ff9843a495b90a618bd40d2013f81f70521a400e691879f4a363d005b85a389",
+      "run_command": "PYTHONPATH=src python3 -m rolebench worker run .rolebench/review-fixes/pr5r3-ui-tamper-2.manifest.json --json --report .rolebench/review-fixes/pr5r3-ui-tamper-2.report.json",
+      "run_id": "pr5r3-ui-tamper-2",
+      "runner_config_digest_sha256": "7e54ab7d95ef7dcff156df904de3c3228666775dd3514d8f4fa027c83c0ec35a",
+      "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:554a6daef5d2250ad1ea904f26ff9b1e0ab6f0b16761e152d21b9996a34acf72",
+      "verifier_config_digest_sha256": "af698f07e802822c6b85f47dba4f7e2a221f66968416e9ad98f9c29ef078fc2c",
+      "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:bf757eac4706e982d3fd2c50b3509b1bd359c494626bddc60e49391823d8b9c9"
+    }
+  ],
+  "findings": [],
+  "rationale": "Two independently executed rootless runsc reports per baseline, reference, and tamper probe bind the exact admission-agent image/config; scope binds the exact runner/verifier images and public/private asset trees.",
+  "remediation": [
+    {
+      "finding": "Rendered screenshots alone do not prove that a submission implements the fixed brief or accessible interaction states.",
+      "resolution": "runner.py loads the source-separated brief and audits every required product, navigation, filter, incident, and timeline value; desktop/mobile layout, overflow, disclosures, target size, focus contrast, text contrast, and screenshot evidence are independently verified."
+    }
+  ],
+  "report_digests_sha256": [
+    "2056f2608a082ae3e3ef2aa9ba261f3ee86dd028c5f381dcad0dd6f59eca352b",
+    "e326354706c035c6bbb3ff784071288dd2d3378476c76ac8bc8ad334c3926ab8",
+    "5247dd578d9f25012634450e3a574af38a766905cbb43b5a7b62572d2b5fe50a",
+    "32f3f8aae6eb56ef86f2a3836eec0f790cd50bea0a69099052ca022ab44a0f33",
+    "7101e1c6c01224cbc84906c821ed92df8b12234825df15cfbb9abf268d1514a7",
+    "36091a95f0bbf93e0804eb4a44223bea912c5d483cf95a538e4bd83c2e930a08"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-16T02:12:34Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+    "runner_config_digest_sha256": "387e33f67fecefa7c5c469f5c56bf6e5102e918622ef5fe1fb66aa02897d1130",
+    "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:632c7886ec538e88fa28d24b157ce5d90d0303ffd7f6dd75a85c0c91c9934c98",
+    "verifier_config_digest_sha256": "d68aba0ef3c9e63e739060cd7b8e97a1848c660eafa2c3f078e79f61c492d16b",
+    "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:a529823b0056f678bd3ce6a9980e8b3c796c65325c0309da0830e2deeb0e8d9c",
+    "verifier_private_tree_digest_sha256": "131117468679001b5815b534cc718094be52e4e6472b4936ad29eece65ad574b"
+  },
+  "task_id": "omp-native.responsive-incident-console",
+  "task_version": "1.0.0"
+}

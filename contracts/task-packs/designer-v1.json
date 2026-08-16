@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {
+      "qualification": {
+        "digest_sha256": "472ef4eef3b0cc13fff7b136af90781fe9444435472fcd917a4e56b51bf368ca",
+        "path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "a7f2a7abde2596cc58eae421ba7bd41d8601689b78d4cb3a263d39f62f8d9055",
+        "path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/task.json"
+      }
+    }
+  ],
+  "pack_id": "designer-v1",
+  "partition": "anchor",
+  "required_capabilities": [
+    "ui-implementation",
+    "visual-design-judgment",
+    "interaction-design",
+    "responsive-layout",
+    "accessibility-reasoning"
+  ],
+  "role": "designer",
+  "role_contract": {
+    "contract_id": "role-contract/designer/v1",
+    "digest_sha256": "d2af35132faead9ec29cd01aa8fb671b309cc92b6894de1c29f84a8b46205bbc"
+  },
+  "routing_eligible": false,
+  "schema_version": "omp.task-pack/v1",
+  "selection_method": "fixed-anchor",
+  "status": "calibration",
+  "task_mix": "designer-v1"
+}

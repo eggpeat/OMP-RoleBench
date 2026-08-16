@@ -1,0 +1,31 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Public prompt must not disclose private expected values or verifier thresholds.",
+      "resolution": "Kept expected submissions and exact acceptance logic in the verifier-private tree; public assets expose only task inputs and output schema."
+    }
+  ],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T01:16:48Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "31ebc24cbdb8bff61019af04f7ab1d2d62f191411629331c7dc1195a7c95cfe7",
+    "public_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+    "verifier_digest_sha256": "13c8457763530851b6e6fba7c068fc9aec34a2b97c896b9360c7c1f3e17d5ea5",
+    "verifier_private_tree_digest_sha256": "131117468679001b5815b534cc718094be52e4e6472b4936ad29eece65ad574b",
+    "workspace_digest_sha256": "49be35a93abcdacc85ede6672f8e6a41381d076b4965434476e6c8cdabe38310"
+  },
+  "task_id": "omp-native.responsive-incident-console",
+  "task_version": "1.0.0"
+}
