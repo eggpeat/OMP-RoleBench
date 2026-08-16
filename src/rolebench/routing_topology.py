@@ -1,9 +1,10 @@
 """Authoritative OMP-native routing topology.
 
 RoleBench benchmarks native OMP model roles, but weighted allocation is only
-valid for helper/execution roles that may safely rotate between independent
-logical invocations. Default, plan, advisor, and reviewer retain dedicated
-runtime semantics and are structurally excluded from weighted policies.
+valid for the small set of helper/execution roles that may safely rotate between
+independent logical invocations. Default, plan, slow, vision, designer, advisor,
+and reviewer retain configured-primary or dedicated runtime semantics and are
+structurally excluded from weighted policies.
 """
 
 from __future__ import annotations
@@ -20,25 +21,30 @@ from .contracts import ContractError, resolve_root
 
 POOL_ROLES: tuple[str, ...] = (
     "smol",
-    "slow",
-    "vision",
-    "designer",
     "commit",
     "tiny",
     "task",
 )
-FIXED_ROLES: tuple[str, ...] = ("default", "plan", "advisor", "reviewer")
+FIXED_ROLES: tuple[str, ...] = (
+    "default",
+    "plan",
+    "slow",
+    "vision",
+    "designer",
+    "advisor",
+    "reviewer",
+)
 ROUTING_ROLES: tuple[str, ...] = (*FIXED_ROLES, *POOL_ROLES)
 
 _EXPECTED_STRATEGIES: dict[str, str] = {
     "default": "manual",
     "plan": "fallback-chain",
+    "slow": "fallback-chain",
+    "vision": "fallback-chain",
+    "designer": "fallback-chain",
     "advisor": "dedicated",
     "reviewer": "dedicated",
     "smol": "weighted-pool",
-    "slow": "weighted-pool",
-    "vision": "weighted-pool",
-    "designer": "weighted-pool",
     "commit": "weighted-pool",
     "tiny": "weighted-pool",
     "task": "weighted-pool",
