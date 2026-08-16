@@ -1,10 +1,10 @@
 """Authoritative OMP-native routing topology.
 
-RoleBench benchmarks native OMP model roles, but weighted allocation is only
-valid for the small set of helper/execution roles that may safely rotate between
-independent logical invocations. Default, plan, slow, vision, designer, advisor,
-and reviewer retain configured-primary plus ordinary fallback-chain semantics
-and are structurally excluded from weighted policies.
+Every native OMP model role supports either configured-primary selection or
+weighted selection. Retry fallback chains are orthogonal recovery semantics and
+remain available under either selection strategy. The topology defines stable
+selection scopes and lane support; `baseline_strategy` records RoleBench's
+recommended/default policy, not an upstream capability restriction.
 """
 
 from __future__ import annotations
@@ -19,35 +19,35 @@ from jsonschema import Draft202012Validator
 from .contracts import ContractError, resolve_root
 
 
-POOL_ROLES: tuple[str, ...] = (
+ROUTING_ROLES: tuple[str, ...] = (
+    "default",
+    "plan",
+    "advisor",
+    "reviewer",
     "smol",
+    "slow",
+    "vision",
+    "designer",
     "commit",
     "tiny",
     "task",
 )
-FIXED_ROLES: tuple[str, ...] = (
-    "default",
-    "plan",
-    "slow",
-    "vision",
-    "designer",
-    "advisor",
-    "reviewer",
-)
-ROUTING_ROLES: tuple[str, ...] = (*FIXED_ROLES, *POOL_ROLES)
+BASELINE_WEIGHTED_ROLES: tuple[str, ...] = ("smol", "commit", "tiny", "task")
+BASELINE_PRIMARY_ROLES: tuple[str, ...] = tuple(role for role in ROUTING_ROLES if role not in BASELINE_WEIGHTED_ROLES)
+SUPPORTED_STRATEGIES: tuple[str, ...] = ("primary", "weighted")
 
-_EXPECTED_STRATEGIES: dict[str, str] = {
-    "default": "fallback-chain",
-    "plan": "fallback-chain",
-    "slow": "fallback-chain",
-    "vision": "fallback-chain",
-    "designer": "fallback-chain",
-    "advisor": "fallback-chain",
-    "reviewer": "fallback-chain",
-    "smol": "weighted-pool",
-    "commit": "weighted-pool",
-    "tiny": "weighted-pool",
-    "task": "weighted-pool",
+_EXPECTED_SCOPES: dict[str, str] = {
+    "default": "main-session",
+    "plan": "role-session",
+    "advisor": "advisor-runtime",
+    "reviewer": "review-run",
+    "smol": "operation",
+    "slow": "role-session",
+    "vision": "operation",
+    "designer": "child-session",
+    "commit": "operation",
+    "tiny": "operation",
+    "task": "child-session",
 }
 
 _TOPOLOGY_FILE = Path("contracts/routing-topology.json")
@@ -57,9 +57,10 @@ _TOPOLOGY_SCHEMA = Path("contracts/schemas/routing-topology.schema.json")
 @dataclass(frozen=True)
 class RoleRouting:
     role: str
-    strategy: str
-    pool_eligible: bool
     selection_scope: str
+    supported_strategies: tuple[str, ...]
+    baseline_strategy: str
+    supports_lanes: bool
     description: str
 
 
@@ -68,14 +69,17 @@ class RoutingTopology:
     topology_id: str
     roles: Mapping[str, RoleRouting]
 
-    def strategy_for(self, role: str) -> str:
+    def supports_strategy(self, role: str, strategy: str) -> bool:
         try:
-            return self.roles[role].strategy
+            return strategy in self.roles[role].supported_strategies
         except KeyError as error:
             raise ContractError(f"unknown routing role {role!r}") from error
 
-    def is_pool_eligible(self, role: str) -> bool:
-        return role in self.roles and self.roles[role].pool_eligible
+    def baseline_strategy_for(self, role: str) -> str:
+        try:
+            return self.roles[role].baseline_strategy
+        except KeyError as error:
+            raise ContractError(f"unknown routing role {role!r}") from error
 
 
 def _load_object(path: Path) -> dict[str, object]:
@@ -129,26 +133,39 @@ def load_routing_topology(root: Path | None = None) -> RoutingTopology:
         value = role_values.get(role)
         if not isinstance(value, dict):
             raise ContractError("role routing entry must be an object", _TOPOLOGY_FILE.as_posix())
-        strategy = value.get("strategy")
-        pool_eligible = value.get("pool_eligible")
-        if strategy != _EXPECTED_STRATEGIES[role]:
+        supported = value.get("supported_strategies")
+        if supported != list(SUPPORTED_STRATEGIES):
             raise ContractError(
-                f"role {role!r} must use strategy {_EXPECTED_STRATEGIES[role]!r}",
+                f"role {role!r} must support both primary and weighted selection",
                 _TOPOLOGY_FILE.as_posix(),
-                f"$.roles.{role}.strategy",
+                f"$.roles.{role}.supported_strategies",
             )
-        expected_pool = role in POOL_ROLES
-        if pool_eligible is not expected_pool:
+        if value.get("selection_scope") != _EXPECTED_SCOPES[role]:
             raise ContractError(
-                f"role {role!r} pool_eligible must be {expected_pool}",
+                f"role {role!r} must use selection scope {_EXPECTED_SCOPES[role]!r}",
                 _TOPOLOGY_FILE.as_posix(),
-                f"$.roles.{role}.pool_eligible",
+                f"$.roles.{role}.selection_scope",
+            )
+        expected_baseline = "weighted" if role in BASELINE_WEIGHTED_ROLES else "primary"
+        if value.get("baseline_strategy") != expected_baseline:
+            raise ContractError(
+                f"role {role!r} baseline_strategy must be {expected_baseline!r}",
+                _TOPOLOGY_FILE.as_posix(),
+                f"$.roles.{role}.baseline_strategy",
+            )
+        expected_lanes = role == "task"
+        if value.get("supports_lanes") is not expected_lanes:
+            raise ContractError(
+                f"role {role!r} supports_lanes must be {expected_lanes}",
+                _TOPOLOGY_FILE.as_posix(),
+                f"$.roles.{role}.supports_lanes",
             )
         roles[role] = RoleRouting(
             role=role,
-            strategy=str(strategy),
-            pool_eligible=expected_pool,
             selection_scope=str(value["selection_scope"]),
+            supported_strategies=SUPPORTED_STRATEGIES,
+            baseline_strategy=expected_baseline,
+            supports_lanes=expected_lanes,
             description=str(value["description"]),
         )
 
