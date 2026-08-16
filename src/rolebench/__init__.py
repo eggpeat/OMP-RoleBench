@@ -1,11 +1,6 @@
 """Contract validation and inspection for OMP rolebench."""
 
-from .accounting import (
-    AccountingError,
-    classify_attempt,
-    summarize_outcomes,
-)
-
+from .accounting import AccountingError, classify_attempt, summarize_outcomes
 from .contracts import (
     BUILTIN_ROLES,
     ContractError,
@@ -21,12 +16,26 @@ from .contracts import (
     validate_repository,
     validate_value,
 )
-
-from .ledger import (
-    LedgerError,
-    append_artifacts,
-    append_worker_report,
-    verify_ledger,
+from .ledger import LedgerError, append_artifacts, append_worker_report, verify_ledger
+from .pool_routing import (
+    PoolLane,
+    PoolLaneRegistry,
+    build_normative_recovery_chain,
+    load_pool_lane_registry,
+    normalize_lane_id,
+    resolve_pool_allocation,
+    should_specialize,
+    validate_pool_policy,
+    weighted_rendezvous_rank,
+)
+from .routing_topology import (
+    BASELINE_PRIMARY_ROLES,
+    BASELINE_WEIGHTED_ROLES,
+    ROUTING_ROLES,
+    SUPPORTED_STRATEGIES,
+    RoleRouting,
+    RoutingTopology,
+    load_routing_topology,
 )
 from .task_workflow import (
     TaskAdmissionError,
@@ -42,14 +51,23 @@ from .task_workflow import (
 
 __all__ = [
     "BUILTIN_ROLES",
+    "BASELINE_PRIMARY_ROLES",
+    "BASELINE_WEIGHTED_ROLES",
+    "ROUTING_ROLES",
+    "SUPPORTED_STRATEGIES",
     "AccountingError",
     "ContractError",
     "Diagnostic",
     "LedgerError",
+    "PoolLane",
+    "PoolLaneRegistry",
+    "RoleRouting",
+    "RoutingTopology",
     "TaskAdmissionError",
     "TaskWorkflowError",
     "ValidationResult",
     "append_artifacts",
+    "build_normative_recovery_chain",
     "append_worker_report",
     "check_task_qualification",
     "classify_attempt",
@@ -58,16 +76,23 @@ __all__ = [
     "discover_root",
     "generate_task_qualification",
     "import_omp_gym_task",
+    "load_pool_lane_registry",
     "load_repository",
+    "load_routing_topology",
+    "normalize_lane_id",
     "prepare_admission_worker_manifest",
     "prepare_worker_manifest",
+    "resolve_pool_allocation",
     "scan_session_candidates",
+    "should_specialize",
     "task_content_sha256",
     "task_execution_sha256",
     "summarize_outcomes",
     "validate_artifact",
+    "validate_pool_policy",
     "validate_repository",
     "validate_value",
     "verify_ledger",
     "verify_task_pack",
+    "weighted_rendezvous_rank",
 ]

@@ -1,0 +1,17 @@
+{
+  "schema_version": "omp.routing-topology/v1",
+  "topology_id": "omp-native-routing-topology-v1",
+  "roles": {
+    "default": {"selection_scope":"main-session","supported_strategies":["primary","weighted"],"baseline_strategy":"primary","supports_lanes":false,"description":"Primary interactive session. Weighted selection, when enabled, occurs once at session creation and is pinned for the session."},
+    "plan": {"selection_scope":"role-session","supported_strategies":["primary","weighted"],"baseline_strategy":"primary","supports_lanes":false,"description":"Plan-mode session. Selection is pinned for the plan session."},
+    "advisor": {"selection_scope":"advisor-runtime","supported_strategies":["primary","weighted"],"baseline_strategy":"primary","supports_lanes":false,"description":"Advisor/watchdog runtime. Advisor and reviewer remain distinct roles even when they share a routing strategy."},
+    "reviewer": {"selection_scope":"review-run","supported_strategies":["primary","weighted"],"baseline_strategy":"primary","supports_lanes":false,"description":"Native review run. Advisor and reviewer evidence and routing remain isolated."},
+    "smol": {"selection_scope":"operation","supported_strategies":["primary","weighted"],"baseline_strategy":"weighted","supports_lanes":false,"description":"Fast bounded helper operation."},
+    "slow": {"selection_scope":"role-session","supported_strategies":["primary","weighted"],"baseline_strategy":"primary","supports_lanes":false,"description":"High-effort reasoning role session."},
+    "vision": {"selection_scope":"operation","supported_strategies":["primary","weighted"],"baseline_strategy":"primary","supports_lanes":false,"description":"Image-grounded operation."},
+    "designer": {"selection_scope":"child-session","supported_strategies":["primary","weighted"],"baseline_strategy":"primary","supports_lanes":false,"description":"Designer child session."},
+    "commit": {"selection_scope":"operation","supported_strategies":["primary","weighted"],"baseline_strategy":"weighted","supports_lanes":false,"description":"Commit-message generation operation."},
+    "tiny": {"selection_scope":"operation","supported_strategies":["primary","weighted"],"baseline_strategy":"weighted","supports_lanes":false,"description":"Titles, metadata, classification, memory, and other bounded utility operations."},
+    "task": {"selection_scope":"child-session","supported_strategies":["primary","weighted"],"baseline_strategy":"weighted","supports_lanes":true,"description":"Autonomous delegated child-agent execution. V1 may additionally specialize weighted routing by task lane."}
+  }
+}

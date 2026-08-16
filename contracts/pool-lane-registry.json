@@ -1,0 +1,108 @@
+{
+  "schema_version": "omp.pool-lane-registry/v1",
+  "registry_id": "omp-task-pool-lanes-v1",
+  "lanes": {
+    "task/implementation": {
+      "role": "task",
+      "name": "Implementation",
+      "description": "Autonomous implementation from repository inspection through edits and targeted verification.",
+      "routing_traits": [
+        "repository-navigation",
+        "code-editing",
+        "targeted-verification"
+      ],
+      "complexity": "medium",
+      "inheritance": {
+        "when_evidence_insufficient": "role-default",
+        "min_direct_samples": 12,
+        "minimum_regret_reduction": 0.01
+      },
+      "status": "active"
+    },
+    "task/debugging": {
+      "role": "task",
+      "name": "Debugging",
+      "description": "Autonomous diagnosis and repair of a concrete defect, including reproduction or evidence, edits, and verification.",
+      "routing_traits": [
+        "root-cause-analysis",
+        "code-editing",
+        "regression-verification"
+      ],
+      "complexity": "hard",
+      "inheritance": {
+        "when_evidence_insufficient": "role-default",
+        "min_direct_samples": 12,
+        "minimum_regret_reduction": 0.01
+      },
+      "status": "active"
+    },
+    "task/test-repair": {
+      "role": "task",
+      "name": "Test Repair",
+      "description": "Repair a failing or incomplete test surface while preserving intended product behavior.",
+      "routing_traits": [
+        "test-analysis",
+        "code-editing",
+        "targeted-verification"
+      ],
+      "complexity": "medium",
+      "inheritance": {
+        "when_evidence_insufficient": "role-default",
+        "min_direct_samples": 12,
+        "minimum_regret_reduction": 0.01
+      },
+      "status": "active"
+    },
+    "task/refactor": {
+      "role": "task",
+      "name": "Refactor",
+      "description": "Change internal structure without changing required external behavior, with regression checks.",
+      "routing_traits": [
+        "repository-navigation",
+        "structural-editing",
+        "regression-avoidance"
+      ],
+      "complexity": "hard",
+      "inheritance": {
+        "when_evidence_insufficient": "role-default",
+        "min_direct_samples": 12,
+        "minimum_regret_reduction": 0.01
+      },
+      "status": "active"
+    },
+    "task/repo-research": {
+      "role": "task",
+      "name": "Repository Research",
+      "description": "Answer a bounded repository question through evidence-backed inspection without requiring primary-session context.",
+      "routing_traits": [
+        "repository-navigation",
+        "evidence-synthesis",
+        "concise-handoff"
+      ],
+      "complexity": "medium",
+      "inheritance": {
+        "when_evidence_insufficient": "role-default",
+        "min_direct_samples": 12,
+        "minimum_regret_reduction": 0.01
+      },
+      "status": "active"
+    },
+    "task/mechanical-edit": {
+      "role": "task",
+      "name": "Mechanical Edit",
+      "description": "Perform repetitive, tightly specified repository changes with minimal interpretation.",
+      "routing_traits": [
+        "mechanical-editing",
+        "scope-adherence",
+        "low-overhead-tool-use"
+      ],
+      "complexity": "easy",
+      "inheritance": {
+        "when_evidence_insufficient": "role-default",
+        "min_direct_samples": 12,
+        "minimum_regret_reduction": 0.01
+      },
+      "status": "active"
+    }
+  }
+}

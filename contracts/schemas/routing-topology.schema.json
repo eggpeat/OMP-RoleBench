@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:routing-topology:v1",
+  "title": "OMP Native Routing Topology v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "topology_id", "roles"],
+  "properties": {
+    "schema_version": {"const": "omp.routing-topology/v1"},
+    "topology_id": {"type": "string", "minLength": 1},
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "plan", "advisor", "reviewer", "smol", "slow", "vision", "designer", "commit", "tiny", "task"],
+      "properties": {
+        "default": {"$ref": "#/$defs/mainSessionRole"},
+        "plan": {"$ref": "#/$defs/roleSessionRole"},
+        "advisor": {"$ref": "#/$defs/advisorRole"},
+        "reviewer": {"$ref": "#/$defs/reviewerRole"},
+        "smol": {"$ref": "#/$defs/operationRole"},
+        "slow": {"$ref": "#/$defs/roleSessionRole"},
+        "vision": {"$ref": "#/$defs/operationRole"},
+        "designer": {"$ref": "#/$defs/childSessionRole"},
+        "commit": {"$ref": "#/$defs/operationRole"},
+        "tiny": {"$ref": "#/$defs/operationRole"},
+        "task": {"$ref": "#/$defs/taskRole"}
+      }
+    }
+  },
+  "$defs": {
+    "baseRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection_scope", "supported_strategies", "baseline_strategy", "supports_lanes", "description"],
+      "properties": {
+        "selection_scope": {"enum": ["main-session", "role-session", "operation", "child-session", "advisor-runtime", "review-run"]},
+        "supported_strategies": {
+          "type": "array",
+          "const": ["primary", "weighted"]
+        },
+        "baseline_strategy": {"enum": ["primary", "weighted"]},
+        "supports_lanes": {"type": "boolean"},
+        "description": {"type": "string", "minLength": 1}
+      }
+    },
+    "mainSessionRole": {"allOf": [{"$ref":"#/$defs/baseRole"},{"properties":{"selection_scope":{"const":"main-session"},"supports_lanes":{"const":false}}}]},
+    "roleSessionRole": {"allOf": [{"$ref":"#/$defs/baseRole"},{"properties":{"selection_scope":{"const":"role-session"},"supports_lanes":{"const":false}}}]},
+    "operationRole": {"allOf": [{"$ref":"#/$defs/baseRole"},{"properties":{"selection_scope":{"const":"operation"},"supports_lanes":{"const":false}}}]},
+    "childSessionRole": {"allOf": [{"$ref":"#/$defs/baseRole"},{"properties":{"selection_scope":{"const":"child-session"},"supports_lanes":{"const":false}}}]},
+    "advisorRole": {"allOf": [{"$ref":"#/$defs/baseRole"},{"properties":{"selection_scope":{"const":"advisor-runtime"},"supports_lanes":{"const":false}}}]},
+    "reviewerRole": {"allOf": [{"$ref":"#/$defs/baseRole"},{"properties":{"selection_scope":{"const":"review-run"},"supports_lanes":{"const":false}}}]},
+    "taskRole": {"allOf": [{"$ref":"#/$defs/baseRole"},{"properties":{"selection_scope":{"const":"child-session"},"supports_lanes":{"const":true}}}]}
+  }
+}
