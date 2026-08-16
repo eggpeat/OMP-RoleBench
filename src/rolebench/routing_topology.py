@@ -2,9 +2,9 @@
 
 RoleBench benchmarks native OMP model roles, but weighted allocation is only
 valid for the small set of helper/execution roles that may safely rotate between
-independent logical invocations. Default, plan, slow, vision, designer, advisor,
-and reviewer retain configured-primary or dedicated runtime semantics and are
-structurally excluded from weighted policies.
+independent logical invocations. Default remains user-controlled; plan, slow,
+vision, designer, advisor, and reviewer retain configured-primary plus ordinary
+fallback-chain semantics and are structurally excluded from weighted policies.
 """
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ _EXPECTED_STRATEGIES: dict[str, str] = {
     "slow": "fallback-chain",
     "vision": "fallback-chain",
     "designer": "fallback-chain",
-    "advisor": "dedicated",
-    "reviewer": "dedicated",
+    "advisor": "fallback-chain",
+    "reviewer": "fallback-chain",
     "smol": "weighted-pool",
     "commit": "weighted-pool",
     "tiny": "weighted-pool",
