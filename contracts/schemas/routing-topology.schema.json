@@ -15,8 +15,8 @@
       "properties": {
         "default": {"$ref": "#/$defs/manual"},
         "plan": {"$ref": "#/$defs/fallbackRoleSession"},
-        "advisor": {"$ref": "#/$defs/advisor"},
-        "reviewer": {"$ref": "#/$defs/reviewer"},
+        "advisor": {"$ref": "#/$defs/fallbackAdvisor"},
+        "reviewer": {"$ref": "#/$defs/fallbackReviewer"},
         "smol": {"$ref": "#/$defs/poolOperation"},
         "slow": {"$ref": "#/$defs/fallbackRoleSession"},
         "vision": {"$ref": "#/$defs/fallbackOperation"},
@@ -73,23 +73,23 @@
         "description": {"$ref": "#/$defs/description"}
       }
     },
-    "advisor": {
+    "fallbackAdvisor": {
       "type": "object",
       "additionalProperties": false,
       "required": ["strategy", "pool_eligible", "selection_scope", "description"],
       "properties": {
-        "strategy": {"const": "dedicated"},
+        "strategy": {"const": "fallback-chain"},
         "pool_eligible": {"const": false},
         "selection_scope": {"const": "advisor-runtime"},
         "description": {"$ref": "#/$defs/description"}
       }
     },
-    "reviewer": {
+    "fallbackReviewer": {
       "type": "object",
       "additionalProperties": false,
       "required": ["strategy", "pool_eligible", "selection_scope", "description"],
       "properties": {
-        "strategy": {"const": "dedicated"},
+        "strategy": {"const": "fallback-chain"},
         "pool_eligible": {"const": false},
         "selection_scope": {"const": "review-run"},
         "description": {"$ref": "#/$defs/description"}
