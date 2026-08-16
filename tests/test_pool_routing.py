@@ -98,11 +98,9 @@ class NativePoolRoutingTests(unittest.TestCase):
             ("default", "plan", "slow", "vision", "designer", "advisor", "reviewer"),
         )
         self.assertEqual(topology.strategy_for("default"), "manual")
-        for role in ("plan", "slow", "vision", "designer"):
+        for role in ("plan", "slow", "vision", "designer", "advisor", "reviewer"):
             with self.subTest(role=role):
                 self.assertEqual(topology.strategy_for(role), "fallback-chain")
-        self.assertEqual(topology.strategy_for("advisor"), "dedicated")
-        self.assertEqual(topology.strategy_for("reviewer"), "dedicated")
         self.assertEqual(
             {role for role, value in topology.roles.items() if value.pool_eligible},
             set(POOL_ROLES),
