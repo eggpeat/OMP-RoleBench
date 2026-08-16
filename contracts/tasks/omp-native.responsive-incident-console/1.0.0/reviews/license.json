@@ -22,7 +22,7 @@
     "public_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
     "source_digest_sha256": "9cf68a265cb60c8a34a0d7bde0c9ac33456240d7e66b3e903fa3d3a1acbe04ee",
     "source_task": null,
-    "verifier_private_tree_digest_sha256": "2fb47489622660499741f0d07e74d9561c296258d5a034d3ee871ef2511779d5"
+    "verifier_private_tree_digest_sha256": "131117468679001b5815b534cc718094be52e4e6472b4936ad29eece65ad574b"
   },
   "task_id": "omp-native.responsive-incident-console",
   "task_version": "1.0.0"

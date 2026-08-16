@@ -281,6 +281,7 @@ def main() -> int:
         "disclosure_visible_after_open",
         "navigation_rendered",
         "active_navigation_current",
+        "visual_design_rubric",
         "screenshot_bytes",
         "screenshot_sha256",
     }
@@ -318,6 +319,7 @@ def main() -> int:
                     "cards_horizontally_in_view",
                     "text_contrast_aa",
                     "required_text_painted",
+                    "visual_design_rubric",
                 )
             )
             or isinstance(surface.get("screenshot_bytes"), bool)

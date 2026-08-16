@@ -196,15 +196,25 @@ AUDIT = r"""
       before.background !== null
       && after.background !== null
       && contrast(before.background, after.background) >= 3;
-    const shadowColors = [
-      ...after.boxShadow.matchAll(/rgba?\([^)]+\)/g),
-    ].map((match) => rgba(match[0]));
+    const shadowItems = (after.boxShadow || '')
+      .split(/,(?![^(]*\))/)
+      .map((s) => s.trim())
+      .filter(Boolean);
     const shadowSignal =
       after.boxShadow !== before.boxShadow
       && after.boxShadow !== 'none'
-      && shadowColors.some((color) =>
-        color[3] > 0 && contrast(blend(color, background), background) >= 3
-      );
+      && shadowItems.some((shadow) => {
+        const colorMatch = shadow.match(/rgba?\([^)]+\)/);
+        if (!colorMatch) return false;
+        const color = rgba(colorMatch[0]);
+        if (color[3] <= 0 || contrast(blend(color, background), background) < 3) return false;
+        const lengths = shadow.replace(colorMatch[0], '').match(/-?[\d.]+(?:px)?/g);
+        if (!lengths) return false;
+        const nums = lengths.map((l) => Number.parseFloat(l) || 0);
+        const [x = 0, y = 0, blur = 0, spread = 0] = nums;
+        const extent = Math.max(Math.abs(spread), Math.abs(blur), Math.hypot(x, y));
+        return extent >= 1.5;
+      });
     return outlineSignal || borderSignal || backgroundSignal || shadowSignal;
   };
 
@@ -239,6 +249,7 @@ AUDIT = r"""
 
   const navLabels = navLinks.map((node) => normalize(node));
   const filterControls = [...document.querySelectorAll('select')].filter(visible);
+  const primaryIsFilter = Boolean(primary && (primary instanceof HTMLSelectElement || filterControls.includes(primary)));
   const filterOptions = filterControls.flatMap((control) =>
     [...control.querySelectorAll('option')].map(normalize)
   );
@@ -253,9 +264,17 @@ AUDIT = r"""
   const productRendered = normalize(document.querySelector('header')).includes(brief.product);
   const navigationRendered =
     navLabels.length === brief.navigation.length &&
+    (visible(sidebar)
+      ? navLinks.every((node) => {
+          const rect = node.getBoundingClientRect();
+          return rendered(node) && rect.right > 0 && rect.left < window.innerWidth;
+        })
+      : true) &&
     brief.navigation.every((label, index) => navLabels[index] === label);
   const filtersRendered =
+    primaryIsFilter &&
     filterControls.length > 0 &&
+    filterControls.includes(primary) &&
     brief.filters.every((label) => filterOptions.includes(label));
   const sidebarRect = sidebar ? sidebar.getBoundingClientRect() : null;
   const gridRect = grid ? grid.getBoundingClientRect() : null;
@@ -314,7 +333,9 @@ AUDIT = r"""
       requiredTextPainted = requiredTextPainted
         && fontSize > 0
         && textRect.width > 0
-        && textRect.height > 0;
+        && textRect.height > 0
+        && textRect.right > 0
+        && textRect.left < window.innerWidth;
       textElements.add(parent);
     }
   }
@@ -323,8 +344,14 @@ AUDIT = r"""
       rendered(control) &&
       (normalize(control) || String(control.value || '').trim() || String(control.placeholder || '').trim())
     ) {
+      const rect = control.getBoundingClientRect();
       requiredTextPainted =
-        requiredTextPainted && Number.parseFloat(getComputedStyle(control).fontSize) > 0;
+        requiredTextPainted
+        && Number.parseFloat(getComputedStyle(control).fontSize) > 0
+        && rect.width > 0
+        && rect.height > 0
+        && rect.right > 0
+        && rect.left < window.innerWidth;
       textElements.add(control);
     }
   }
@@ -354,8 +381,57 @@ AUDIT = r"""
       style.backgroundImage === 'none'
       && style.filter === 'none'
       && (style.backdropFilter || 'none') === 'none'
+      && (style.mixBlendMode || 'normal') === 'normal'
+      && (style.backgroundBlendMode || 'normal') === 'normal'
     );
   });
+  const h1 = document.querySelector('h1');
+  const h1Style = h1 ? getComputedStyle(h1) : null;
+  const h1FontSize = h1Style ? Number.parseFloat(h1Style.fontSize) : 0;
+  const h2s = cards.map((c) => c.querySelector('h2')).filter(Boolean);
+  const h2FontSizes = h2s.map((h) => Number.parseFloat(getComputedStyle(h).fontSize));
+  const avgH2FontSize = h2FontSizes.length ? h2FontSizes.reduce((a, b) => a + b, 0) / h2FontSizes.length : 0;
+  const bodyFontSize = Number.parseFloat(getComputedStyle(document.body).fontSize) || 16;
+  const visualHierarchy = Boolean(
+    h1FontSize >= 20 &&
+    avgH2FontSize >= 14 &&
+    h1FontSize > avgH2FontSize &&
+    avgH2FontSize >= bodyFontSize * 0.95
+  );
+  const cardPaddingValid = cards.length > 0 && cards.every((c) => {
+    const style = getComputedStyle(c);
+    return (
+      Number.parseFloat(style.paddingTop) >= 8 &&
+      Number.parseFloat(style.paddingBottom) >= 8 &&
+      Number.parseFloat(style.paddingLeft) >= 8 &&
+      Number.parseFloat(style.paddingRight) >= 8
+    );
+  });
+  const cardSpacingValid = cardPaddingValid && (
+    columns === 3
+      ? (cardRects.length >= 3 && cardRects[1].left >= cardRects[0].right + 4 && cardRects[2].left >= cardRects[1].right + 4)
+      : (cardRects.length >= 2 ? cardRects[1].top >= cardRects[0].bottom + 4 : true)
+  );
+  const cardStyles = cards.map((c) => {
+    const s = getComputedStyle(c);
+    const b = c.querySelector('.severity, [class*="severity"]') || c;
+    const bs = getComputedStyle(b);
+    return s.borderTopColor + s.borderColor + s.backgroundColor + bs.color + bs.backgroundColor;
+  });
+  const severityDistinct = cards.length === brief.incidents.length && new Set(cardStyles).size >= 2;
+  const desktopAlignmentValid = columns === 3
+    ? cardRects.length >= 3 &&
+      Math.abs(cardRects[0].top - cardRects[1].top) < 3 &&
+      Math.abs(cardRects[1].top - cardRects[2].top) < 3 &&
+      Math.abs(cardRects[0].width - cardRects[1].width) < 4 &&
+      Math.abs(cardRects[1].width - cardRects[2].width) < 4
+    : true;
+  const visualDesignRubric = Boolean(
+    visualHierarchy &&
+    cardSpacingValid &&
+    severityDistinct &&
+    desktopAlignmentValid
+  );
   const textContrasts = textMetrics.map((metric) => metric.ratio);
   const minimumTextContrast = textContrasts.length ? Math.min(...textContrasts) : 0;
   const solidTextBackgrounds = unsupportedPaintEffectsAbsent
@@ -381,6 +457,7 @@ AUDIT = r"""
     solid_text_backgrounds: solidTextBackgrounds,
     text_contrast_aa: textContrastAa,
     required_text_painted: requiredTextPainted && textElements.size > 0,
+    visual_design_rubric: visualDesignRubric,
     focus_indicator: focusIndicator,
     disclosure_visible_after_open: disclosureVisible,
     navigation_rendered: navigationRendered,
@@ -531,6 +608,15 @@ def _validate_submission(value: object, brief: dict[str, object]) -> tuple[str, 
         and bool((mobile_hooks[0][1].get("aria-label") or "").strip())
         and "disabled" not in mobile_hooks[0][1]
     )
+    primary_hooks = [
+        (tag, attrs)
+        for tag, attrs in parser.attributes
+        if attrs.get("data-role") == "primary-action"
+    ]
+    primary_is_filter = (
+        len(primary_hooks) == 1
+        and primary_hooks[0][0] == "select"
+    )
     hook_counts = {
         role: sum(
             attrs.get("data-role") == role
@@ -538,7 +624,7 @@ def _validate_submission(value: object, brief: dict[str, object]) -> tuple[str, 
         )
         for role in {"mobile-menu", "incident-grid", "primary-action"}
     }
-    hooks = all(count == 1 for count in hook_counts.values())
+    hooks = all(count == 1 for count in hook_counts.values()) and primary_is_filter
     content_complete = all(item in html for item in _required_content(brief))
     checks = {
         "semantic_structure": semantics,
@@ -753,7 +839,7 @@ def _exercise_disclosures(client: CDPClient, expected_count: int) -> None:
     _runtime_value(client, "scrollTo(0, 0); true")
 
 
-def _render(work: Path, width: int, height: int, brief: dict[str, object]) -> dict[str, object]:
+def _render(work: Path, width: int, height: int, brief: dict[str, object], *, home_dir: Path, tmp_dir: Path) -> dict[str, object]:
     profile = work / f"chromium-{width}"
     process = subprocess.Popen(
         [
@@ -773,7 +859,7 @@ def _render(work: Path, width: int, height: int, brief: dict[str, object]) -> di
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        env={"HOME": "/workspace/rolebench-home", "LANG": "C.UTF-8", "PATH": "/usr/bin:/bin", "TMPDIR": "/workspace"},
+        env={"HOME": str(home_dir), "LANG": "C.UTF-8", "PATH": "/usr/bin:/bin", "TMPDIR": str(tmp_dir)},
     )
     client: CDPClient | None = None
     try:
@@ -856,13 +942,15 @@ def main() -> int:
         brief_bytes, brief = _load_brief()
         parsed = json.loads(payload.decode("utf-8"), object_pairs_hook=_unique_object, parse_constant=_reject_constant)
         html, css, checks = _validate_submission(parsed, brief)
-        with tempfile.TemporaryDirectory(prefix="rolebench-ui-", dir="/workspace") as temporary:
+        workspace = Path("/workspace") if Path("/workspace").is_dir() else Path(tempfile.gettempdir())
+        home_dir = workspace / "rolebench-home"
+        home_dir.mkdir(mode=0o700, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="rolebench-ui-", dir=str(workspace)) as temporary:
             work = Path(temporary)
             (work / "index.html").write_text(html, encoding="utf-8")
             (work / "styles.css").write_text(css, encoding="utf-8")
-            Path("/workspace/rolebench-home").mkdir(mode=0o700, exist_ok=True)
-            desktop = _render(work, 1280, 800, brief)
-            mobile = _render(work, 390, 844, brief)
+            desktop = _render(work, 1280, 800, brief, home_dir=home_dir, tmp_dir=workspace)
+            mobile = _render(work, 390, 844, brief, home_dir=home_dir, tmp_dir=workspace)
         brief_sha256 = hashlib.sha256(brief_bytes).hexdigest()
     except (UnicodeDecodeError, json.JSONDecodeError, SubmissionError, OSError, TypeError, RecursionError, subprocess.SubprocessError) as error:
         sys.stdout.write(_snapshot(status="rejected", error=str(error), brief_sha256=None, source_checks=None, desktop=None, mobile=None))

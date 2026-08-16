@@ -148,13 +148,13 @@
     },
     "verifier": {
       "decision": "approved",
-      "evidence_digest_sha256": "a08ad076fa3d2cc73fa6e254c1939f62db874c1728df79b8393768b0ecba8073",
+      "evidence_digest_sha256": "3827794891b45bd4c0599e507f1b632b3623ad295082cc8a9af8ecb6fda6c029",
       "evidence_path": "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6/reviews/verifier.json",
       "private_tree_digest_sha256": "17c389cda5c23d31b86c8a4db1a82c958e826f7bf94f849f575d57f13233d3c4",
       "reviewed_at": "2026-08-16T02:12:34Z",
       "reviewer": "rolebench/reviewer/verifier-gate-v1",
-      "runner_config_digest_sha256": "338e438da7739431221a7a99c8995165373673d7afef8fb20d9ea4c70ddb9c74",
-      "runner_image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:039cee079a94e0b22eee79f067267ad46cfb0eb9ac89819b4b6a6e957addc2d2",
+      "runner_config_digest_sha256": "671ee44af0d12c28cdaa525e9b6d6dcee9b4abe14d7669bbca70c897f6b48386",
+      "runner_image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:d078e197a48e35b62682f7b4b6c321f1ecc7c74dacebf384451b9a9025d3a987",
       "runner_platform": {
         "architecture": "amd64",
         "os": "linux",
@@ -180,8 +180,8 @@
       "--rolebench-run"
     ],
     "asset_tree_digest_sha256": "2696f269259a3367f32322e030ce605ac5fe67ee4710ebbc0ada49a36941243d",
-    "config_digest_sha256": "338e438da7739431221a7a99c8995165373673d7afef8fb20d9ea4c70ddb9c74",
-    "image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:039cee079a94e0b22eee79f067267ad46cfb0eb9ac89819b4b6a6e957addc2d2",
+    "config_digest_sha256": "671ee44af0d12c28cdaa525e9b6d6dcee9b4abe14d7669bbca70c897f6b48386",
+    "image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:d078e197a48e35b62682f7b4b6c321f1ecc7c74dacebf384451b9a9025d3a987",
     "platform": {
       "architecture": "amd64",
       "os": "linux",

@@ -23,6 +23,7 @@ FORBIDDEN = re.compile(
     r"(?i)(?:^|[^a-z])(?:system|execute|source|read|write|edit|function|autocmd|terminal|python|perl|ruby|lua|job_start|channel|sockconnect)(?:[^a-z]|$)|:!|`|\x00"
 )
 VIMSCRIPT_FUNCTION_CALL = re.compile(r"(?i)[a-z_][a-z0-9_#]*\s*\(")
+ALLOWED_EX_COMMANDS = frozenset({"s", "sub", "substitute", "sm", "snomagic", "smagic"})
 
 
 class SubmissionError(ValueError):
@@ -120,6 +121,24 @@ def _validate_script(script: object) -> tuple[str, int]:
                 raise SubmissionError("macro contains a forbidden command or character")
             if VIMSCRIPT_FUNCTION_CALL.search(decoded):
                 raise SubmissionError("Vimscript function calls are forbidden in macros")
+            scan_index = 0
+            while scan_index < len(decoded):
+                colon_pos = decoded.find(":", scan_index)
+                if colon_pos < 0:
+                    break
+                end_pos = len(decoded)
+                for sep in ("\r", "\n"):
+                    sep_pos = decoded.find(sep, colon_pos)
+                    if sep_pos >= 0 and sep_pos < end_pos:
+                        end_pos = sep_pos
+                ex_line = decoded[colon_pos + 1 : end_pos].strip()
+                cmd_match = re.match(r"^[0-9, %$'.+\-\s]*([a-zA-Z_]+|[^a-zA-Z0-9\s])", ex_line)
+                if not cmd_match:
+                    raise SubmissionError("empty or invalid Ex command in macro")
+                cmd = cmd_match.group(1).casefold()
+                if cmd not in ALLOWED_EX_COMMANDS:
+                    raise SubmissionError("forbidden Ex command in macro")
+                scan_index = end_pos + 1
             macros[register] = decoded
             continue
         match = RUN.fullmatch(line)

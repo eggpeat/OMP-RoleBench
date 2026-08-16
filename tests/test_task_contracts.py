@@ -1865,6 +1865,37 @@ class RoleAnchorSemanticTests(unittest.TestCase):
         ):
             validate_script("\n".join(lines) + "\n")
 
+    def test_vim_runner_rejects_abbreviated_and_aliased_file_reads(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
+        )
+        namespace = runpy.run_path(str(task_dir / "runner.py"))
+        validate_script = namespace["_validate_script"]
+        submission_error = namespace["SubmissionError"]
+        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
+
+        for command in (
+            r":r /etc/hostname\<CR>u",
+            r":e /etc/passwd\<CR>u",
+            r":so /tmp/foo\<CR>u",
+            r":view /etc/hosts\<CR>u",
+            r":sp /etc/shadow\<CR>u",
+            r":vs /tmp/file\<CR>u",
+            r":fin foo\<CR>u",
+            r":tabe /tmp/file\<CR>u",
+            r":b /tmp/file\<CR>u",
+            r":w /tmp/out\<CR>u",
+        ):
+            with self.subTest(command=command):
+                lines = valid_script.splitlines()
+                lines[0] = f"call setreg('a', \"{command}j\")"
+                with self.assertRaisesRegex(
+                    submission_error,
+                    "forbidden",
+                ):
+                    validate_script("\n".join(lines) + "\n")
+
     def test_commit_verifier_rejects_negated_required_actions(self) -> None:
         task_dir = (
             PRODUCT_ROOT
@@ -2201,6 +2232,18 @@ class ResponsiveIncidentRunnerTests(unittest.TestCase):
                     "</header>",
                     '<button data-role="mobile-menu" aria-label="Other menu">'
                     "Other</button></header>",
+                    1,
+                ),
+                "audit_hooks_present",
+            ),
+            "non-filter primary action hook": (
+                valid_html.replace(
+                    'data-role="primary-action"',
+                    "",
+                    1,
+                ).replace(
+                    '<button class="menu-button"',
+                    '<button class="menu-button" data-role="primary-action"',
                     1,
                 ),
                 "audit_hooks_present",
