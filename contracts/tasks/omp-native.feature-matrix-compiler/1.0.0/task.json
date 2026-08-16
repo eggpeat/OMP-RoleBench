@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+      "config_digest_sha256": "6763118bc1705f42e52e07d2653e499a611e6ef826efc15a658bd9d1ca97d9a4",
+      "image": "rolebench.local/omp-native.feature-matrix-compiler-baseline@sha256:365b82bab36a354a179f177ed6bd4241402a9d86c30369451fda0054f67f88ce",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+      "config_digest_sha256": "906636f3eddc6bd3bd156fdbe1beb968f3a36912d30f26346b24d13c8f3ea91c",
+      "image": "rolebench.local/omp-native.feature-matrix-compiler-reference@sha256:8ac5103c533565281890bfbca423bc83dadf010985ccfc8b96e75f8492177334",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+      "config_digest_sha256": "831024688fb24a841828a433700d41a9b528fd6c32dd3c232b9ec98853057001",
+      "image": "rolebench.local/omp-native.feature-matrix-compiler-tamper@sha256:2e7eb6e4e67ac90bd79350ea65a2f4fb1db983dfc31def98d4766b79f295480d",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+    "config_digest_sha256": "bd677c784a8655eb93b374e3744cab19d5ebd97c16ae2a0a6029ae2ebd8cc685",
+    "image": "rolebench.local/omp-native.feature-matrix-compiler-candidate@sha256:2394c9d0a06b3e55b116dee46ef3defde27ee19dbe2fcb29b178dc1e9810a87e",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+      "prompt": {
+        "digest_sha256": "ad3dd11b404415c4e9a0d8abab74f44c544987aea35dd9f3804ef2e2ededaf57",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "8c0a8d1a58b69e3fee8e6d71694f5e54da7f038e55587d5ec7008bd7260d9929",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "acfaf24075a4f86363937adc50f7f917cabb73ddf18cd8d65d0f89cb903eeead",
+      "root": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "4742f037896e05a6b5e73c7cc039715fb8c50205dbf6da7a22ee73a53b8f6325",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.feature-matrix-compiler-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "code-generation",
+    "test-authoring",
+    "repository-navigation",
+    "targeted-verification"
+  ],
+  "content_digest_sha256": "91eb6ee7528fddece22b5bb59c4932b5385ca2dc917e380c1a88e6f683983675",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.feature-matrix-compiler",
+    "variant_id": "1.0.0-omp-native.feature-matrix-compiler"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Implement tabular feature aggregation compiler.",
+      "Support typed group-by aggregations and JSON export."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "3c16187e7d093ccfbf93a8fc9a16966b01137a2d2d9ee9da5305c2ae99963b18",
+      "evidence_path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "36eacb24ed1d73ffa52f5270b5bc3076d7d7113cf51f216705589b57bc89727b",
+      "evidence_path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "7318a4ae525959f77c56e8580199e6fe71643a2002d66bc0f0e892e118b97077",
+      "evidence_path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/reviews/split.json",
+      "family_id": "omp-native.feature-matrix-compiler",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "05adcc3b919606a6e7f6e96d07e5a23a59c7ac80649f2cb143ffd3576a465af6",
+      "evidence_path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "acfaf24075a4f86363937adc50f7f917cabb73ddf18cd8d65d0f89cb903eeead",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "5fc79f4d3dffc64b1be81c3b09ac40dc8a49c05435c55481ffdd0645518e7cc9",
+      "runner_image": "rolebench.local/omp-native.feature-matrix-compiler-runner@sha256:670c735847da106c2bbfe9fdf274f9c3127d0bfa55bfba928cb6fe22df32265e",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "fbe9c81df1e338468eb23a16ed592e63d20aa22632038d5e5ef6b27a68edd146",
+      "verifier_image": "rolebench.local/omp-native.feature-matrix-compiler-verifier@sha256:ac99ffe745d42305ee751ed045e228c8f6e2780e561b265f13a4ec458fc301db",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/implementation",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+    "config_digest_sha256": "5fc79f4d3dffc64b1be81c3b09ac40dc8a49c05435c55481ffdd0645518e7cc9",
+    "image": "rolebench.local/omp-native.feature-matrix-compiler-runner@sha256:670c735847da106c2bbfe9fdf274f9c3127d0bfa55bfba928cb6fe22df32265e",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+    "kind": "authored",
+    "version": "authored/omp-native.feature-matrix-compiler@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.feature-matrix-compiler-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "7318a4ae525959f77c56e8580199e6fe71643a2002d66bc0f0e892e118b97077",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.feature-matrix-compiler",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "acfaf24075a4f86363937adc50f7f917cabb73ddf18cd8d65d0f89cb903eeead",
+    "config_digest_sha256": "fbe9c81df1e338468eb23a16ed592e63d20aa22632038d5e5ef6b27a68edd146",
+    "image": "rolebench.local/omp-native.feature-matrix-compiler-verifier@sha256:ac99ffe745d42305ee751ed045e228c8f6e2780e561b265f13a4ec458fc301db",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

@@ -430,7 +430,7 @@ class CanonicalFixedPackTests(TaskContractFixture):
             "designer": 1,
             "commit": 1,
             "tiny": 1,
-            "task": 1,
+            "task": 12,
             "advisor": 2,
             "reviewer": 2,
         }

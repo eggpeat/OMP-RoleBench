@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "834e23567c6903345274621c6e0cfb0ab4a33815828fcb024ac9093fb8ed2301",
+    "public_tree_digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+    "verifier_digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "workspace_digest_sha256": "922997219221b03b600b8aaf1b8c2decb4b124056bbbbea12c5b1f9b09424ad5"
+  },
+  "task_id": "omp-native.schema-enum-sync",
+  "task_version": "1.0.0"
+}

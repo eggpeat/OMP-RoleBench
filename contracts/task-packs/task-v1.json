@@ -1,1 +1,177 @@
-{"entries":[{"qualification":{"digest_sha256":"d10ed1a787bb33b5f175c4def9ccd5d4121be442e682a60d4245cea5dbc0c0db","path":"contracts/tasks/terminal-bench.cancel-async-tasks/2.1-r6/qualification.json"},"task":{"digest_sha256":"92219b05054db61c22a102c145ff589e05e49e33a2d1714df36f036bcdad7c23","path":"contracts/tasks/terminal-bench.cancel-async-tasks/2.1-r6/task.json"}}],"pack_id":"task-v1","partition":"anchor","required_capabilities":["autonomous-task-execution","terminal-tool-use","code-editing","repository-navigation","targeted-verification"],"role":"task","role_contract":{"contract_id":"role-contract/task/v1","digest_sha256":"dc927f53dafcf63acb5e3609786e6e32a6913d1eadb29b60a7997a606ddca2f6"},"routing_eligible":false,"schema_version":"omp.task-pack/v1","selection_method":"fixed-anchor","status":"calibration","task_mix":"task-v1"}
+{
+  "entries": [
+    {
+      "qualification": {
+        "digest_sha256": "366afae7f746e2db475cd8f7b0cecbad79b6e31371e46e2d028a0a253085426b",
+        "path": "contracts/tasks/terminal-bench.cancel-async-tasks/2.1-r6/qualification.json"
+      },
+      "routing_lane": "task/debugging",
+      "task": {
+        "digest_sha256": "f1d56b7a37133bd337bef9d067144a222aee6fd412c7bd5d9c9cd2bf406dc26f",
+        "path": "contracts/tasks/terminal-bench.cancel-async-tasks/2.1-r6/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "e8b0b8dd6d4bc8bf87e05f388dab93912650e7344e71f2fc7389f6c3338a8fd2",
+        "path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/implementation",
+      "task": {
+        "digest_sha256": "ec97b7d709783c3d1dfc42d3c1483e0719fa12476a125e724fa2de0701fa138e",
+        "path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "9b757ef9ce22b01207cf6007dac686d105089d018aa11345d028f3ef679aaa25",
+        "path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/implementation",
+      "task": {
+        "digest_sha256": "03c9475c0f0c6ddb3a8bd329318877de4225678370d7c6ac437ae4d8392e93ed",
+        "path": "contracts/tasks/omp-native.feature-matrix-compiler/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "db478418cb16b953f0a09337c5cc51012699890b8265040bdc9478508c09f6ca",
+        "path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/debugging",
+      "task": {
+        "digest_sha256": "38c6892706eb5292b4215bbd8fa4db9df36f255d2355054d7ff072ba4345ce86",
+        "path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "697cfb129824e895fa9f383c464a1a7552fa4ef2aceb4ab683c7dca3f96afeef",
+        "path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/test-repair",
+      "task": {
+        "digest_sha256": "66e9f6589e65ffdeef4fc0d15f15a2672c61b8fe8f6630bcebfdcc6403f96a1e",
+        "path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "1af55f83bfb48a85ce9c3c1368ccc59193fef34d18ff31a48b6d6378003ef8cf",
+        "path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/test-repair",
+      "task": {
+        "digest_sha256": "e91732b0ab5d8c897b3b7bdc9f8b2d9b8574e989c64addb9431de99bf45fe2f9",
+        "path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "4fea4997e3faf50c2c9d8fbc4b29b2ba2d5b7ff9cb19d68d42eeb713c822d668",
+        "path": "contracts/tasks/omp-native.sync-to-async-client-refactor/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/refactor",
+      "task": {
+        "digest_sha256": "442d28626dbcb9ee11e74360187c24fe03df6a7e0f69573ff6d8e2c278acaf77",
+        "path": "contracts/tasks/omp-native.sync-to-async-client-refactor/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "45e1ce72380a4af5db54738bc6a8478c6fea1e3142ae0d61c059dcb8386e0020",
+        "path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/refactor",
+      "task": {
+        "digest_sha256": "5f892e6b4f0d03976b065ad710b700bb91d3459fe29b8caa7b2ee14983e37383",
+        "path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "e75962f6fa3faf9e6baf92407eebc60b58f1e06aa4537bc42571b755788aa9a9",
+        "path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/repo-research",
+      "task": {
+        "digest_sha256": "25187a0833748ad239c66e9059aec695549903d2fd6490d23959f8ce59d9af5f",
+        "path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "f66491c9cd5366d5203c32c71a1db06fcc65b38f6ad269abfb12d984219b1f3c",
+        "path": "contracts/tasks/omp-native.vulnerability-impact-trace/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/repo-research",
+      "task": {
+        "digest_sha256": "40d60a6058aff6a6296d66bd64acd93ed730a982e122223f31ca5c71aa6c9946",
+        "path": "contracts/tasks/omp-native.vulnerability-impact-trace/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "09913606349f7130cee6520e720651153977f08438708a74adb861e8c0ec6ec0",
+        "path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/mechanical-edit",
+      "task": {
+        "digest_sha256": "eb102c2d8d0d524f49571eab1d4602e7a2e871a5878f7474e32973fba34e6ea2",
+        "path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "732a8c308d1be89d66a0a9702f020f049d48fcb762a3eaa32c0b70199243b491",
+        "path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/qualification.json"
+      },
+      "routing_lane": "task/mechanical-edit",
+      "task": {
+        "digest_sha256": "d81144c2ca03e2f3cc2365cf44afc986600f71c5bde20a43e649bcb5ae75a56a",
+        "path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/task.json"
+      }
+    }
+  ],
+  "pack_id": "task-pack/task/v1",
+  "partition": "anchor",
+  "required_capabilities": [
+    "autonomous-task-execution",
+    "terminal-tool-use",
+    "code-editing",
+    "repository-navigation",
+    "targeted-verification",
+    "code-generation",
+    "test-authoring",
+    "defect-reproduction",
+    "root-cause-analysis",
+    "targeted-patching",
+    "regression-testing",
+    "test-diagnosis",
+    "harness-repair",
+    "mock-adaptation",
+    "contract-preservation",
+    "ast-refactoring",
+    "callsite-migration",
+    "type-safety-preservation",
+    "behavior-equivalence",
+    "codebase-scouting",
+    "cross-file-tracing",
+    "grounded-summarization",
+    "read-only-safety",
+    "batch-editing",
+    "pattern-application",
+    "strict-formatting",
+    "exhaustiveness"
+  ],
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "schema_version": "omp.task-pack/v1",
+  "selection_method": "fixed-anchor",
+  "status": "calibration",
+  "task_mix": "task-v1"
+}

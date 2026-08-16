@@ -1,0 +1,29 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "author-declaration",
+      "reference": "RoleBench task license."
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain MIT license notice."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+    "source_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+    "source_task": null,
+    "verifier_private_tree_digest_sha256": "acfaf24075a4f86363937adc50f7f917cabb73ddf18cd8d65d0f89cb903eeead"
+  },
+  "task_id": "omp-native.feature-matrix-compiler",
+  "task_version": "1.0.0"
+}

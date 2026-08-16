@@ -1,0 +1,29 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "author-declaration",
+      "reference": "RoleBench task license."
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain MIT license notice."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+    "source_digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+    "source_task": null,
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1"
+  },
+  "task_id": "omp-native.deprecation-annotation-pass",
+  "task_version": "1.0.0"
+}

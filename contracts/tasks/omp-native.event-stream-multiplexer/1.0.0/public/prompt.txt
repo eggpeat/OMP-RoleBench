@@ -1,0 +1,1 @@
+Implement an asynchronous event multiplexer in `src/multiplexer.py` with topic filtering and backpressure queue support. Author tests in `tests/test_multiplexer.py`.

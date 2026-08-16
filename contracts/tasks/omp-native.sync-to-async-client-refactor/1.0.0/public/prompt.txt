@@ -1,0 +1,1 @@
+Refactor `client.py` from sync to async/await across all callsites.

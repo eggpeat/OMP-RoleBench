@@ -1,0 +1,40 @@
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "report_digests_sha256": [
+    "ba8a3fc5038b3af9b994357c5a4cfc3326637bc52850c84e0f29c58d845f3dc7",
+    "e65ab58ee4000d6d08c3084418556a37e9576ee833b554194be8bebd87be8b46",
+    "bc7090d2fa0851e96803d274a344e8c5306831ec63f4b97a737dddb79b412b30",
+    "bfc0ca8d73abe3973f3a84fbae998223bba4c8763c4db035edbc6d5388435b17",
+    "894df43d7eba70be04859f26423822d991218406ff785b030d84c87948046d7d",
+    "b77d0b5809ca4535101a7f0af2eeae019a1bb8a56141f5f86f428af989bf760a"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-16T15:15:00Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+    "runner_config_digest_sha256": "b1d1c0c00df89de055f5dc48f6ca7f30926503f48360669f9677f74f5d34f9e0",
+    "runner_image": "rolebench.local/omp-native.modernize-scientific-stack-runner@sha256:a06e175f0e70f7414c37009015b6642ab698b2ff3b5bbbedfef10535811acdb8",
+    "verifier_config_digest_sha256": "90c5c394d4c57539f30161d9d874dceac02a0dc66d3d1fbeb00d6ac2fba97aa6",
+    "verifier_image": "rolebench.local/omp-native.modernize-scientific-stack-verifier@sha256:6a97f3ab31f0b3afc01e7b45bf60320e0222de960f4563f189042197089625bc",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1"
+  },
+  "task_id": "omp-native.modernize-scientific-stack",
+  "task_version": "1.0.0"
+}

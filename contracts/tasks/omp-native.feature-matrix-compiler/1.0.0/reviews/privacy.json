@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "ad3dd11b404415c4e9a0d8abab74f44c544987aea35dd9f3804ef2e2ededaf57",
+    "public_tree_digest_sha256": "9e84df8e0979d97167529344e982a561c1aa9b9e0b59bed9fd8bcba54922cb3c",
+    "verifier_digest_sha256": "4742f037896e05a6b5e73c7cc039715fb8c50205dbf6da7a22ee73a53b8f6325",
+    "verifier_private_tree_digest_sha256": "acfaf24075a4f86363937adc50f7f917cabb73ddf18cd8d65d0f89cb903eeead",
+    "workspace_digest_sha256": "8c0a8d1a58b69e3fee8e6d71694f5e54da7f038e55587d5ec7008bd7260d9929"
+  },
+  "task_id": "omp-native.feature-matrix-compiler",
+  "task_version": "1.0.0"
+}

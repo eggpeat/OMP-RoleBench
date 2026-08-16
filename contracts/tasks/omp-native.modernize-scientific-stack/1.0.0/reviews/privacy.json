@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "173e281b0d8164e0bd2b3dd8ad3de1f10312ecdef3f0a4bea676bcc1d60fcfca",
+    "public_tree_digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+    "verifier_digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "workspace_digest_sha256": "240e2b80bd23156350c49e8d554f8327c7ecfcb73f63ccc4dbdc0513f73d2e70"
+  },
+  "task_id": "omp-native.modernize-scientific-stack",
+  "task_version": "1.0.0"
+}

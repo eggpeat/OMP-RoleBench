@@ -1,0 +1,40 @@
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "report_digests_sha256": [
+    "b1bcc7a1643d031842c93d57f9e78b548a84f968f9890ac72520316c1bcb1c8b",
+    "1425f1b2afeec3588b26e42f9f7ebc89b121c823eea11ab67ce30f9446beb456",
+    "912157353483dd1fcb2fbf6a3ac70c3498611660e25218ea8d38f3f72717540c",
+    "9389c7b7ae83a17a9e722cb06b40c342e8acab8939aefd4aa34892dccb6643f1",
+    "bfaecc86ee7201612d8ffc9c07af068c1f926208624541f6e1fa7a870616539f",
+    "1429619caf956e830a759501cc7cfbf7bd9ba559338d675f406251cf2f6f8194"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-16T15:15:00Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+    "runner_config_digest_sha256": "fc33dc6a034541d62d8b9c5060ba5733a2f431da50b0c4a9754a3159d7379968",
+    "runner_image": "rolebench.local/omp-native.api-contract-test-modernization-runner@sha256:5c354b5e16371fc542a711bf62086be957a4c643f2d765ec46663772e1b40702",
+    "verifier_config_digest_sha256": "32246f7c494940f6867876042690dc10fe702bc8f0acf69bf94d1db6cbb4ee81",
+    "verifier_image": "rolebench.local/omp-native.api-contract-test-modernization-verifier@sha256:0e48c9fbbd4bbb7542cb3fb5a191b516f82c2889f5f9de0e41fc37d2e3f79524",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1"
+  },
+  "task_id": "omp-native.api-contract-test-modernization",
+  "task_version": "1.0.0"
+}

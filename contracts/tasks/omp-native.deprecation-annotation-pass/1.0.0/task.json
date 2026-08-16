@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+      "config_digest_sha256": "ef170bb39692e21aec299f4bf07a31543b46fa0f7c4ff452b531c899dc4f8293",
+      "image": "rolebench.local/omp-native.deprecation-annotation-pass-baseline@sha256:b72c6de94ac3858e30ac2a0ce2c2c044c3c9705e699e34f27c0525aec621c0ce",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+      "config_digest_sha256": "44828747f70d53f811c061b1f592b4479d5eaecf2fd2a613e557ed948a8dc7b2",
+      "image": "rolebench.local/omp-native.deprecation-annotation-pass-reference@sha256:53e571dbff69adccfa6fd2d52b9ba8f6ddeda52c393549380e19b0172310a648",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+      "config_digest_sha256": "8d6a242c8e5aca86a3d8b3f7ec28727e140d54e41676d164a0ef4fddc06a7fa3",
+      "image": "rolebench.local/omp-native.deprecation-annotation-pass-tamper@sha256:f8a2a340e41be46fcb8bf95e36f4fb93342dfd4ae0297e0d4573f626a1aae9e6",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+    "config_digest_sha256": "4fcf8e74c7a9b0ee0754737c56ec2665a14c0544acf76d0720fbdeb61f89bc2a",
+    "image": "rolebench.local/omp-native.deprecation-annotation-pass-candidate@sha256:b04acdee156242fbaebb36314fd348d9c037bc6538e422602857e194e42d401a",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+      "prompt": {
+        "digest_sha256": "ace0d608a35863544977694511cb4b884f079ea3b5611127e074545e2c205dee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "a4f719dff4ad6d857c089f8e2ab3715637e1450996c86a771f25c058b67c255a",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "root": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.deprecation-annotation-pass-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "batch-editing",
+    "pattern-application",
+    "strict-formatting",
+    "exhaustiveness"
+  ],
+  "content_digest_sha256": "2a2b4ab950828de35d099525fdd90d4dee4bc6856e09bf13d05aac6a801a4288",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.deprecation-annotation-pass",
+    "variant_id": "1.0.0-omp-native.deprecation-annotation-pass"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Apply `@deprecated` annotations and migration docstrings across 25 library functions.",
+      "Ensure zero dropped functions or corrupted signatures."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "818ea64ead3c2986aaf4eade3766f5bfd3fe492efc862742c20cde134de13146",
+      "evidence_path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "6af34196cdaf987831c8383ecc5356e174b52459fdeeb4c764922bf7adf21dbf",
+      "evidence_path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "158ab8236ac0dce44aa65c6db9c54b1dbac9d06b9deedc22031e8ea6efbcbc60",
+      "evidence_path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/reviews/split.json",
+      "family_id": "omp-native.deprecation-annotation-pass",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "2f7122739d1a76cdaeb039f61c69901e341afb877a36660d6fbb83d02e2a842e",
+      "evidence_path": "contracts/tasks/omp-native.deprecation-annotation-pass/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "91944202183e751fc557734a88aeacb1b34dfe10ad163c14391b5f60cc9a0122",
+      "runner_image": "rolebench.local/omp-native.deprecation-annotation-pass-runner@sha256:f729ba137e65834aa7928a2caaf1e9a117d88b0ee44ccf5c4ff4bf5abf14205f",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "97319c6be3c8b5038dda01cfe428c2972b46089b5492a6bba53a66188f5205b2",
+      "verifier_image": "rolebench.local/omp-native.deprecation-annotation-pass-verifier@sha256:f42b9758a641397eb0ef302f01fe745c926242b4867949e50cff7b471de29939",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/mechanical-edit",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+    "config_digest_sha256": "91944202183e751fc557734a88aeacb1b34dfe10ad163c14391b5f60cc9a0122",
+    "image": "rolebench.local/omp-native.deprecation-annotation-pass-runner@sha256:f729ba137e65834aa7928a2caaf1e9a117d88b0ee44ccf5c4ff4bf5abf14205f",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "322b37a52268c891c1a6d759b18655e674644240a5f6fdcacbbd8fee77746a94",
+    "kind": "authored",
+    "version": "authored/omp-native.deprecation-annotation-pass@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.deprecation-annotation-pass-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "158ab8236ac0dce44aa65c6db9c54b1dbac9d06b9deedc22031e8ea6efbcbc60",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.deprecation-annotation-pass",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "config_digest_sha256": "97319c6be3c8b5038dda01cfe428c2972b46089b5492a6bba53a66188f5205b2",
+    "image": "rolebench.local/omp-native.deprecation-annotation-pass-verifier@sha256:f42b9758a641397eb0ef302f01fe745c926242b4867949e50cff7b471de29939",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

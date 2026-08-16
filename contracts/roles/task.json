@@ -1,40 +1,62 @@
 {
-  "schema_version": "omp.role-contract/v1",
   "contract_id": "role-contract/task/v1",
-  "role": "task",
-  "display_name": "Autonomous Delegated Implementation",
   "diagnostic_contract": "Self-contained delegated implementation completed autonomously from repository inspection through safe edits and targeted verification, while honoring scope and returning a usable result to the parent workflow.",
+  "display_name": "Autonomous Delegated Implementation",
+  "failure_cost": "high",
+  "primary_metric": "autonomous-completion-rate",
   "required_capabilities": [
     "autonomous-task-execution",
     "terminal-tool-use",
     "code-editing",
     "repository-navigation",
-    "targeted-verification"
+    "targeted-verification",
+    "code-generation",
+    "test-authoring",
+    "defect-reproduction",
+    "root-cause-analysis",
+    "targeted-patching",
+    "regression-testing",
+    "test-diagnosis",
+    "harness-repair",
+    "mock-adaptation",
+    "contract-preservation",
+    "ast-refactoring",
+    "callsite-migration",
+    "type-safety-preservation",
+    "behavior-equivalence",
+    "codebase-scouting",
+    "cross-file-tracing",
+    "grounded-summarization",
+    "read-only-safety",
+    "batch-editing",
+    "pattern-application",
+    "strict-formatting",
+    "exhaustiveness"
   ],
-  "primary_metric": "autonomous-completion-rate",
+  "role": "task",
+  "schema_version": "omp.role-contract/v1",
   "secondary_metrics": [
     "accepted-solve-rate",
     "scope-adherence",
     "verification-validity",
     "regression-avoidance"
   ],
+  "stickiness_scope": "child-session",
+  "task_mix": "task-v1",
+  "thresholds": {
+    "confidence": null,
+    "latency_slo_seconds": null,
+    "quality_floor": null,
+    "reliability_floor": null,
+    "status": "calibration-required"
+  },
   "verifier": {
-    "objective_required": true,
+    "llm_judge": "supplemental",
     "modes": [
       "executable-task-verifier",
       "artifact-diff-review",
       "acceptance-criteria-check"
     ],
-    "llm_judge": "supplemental"
-  },
-  "failure_cost": "high",
-  "stickiness_scope": "child-session",
-  "task_mix": "task-v1",
-  "thresholds": {
-    "status": "calibration-required",
-    "quality_floor": null,
-    "reliability_floor": null,
-    "confidence": null,
-    "latency_slo_seconds": null
+    "objective_required": true
   }
 }

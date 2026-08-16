@@ -1,0 +1,1 @@
+Sync the new enum variant across all 20 model files in `models/`.

@@ -1,136 +1,55 @@
 {
-  "schema_version": "omp.task-suite-profile/v1",
+  "diversity_dimensions": {
+    "difficulty_distribution": {
+      "easy": 0.25,
+      "expert": 0.05,
+      "hard": 0.25,
+      "medium": 0.45
+    },
+    "min_distinct_environments": 3,
+    "min_distinct_languages": 4,
+    "mutation_modes": [
+      "mutation",
+      "read-only"
+    ],
+    "source_families": [
+      "terminal-bench",
+      "omp-native"
+    ]
+  },
   "profile_id": "omp-rolebench-v1-task-suite",
-  "version": "1.0.0",
-  "status": "draft",
+  "readiness_lifecycle": [
+    {
+      "description": "Task definitions, qualifications, or packs under active authoring; missing complete anchor coverage or reviewer evidence.",
+      "routing_eligible": false,
+      "state": "draft"
+    },
+    {
+      "description": "All 11 roles and 6 task lanes have qualified anchors, valid split reviews, and isolated passive verifiers, but lack cross-model calibration runs.",
+      "routing_eligible": false,
+      "state": "structurally-ready"
+    },
+    {
+      "description": "Structurally complete suite awaiting multi-model calibration evidence across candidate routes.",
+      "routing_eligible": false,
+      "state": "calibration-required"
+    },
+    {
+      "description": "Calibration complete; awaiting family-disjoint held-out evaluation to verify allocation regret reduction.",
+      "routing_eligible": false,
+      "state": "heldout-required"
+    },
+    {
+      "description": "Full calibration and held-out validation complete; thresholds frozen; authorized for production OMP routing policy generation.",
+      "routing_eligible": true,
+      "state": "routing-eligible"
+    }
+  ],
   "roles": {
-    "default": {
-      "role": "default",
-      "direct_measurement_contract": "Broad interactive coding, repository navigation, command execution, and multi-file data transformations.",
-      "required_capabilities": [
-        "terminal-tool-use",
-        "code-editing",
-        "repository-navigation",
-        "instruction-following",
-        "interactive-reasoning"
-      ],
-      "min_anchor_count": 2,
-      "primary_metric": "task-completion-rate",
-      "verifier_mode": "executable-task-verifier"
-    },
-    "smol": {
-      "role": "smol",
-      "direct_measurement_contract": "Correct bounded transformations, edits, and extractions under strict latency and consumption limits.",
-      "required_capabilities": [
-        "bounded-task-execution",
-        "mechanical-editing",
-        "concise-output",
-        "low-overhead-tool-use"
-      ],
-      "min_anchor_count": 1,
-      "primary_metric": "bounded-solve-rate",
-      "verifier_mode": "executable-task-verifier"
-    },
-    "slow": {
-      "role": "slow",
-      "direct_measurement_contract": "Deep diagnostic reasoning, complex bug localization, state recovery, and multi-hypothesis debugging.",
-      "required_capabilities": [
-        "root-cause-analysis",
-        "long-horizon-reasoning",
-        "hypothesis-testing",
-        "debugging-tool-use",
-        "failure-recovery"
-      ],
-      "min_anchor_count": 2,
-      "primary_metric": "hard-diagnosis-rate",
-      "verifier_mode": "executable-task-verifier"
-    },
-    "vision": {
-      "role": "vision",
-      "direct_measurement_contract": "Image-grounded visual reasoning, diagram-to-code synthesis, UI/schematic extraction, and multimodal accuracy.",
-      "required_capabilities": [
-        "image-input",
-        "visual-evidence-grounding",
-        "multimodal-reasoning",
-        "spatial-understanding",
-        "text-in-image-reading"
-      ],
-      "min_anchor_count": 2,
-      "primary_metric": "multimodal-accuracy",
-      "verifier_mode": "executable-task-verifier"
-    },
-    "plan": {
-      "role": "plan",
-      "direct_measurement_contract": "Executable architecture, decomposition, dependency sequencing, and operational planning without direct implementation.",
-      "required_capabilities": [
-        "system-architecture",
-        "task-decomposition",
-        "dependency-sequencing",
-        "interface-design",
-        "risk-identification"
-      ],
-      "min_anchor_count": 1,
-      "primary_metric": "plan-validity-rate",
-      "verifier_mode": "executable-task-verifier"
-    },
-    "designer": {
-      "role": "designer",
-      "direct_measurement_contract": "Visual design hierarchy, responsive CSS layouts, WCAG AA accessibility, contrast compliance, and rendered UI fidelity.",
-      "required_capabilities": [
-        "ui-implementation",
-        "visual-design-judgment",
-        "interaction-design",
-        "responsive-layout",
-        "accessibility-reasoning"
-      ],
-      "min_anchor_count": 1,
-      "primary_metric": "design-fidelity-score",
-      "verifier_mode": "rendered-ui-audit"
-    },
-    "commit": {
-      "role": "commit",
-      "direct_measurement_contract": "Diff-grounded commit-message synthesis following repository conventions with strict evidence citations and zero invention.",
-      "required_capabilities": [
-        "diff-comprehension",
-        "change-summarization",
-        "commit-convention-adherence",
-        "evidence-bounded-generation"
-      ],
-      "min_anchor_count": 1,
-      "primary_metric": "commit-semantic-accuracy",
-      "verifier_mode": "grammar-and-citation-check"
-    },
-    "tiny": {
-      "role": "tiny",
-      "direct_measurement_contract": "Deterministic metadata normalization, classification, title generation, and structured extraction.",
-      "required_capabilities": [
-        "structured-output",
-        "exact-format-following",
-        "metadata-transformation",
-        "classification",
-        "minimal-output"
-      ],
-      "min_anchor_count": 1,
-      "primary_metric": "exact-match-rate",
-      "verifier_mode": "deterministic-equality"
-    },
-    "task": {
-      "role": "task",
-      "direct_measurement_contract": "Autonomous delegated implementation across repository inspection, safe edits, and targeted verification.",
-      "required_capabilities": [
-        "autonomous-task-execution",
-        "terminal-tool-use",
-        "code-editing",
-        "repository-navigation",
-        "targeted-verification"
-      ],
-      "min_anchor_count": 1,
-      "primary_metric": "autonomous-completion-rate",
-      "verifier_mode": "executable-task-verifier"
-    },
     "advisor": {
-      "role": "advisor",
       "direct_measurement_contract": "Independent defect and security risk review discovering vulnerabilities with traceable evidence and false-positive control.",
+      "min_anchor_count": 2,
+      "primary_metric": "material-defect-recall",
       "required_capabilities": [
         "code-review",
         "defect-detection",
@@ -138,13 +57,68 @@
         "evidence-citation",
         "false-positive-control"
       ],
-      "min_anchor_count": 2,
-      "primary_metric": "material-defect-recall",
+      "role": "advisor",
       "verifier_mode": "seeded-defect-recall"
     },
+    "commit": {
+      "direct_measurement_contract": "Diff-grounded commit-message synthesis following repository conventions with strict evidence citations and zero invention.",
+      "min_anchor_count": 1,
+      "primary_metric": "commit-semantic-accuracy",
+      "required_capabilities": [
+        "diff-comprehension",
+        "change-summarization",
+        "commit-convention-adherence",
+        "evidence-bounded-generation"
+      ],
+      "role": "commit",
+      "verifier_mode": "grammar-and-citation-check"
+    },
+    "default": {
+      "direct_measurement_contract": "Broad interactive coding, repository navigation, command execution, and multi-file data transformations.",
+      "min_anchor_count": 2,
+      "primary_metric": "task-completion-rate",
+      "required_capabilities": [
+        "terminal-tool-use",
+        "code-editing",
+        "repository-navigation",
+        "instruction-following",
+        "interactive-reasoning"
+      ],
+      "role": "default",
+      "verifier_mode": "executable-task-verifier"
+    },
+    "designer": {
+      "direct_measurement_contract": "Visual design hierarchy, responsive CSS layouts, WCAG AA accessibility, contrast compliance, and rendered UI fidelity.",
+      "min_anchor_count": 1,
+      "primary_metric": "design-fidelity-score",
+      "required_capabilities": [
+        "ui-implementation",
+        "visual-design-judgment",
+        "interaction-design",
+        "responsive-layout",
+        "accessibility-reasoning"
+      ],
+      "role": "designer",
+      "verifier_mode": "rendered-ui-audit"
+    },
+    "plan": {
+      "direct_measurement_contract": "Executable architecture, decomposition, dependency sequencing, and operational planning without direct implementation.",
+      "min_anchor_count": 1,
+      "primary_metric": "plan-validity-rate",
+      "required_capabilities": [
+        "system-architecture",
+        "task-decomposition",
+        "dependency-sequencing",
+        "interface-design",
+        "risk-identification"
+      ],
+      "role": "plan",
+      "verifier_mode": "executable-task-verifier"
+    },
     "reviewer": {
-      "role": "reviewer",
       "direct_measurement_contract": "Native structured code review discovering material defects with exact file/line references, severity classification, and strict precision on clean code.",
+      "min_anchor_count": 2,
+      "primary_metric": "review-accuracy-score",
       "required_capabilities": [
         "code-review",
         "defect-recall",
@@ -152,152 +126,200 @@
         "structured-findings",
         "evidence-citation"
       ],
-      "min_anchor_count": 2,
-      "primary_metric": "review-accuracy-score",
+      "role": "reviewer",
       "verifier_mode": "structured-review-audit"
-    }
-  },
-  "task_lanes": {
-    "task/implementation": {
-      "lane": "task/implementation",
-      "role": "task",
-      "direct_work_definition": "End-to-end feature or enhancement implementation from specification to verified code.",
+    },
+    "slow": {
+      "direct_measurement_contract": "Deep diagnostic reasoning, complex bug localization, state recovery, and multi-hypothesis debugging.",
+      "min_anchor_count": 2,
+      "primary_metric": "hard-diagnosis-rate",
       "required_capabilities": [
+        "root-cause-analysis",
+        "long-horizon-reasoning",
+        "hypothesis-testing",
+        "debugging-tool-use",
+        "failure-recovery"
+      ],
+      "role": "slow",
+      "verifier_mode": "executable-task-verifier"
+    },
+    "smol": {
+      "direct_measurement_contract": "Correct bounded transformations, edits, and extractions under strict latency and consumption limits.",
+      "min_anchor_count": 1,
+      "primary_metric": "bounded-solve-rate",
+      "required_capabilities": [
+        "bounded-task-execution",
+        "mechanical-editing",
+        "concise-output",
+        "low-overhead-tool-use"
+      ],
+      "role": "smol",
+      "verifier_mode": "executable-task-verifier"
+    },
+    "task": {
+      "direct_measurement_contract": "Autonomous delegated implementation across repository inspection, safe edits, and targeted verification.",
+      "min_anchor_count": 1,
+      "primary_metric": "autonomous-completion-rate",
+      "required_capabilities": [
+        "autonomous-task-execution",
+        "terminal-tool-use",
+        "code-editing",
+        "repository-navigation",
+        "targeted-verification",
         "code-generation",
         "test-authoring",
-        "repository-navigation",
-        "targeted-verification"
+        "defect-reproduction",
+        "root-cause-analysis",
+        "targeted-patching",
+        "regression-testing",
+        "test-diagnosis",
+        "harness-repair",
+        "mock-adaptation",
+        "contract-preservation",
+        "ast-refactoring",
+        "callsite-migration",
+        "type-safety-preservation",
+        "behavior-equivalence",
+        "codebase-scouting",
+        "cross-file-tracing",
+        "grounded-summarization",
+        "read-only-safety",
+        "batch-editing",
+        "pattern-application",
+        "strict-formatting",
+        "exhaustiveness"
       ],
+      "role": "task",
+      "verifier_mode": "executable-task-verifier"
+    },
+    "tiny": {
+      "direct_measurement_contract": "Deterministic metadata normalization, classification, title generation, and structured extraction.",
+      "min_anchor_count": 1,
+      "primary_metric": "exact-match-rate",
+      "required_capabilities": [
+        "structured-output",
+        "exact-format-following",
+        "metadata-transformation",
+        "classification",
+        "minimal-output"
+      ],
+      "role": "tiny",
+      "verifier_mode": "deterministic-equality"
+    },
+    "vision": {
+      "direct_measurement_contract": "Image-grounded visual reasoning, diagram-to-code synthesis, UI/schematic extraction, and multimodal accuracy.",
+      "min_anchor_count": 2,
+      "primary_metric": "multimodal-accuracy",
+      "required_capabilities": [
+        "image-input",
+        "visual-evidence-grounding",
+        "multimodal-reasoning",
+        "spatial-understanding",
+        "text-in-image-reading"
+      ],
+      "role": "vision",
+      "verifier_mode": "executable-task-verifier"
+    }
+  },
+  "schema_version": "omp.task-suite-profile/v1",
+  "split_policy": {
+    "disjoint_family_enforcement": true,
+    "holdout_confidentiality": "confidential-external",
+    "strategy": "family-disjoint"
+  },
+  "status": "structurally-ready",
+  "task_lanes": {
+    "task/debugging": {
+      "direct_work_definition": "Defect reproduction, root-cause localization, minimal bug repair, and regression proof.",
+      "lane": "task/debugging",
       "min_anchor_count": 2,
       "min_calibration_samples": 12,
-      "min_regret_reduction_bps": 100
-    },
-    "task/debugging": {
-      "lane": "task/debugging",
-      "role": "task",
-      "direct_work_definition": "Defect reproduction, root-cause localization, minimal bug repair, and regression proof.",
+      "min_regret_reduction_bps": 100,
       "required_capabilities": [
         "defect-reproduction",
         "root-cause-analysis",
         "targeted-patching",
         "regression-testing"
       ],
-      "min_anchor_count": 2,
-      "min_calibration_samples": 12,
-      "min_regret_reduction_bps": 100
+      "role": "task"
     },
-    "task/test-repair": {
-      "lane": "task/test-repair",
-      "role": "task",
-      "direct_work_definition": "Fixing broken, flaky, or out-of-date test suites while preserving product contracts.",
-      "required_capabilities": [
-        "test-diagnosis",
-        "harness-repair",
-        "mock-adaptation",
-        "contract-preservation"
-      ],
+    "task/implementation": {
+      "direct_work_definition": "End-to-end feature or enhancement implementation from specification to verified code.",
+      "lane": "task/implementation",
       "min_anchor_count": 2,
       "min_calibration_samples": 12,
-      "min_regret_reduction_bps": 100
-    },
-    "task/refactor": {
-      "lane": "task/refactor",
-      "role": "task",
-      "direct_work_definition": "Structural code transformations, deprecation cleanups, and interface migrations with zero behavioral regression.",
+      "min_regret_reduction_bps": 100,
       "required_capabilities": [
-        "ast-refactoring",
-        "callsite-migration",
-        "type-safety-preservation",
-        "behavior-equivalence"
+        "code-generation",
+        "test-authoring",
+        "repository-navigation",
+        "targeted-verification"
       ],
-      "min_anchor_count": 2,
-      "min_calibration_samples": 12,
-      "min_regret_reduction_bps": 100
-    },
-    "task/repo-research": {
-      "lane": "task/repo-research",
-      "role": "task",
-      "direct_work_definition": "Read-only exploration, architecture mapping, callsite tracing, and evidence-grounded summarization.",
-      "required_capabilities": [
-        "codebase-scouting",
-        "cross-file-tracing",
-        "grounded-summarization",
-        "read-only-safety"
-      ],
-      "min_anchor_count": 2,
-      "min_calibration_samples": 12,
-      "min_regret_reduction_bps": 100
+      "role": "task"
     },
     "task/mechanical-edit": {
-      "lane": "task/mechanical-edit",
-      "role": "task",
       "direct_work_definition": "High-volume deterministic edits, batch renames, schema syncs, and lint/style fixes without hallucination.",
+      "lane": "task/mechanical-edit",
+      "min_anchor_count": 2,
+      "min_calibration_samples": 12,
+      "min_regret_reduction_bps": 100,
       "required_capabilities": [
         "batch-editing",
         "pattern-application",
         "strict-formatting",
         "exhaustiveness"
       ],
+      "role": "task"
+    },
+    "task/refactor": {
+      "direct_work_definition": "Structural code transformations, deprecation cleanups, and interface migrations with zero behavioral regression.",
+      "lane": "task/refactor",
       "min_anchor_count": 2,
       "min_calibration_samples": 12,
-      "min_regret_reduction_bps": 100
-    }
-  },
-  "diversity_dimensions": {
-    "source_families": [
-      "terminal-bench",
-      "omp-native"
-    ],
-    "min_distinct_languages": 4,
-    "min_distinct_environments": 3,
-    "difficulty_distribution": {
-      "easy": 0.25,
-      "medium": 0.45,
-      "hard": 0.25,
-      "expert": 0.05
+      "min_regret_reduction_bps": 100,
+      "required_capabilities": [
+        "ast-refactoring",
+        "callsite-migration",
+        "type-safety-preservation",
+        "behavior-equivalence"
+      ],
+      "role": "task"
     },
-    "mutation_modes": [
-      "mutation",
-      "read-only"
-    ]
+    "task/repo-research": {
+      "direct_work_definition": "Read-only exploration, architecture mapping, callsite tracing, and evidence-grounded summarization.",
+      "lane": "task/repo-research",
+      "min_anchor_count": 2,
+      "min_calibration_samples": 12,
+      "min_regret_reduction_bps": 100,
+      "required_capabilities": [
+        "codebase-scouting",
+        "cross-file-tracing",
+        "grounded-summarization",
+        "read-only-safety"
+      ],
+      "role": "task"
+    },
+    "task/test-repair": {
+      "direct_work_definition": "Fixing broken, flaky, or out-of-date test suites while preserving product contracts.",
+      "lane": "task/test-repair",
+      "min_anchor_count": 2,
+      "min_calibration_samples": 12,
+      "min_regret_reduction_bps": 100,
+      "required_capabilities": [
+        "test-diagnosis",
+        "harness-repair",
+        "mock-adaptation",
+        "contract-preservation"
+      ],
+      "role": "task"
+    }
   },
   "verifier_standards": {
     "disallow_candidate_execution_in_verifier": true,
-    "disallow_unvalidated_self_reporting": true,
     "disallow_keyword_only_semantic_checks": true,
     "disallow_leaked_holdouts": true,
+    "disallow_unvalidated_self_reporting": true,
     "require_tamper_rejection": true
   },
-  "split_policy": {
-    "strategy": "family-disjoint",
-    "disjoint_family_enforcement": true,
-    "holdout_confidentiality": "confidential-external"
-  },
-  "readiness_lifecycle": [
-    {
-      "state": "draft",
-      "description": "Task definitions, qualifications, or packs under active authoring; missing complete anchor coverage or reviewer evidence.",
-      "routing_eligible": false
-    },
-    {
-      "state": "structurally-ready",
-      "description": "All 11 roles and 6 task lanes have qualified anchors, valid split reviews, and isolated passive verifiers, but lack cross-model calibration runs.",
-      "routing_eligible": false
-    },
-    {
-      "state": "calibration-required",
-      "description": "Structurally complete suite awaiting multi-model calibration evidence across candidate routes.",
-      "routing_eligible": false
-    },
-    {
-      "state": "heldout-required",
-      "description": "Calibration complete; awaiting family-disjoint held-out evaluation to verify allocation regret reduction.",
-      "routing_eligible": false
-    },
-    {
-      "state": "routing-eligible",
-      "description": "Full calibration and held-out validation complete; thresholds frozen; authorized for production OMP routing policy generation.",
-      "routing_eligible": true
-    }
-  ]
+  "version": "1.0.0"
 }

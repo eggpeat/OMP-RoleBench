@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+      "config_digest_sha256": "25570d4cb96fc3c41919df2495d18afca481eb77c2c78d7d038b08d98e821b91",
+      "image": "rolebench.local/omp-native.modernize-scientific-stack-baseline@sha256:82fb7190c5614b57d10a1eac9072c6bd50335d5aef2549f563234aaba7482caa",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+      "config_digest_sha256": "ebdb9358cd165cbf56660499b178a97f7f811a7f850ae58ee848b8b7c43451ec",
+      "image": "rolebench.local/omp-native.modernize-scientific-stack-reference@sha256:e58dac12366ce42f5b27c04ed5cec0e9a72548a17e96f7828b3c8824db3df68c",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+      "config_digest_sha256": "4700a1a78a4ba62fe9ec88f556a3221ba89f2484c0c49566d864bc6d63c19531",
+      "image": "rolebench.local/omp-native.modernize-scientific-stack-tamper@sha256:c5b91b16dd2c9639a4d36f3a794810acf08d4e1a6b148e12949a843b9bd20987",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+    "config_digest_sha256": "1f31b09534680cfc9b949a73aa1e1360cc25179d5176e85cfe7862c1ff17afd5",
+    "image": "rolebench.local/omp-native.modernize-scientific-stack-candidate@sha256:8beacc4d3d8318f33da99c1a1a41a828091989d790899aec6bd65c53d33f8362",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+      "prompt": {
+        "digest_sha256": "173e281b0d8164e0bd2b3dd8ad3de1f10312ecdef3f0a4bea676bcc1d60fcfca",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "240e2b80bd23156350c49e8d554f8327c7ecfcb73f63ccc4dbdc0513f73d2e70",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "root": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.modernize-scientific-stack-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "ast-refactoring",
+    "callsite-migration",
+    "type-safety-preservation",
+    "behavior-equivalence"
+  ],
+  "content_digest_sha256": "98dbcdf7ea4754d49d1e538cff5cb74657fb06239edbd4b9d9d11051ff93edc4",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.modernize-scientific-stack",
+    "variant_id": "1.0.0-omp-native.modernize-scientific-stack"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Migrate legacy matrix math calls to modern array syntax.",
+      "Ensure zero numerical deviation in output distributions."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "4b1fb2db74ae7460e6f88dc46de2f3afef83de4b42dc828d249a5c5b755645e9",
+      "evidence_path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "54fe93e67f7ac47cc5ffa6ef25257a2a38f4bf21b076e582dbf004d064c71b55",
+      "evidence_path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "7363ddeacc06e4c0bbe6dbf7b56312664acc385c6380552f812f4f0a594c412c",
+      "evidence_path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/reviews/split.json",
+      "family_id": "omp-native.modernize-scientific-stack",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "2afec09eec5b1d62bf14588dfb841d60ceeb43c1e4ad0eb59c397dd67c524fec",
+      "evidence_path": "contracts/tasks/omp-native.modernize-scientific-stack/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "b1d1c0c00df89de055f5dc48f6ca7f30926503f48360669f9677f74f5d34f9e0",
+      "runner_image": "rolebench.local/omp-native.modernize-scientific-stack-runner@sha256:a06e175f0e70f7414c37009015b6642ab698b2ff3b5bbbedfef10535811acdb8",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "90c5c394d4c57539f30161d9d874dceac02a0dc66d3d1fbeb00d6ac2fba97aa6",
+      "verifier_image": "rolebench.local/omp-native.modernize-scientific-stack-verifier@sha256:6a97f3ab31f0b3afc01e7b45bf60320e0222de960f4563f189042197089625bc",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/refactor",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+    "config_digest_sha256": "b1d1c0c00df89de055f5dc48f6ca7f30926503f48360669f9677f74f5d34f9e0",
+    "image": "rolebench.local/omp-native.modernize-scientific-stack-runner@sha256:a06e175f0e70f7414c37009015b6642ab698b2ff3b5bbbedfef10535811acdb8",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "b86a4d866132c9fbe40f34576353c074e973a8b475dc7903d64662d89c66a3e1",
+    "kind": "authored",
+    "version": "authored/omp-native.modernize-scientific-stack@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.modernize-scientific-stack-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "7363ddeacc06e4c0bbe6dbf7b56312664acc385c6380552f812f4f0a594c412c",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.modernize-scientific-stack",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "config_digest_sha256": "90c5c394d4c57539f30161d9d874dceac02a0dc66d3d1fbeb00d6ac2fba97aa6",
+    "image": "rolebench.local/omp-native.modernize-scientific-stack-verifier@sha256:6a97f3ab31f0b3afc01e7b45bf60320e0222de960f4563f189042197089625bc",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

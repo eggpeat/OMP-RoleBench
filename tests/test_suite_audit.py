@@ -28,10 +28,11 @@ class TestSuiteAudit(unittest.TestCase):
         self.assertEqual(report.total_roles, 11)
         self.assertEqual(report.structurally_ready_roles, 11)
         self.assertEqual(report.total_task_lanes, 6)
-        self.assertEqual(report.total_anchors, 16)
-        self.assertFalse(report.structurally_frozen)
+        self.assertEqual(report.structurally_ready_lanes, 6)
+        self.assertEqual(report.total_anchors, 27)
+        self.assertTrue(report.structurally_frozen)
         self.assertFalse(report.routing_eligible)
-        self.assertIn("STRUCTURAL_FREEZE_INCOMPLETE", report.global_reason_codes)
+        self.assertIn("SUITE_STRUCTURALLY_READY", report.global_reason_codes)
         self.assertIn("SUITE_CALIBRATION_REQUIRED", report.global_reason_codes)
 
         # Check role results
@@ -45,9 +46,15 @@ class TestSuiteAudit(unittest.TestCase):
         # Check lane results
         self.assertIn("task/implementation", report.lane_results)
         impl = report.lane_results["task/implementation"]
-        self.assertEqual(impl.actual_anchor_count, 0)
-        self.assertFalse(impl.structurally_ready)
-        self.assertIn("LANE_ANCHORS_DEFICIT", impl.reason_codes)
+        self.assertEqual(impl.actual_anchor_count, 2)
+        self.assertTrue(impl.structurally_ready)
+        self.assertIn("LANE_STRUCTURALLY_READY", impl.reason_codes)
+
+        self.assertIn("task/debugging", report.lane_results)
+        dbg = report.lane_results["task/debugging"]
+        self.assertEqual(dbg.actual_anchor_count, 2)
+        self.assertTrue(dbg.structurally_ready)
+        self.assertIn("LANE_STRUCTURALLY_READY", dbg.reason_codes)
 
     def test_format_suite_audit_human(self) -> None:
         report = audit_task_suite(self.root)
@@ -55,7 +62,7 @@ class TestSuiteAudit(unittest.TestCase):
         self.assertIn("=== OMP RoleBench Task Suite v1 Audit ===", rendered)
         self.assertIn("@reviewer", rendered)
         self.assertIn("task/implementation", rendered)
-        self.assertIn("STRUCTURAL_FREEZE_INCOMPLETE", rendered)
+        self.assertIn("SUITE_STRUCTURALLY_READY", rendered)
 
     def test_cli_suite_audit_human(self) -> None:
         out = io.StringIO()
@@ -74,12 +81,13 @@ class TestSuiteAudit(unittest.TestCase):
         self.assertEqual(parsed["total_roles"], 11)
         self.assertEqual(parsed["structurally_ready_roles"], 11)
         self.assertEqual(parsed["total_task_lanes"], 6)
+        self.assertEqual(parsed["structurally_ready_lanes"], 6)
 
-    def test_cli_suite_audit_strict_fails_when_unfrozen(self) -> None:
+    def test_cli_suite_audit_strict_passes_when_frozen(self) -> None:
         out = io.StringIO()
         err = io.StringIO()
         code = run(["--root", str(self.root), "tasks", "suite-audit", "--strict"], stdout=out, stderr=err)
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 0)
 
 
 if __name__ == "__main__":
