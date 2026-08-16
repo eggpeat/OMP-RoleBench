@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:routing-topology:v1",
+  "title": "OMP Native Routing Topology v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "topology_id",
+    "roles"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "omp.routing-topology/v1"
+    },
+    "topology_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default",
+        "plan",
+        "advisor",
+        "reviewer",
+        "smol",
+        "slow",
+        "vision",
+        "designer",
+        "commit",
+        "tiny",
+        "task"
+      ],
+      "properties": {
+        "default": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "manual"
+                },
+                "pool_eligible": {
+                  "const": false
+                },
+                "selection_scope": {
+                  "const": "main-session"
+                }
+              }
+            }
+          ]
+        },
+        "plan": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "fallback-chain"
+                },
+                "pool_eligible": {
+                  "const": false
+                },
+                "selection_scope": {
+                  "const": "role-session"
+                }
+              }
+            }
+          ]
+        },
+        "advisor": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "dedicated"
+                },
+                "pool_eligible": {
+                  "const": false
+                },
+                "selection_scope": {
+                  "const": "advisor-runtime"
+                }
+              }
+            }
+          ]
+        },
+        "reviewer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "dedicated"
+                },
+                "pool_eligible": {
+                  "const": false
+                },
+                "selection_scope": {
+                  "const": "review-run"
+                }
+              }
+            }
+          ]
+        },
+        "smol": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "weighted-pool"
+                },
+                "pool_eligible": {
+                  "const": true
+                },
+                "selection_scope": {
+                  "const": "operation"
+                }
+              }
+            }
+          ]
+        },
+        "slow": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "weighted-pool"
+                },
+                "pool_eligible": {
+                  "const": true
+                },
+                "selection_scope": {
+                  "const": "role-session"
+                }
+              }
+            }
+          ]
+        },
+        "vision": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "weighted-pool"
+                },
+                "pool_eligible": {
+                  "const": true
+                },
+                "selection_scope": {
+                  "const": "operation"
+                }
+              }
+            }
+          ]
+        },
+        "designer": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "weighted-pool"
+                },
+                "pool_eligible": {
+                  "const": true
+                },
+                "selection_scope": {
+                  "const": "child-session"
+                }
+              }
+            }
+          ]
+        },
+        "commit": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "weighted-pool"
+                },
+                "pool_eligible": {
+                  "const": true
+                },
+                "selection_scope": {
+                  "const": "operation"
+                }
+              }
+            }
+          ]
+        },
+        "tiny": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "weighted-pool"
+                },
+                "pool_eligible": {
+                  "const": true
+                },
+                "selection_scope": {
+                  "const": "operation"
+                }
+              }
+            }
+          ]
+        },
+        "task": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/role"
+            },
+            {
+              "properties": {
+                "strategy": {
+                  "const": "weighted-pool"
+                },
+                "pool_eligible": {
+                  "const": true
+                },
+                "selection_scope": {
+                  "const": "child-session"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy",
+        "pool_eligible",
+        "selection_scope",
+        "description"
+      ],
+      "properties": {
+        "strategy": {
+          "enum": [
+            "manual",
+            "dedicated",
+            "fallback-chain",
+            "weighted-pool"
+          ]
+        },
+        "pool_eligible": {
+          "type": "boolean"
+        },
+        "selection_scope": {
+          "enum": [
+            "main-session",
+            "role-session",
+            "advisor-runtime",
+            "review-run",
+            "operation",
+            "child-session"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
