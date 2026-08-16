@@ -12,7 +12,7 @@
       "strategy": "fallback-chain",
       "pool_eligible": false,
       "selection_scope": "role-session",
-      "description": "Dedicated plan-mode primary with the ordinary ordered retry fallback chain; never weighted."
+      "description": "Configured plan-mode primary with the ordinary ordered retry fallback chain; never weighted."
     },
     "advisor": {
       "strategy": "dedicated",
@@ -33,22 +33,22 @@
       "description": "Fast bounded helper work invoked on behalf of the primary model."
     },
     "slow": {
-      "strategy": "weighted-pool",
-      "pool_eligible": true,
+      "strategy": "fallback-chain",
+      "pool_eligible": false,
       "selection_scope": "role-session",
-      "description": "Hard delegated reasoning and recovery work invoked on behalf of the primary model."
+      "description": "Configured thinking-role primary plus the ordinary ordered retry fallback chain; never weighted."
     },
     "vision": {
-      "strategy": "weighted-pool",
-      "pool_eligible": true,
+      "strategy": "fallback-chain",
+      "pool_eligible": false,
       "selection_scope": "operation",
-      "description": "Image-grounded and multimodal helper operations."
+      "description": "Configured vision primary plus the ordinary ordered retry fallback chain for image-grounded operations; never weighted."
     },
     "designer": {
-      "strategy": "weighted-pool",
-      "pool_eligible": true,
+      "strategy": "fallback-chain",
+      "pool_eligible": false,
       "selection_scope": "child-session",
-      "description": "Native designer-agent executions performed on behalf of the primary workflow."
+      "description": "Configured designer primary plus the ordinary ordered retry fallback chain for designer-agent execution; never weighted."
     },
     "commit": {
       "strategy": "weighted-pool",
