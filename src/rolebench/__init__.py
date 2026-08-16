@@ -1,11 +1,6 @@
 """Contract validation and inspection for OMP rolebench."""
 
-from .accounting import (
-    AccountingError,
-    classify_attempt,
-    summarize_outcomes,
-)
-
+from .accounting import AccountingError, classify_attempt, summarize_outcomes
 from .contracts import (
     BUILTIN_ROLES,
     ContractError,
@@ -21,13 +16,7 @@ from .contracts import (
     validate_repository,
     validate_value,
 )
-
-from .ledger import (
-    LedgerError,
-    append_artifacts,
-    append_worker_report,
-    verify_ledger,
-)
+from .ledger import LedgerError, append_artifacts, append_worker_report, verify_ledger
 from .pool_routing import (
     PoolLane,
     PoolLaneRegistry,
@@ -38,9 +27,10 @@ from .pool_routing import (
     validate_pool_policy,
 )
 from .routing_topology import (
-    FIXED_ROLES,
-    POOL_ROLES,
+    BASELINE_PRIMARY_ROLES,
+    BASELINE_WEIGHTED_ROLES,
     ROUTING_ROLES,
+    SUPPORTED_STRATEGIES,
     RoleRouting,
     RoutingTopology,
     load_routing_topology,
@@ -59,9 +49,10 @@ from .task_workflow import (
 
 __all__ = [
     "BUILTIN_ROLES",
-    "FIXED_ROLES",
-    "POOL_ROLES",
+    "BASELINE_PRIMARY_ROLES",
+    "BASELINE_WEIGHTED_ROLES",
     "ROUTING_ROLES",
+    "SUPPORTED_STRATEGIES",
     "AccountingError",
     "ContractError",
     "Diagnostic",
