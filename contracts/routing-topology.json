@@ -3,10 +3,10 @@
   "topology_id": "omp-native-routing-topology-v1",
   "roles": {
     "default": {
-      "strategy": "manual",
+      "strategy": "fallback-chain",
       "pool_eligible": false,
       "selection_scope": "main-session",
-      "description": "User-controlled primary session model. RoleBench never automatically rotates or replaces it."
+      "description": "Configured primary session model with the ordinary ordered retry fallback chain; never weighted."
     },
     "plan": {
       "strategy": "fallback-chain",
@@ -18,13 +18,13 @@
       "strategy": "fallback-chain",
       "pool_eligible": false,
       "selection_scope": "advisor-runtime",
-      "description": "Configured advisor/watchdog primary plus the ordinary ordered retry fallback chain; never weighted."
+      "description": "Configured advisor/watchdog primary plus the ordinary ordered retry fallback chain; never weighted and never pooled with reviewer traffic."
     },
     "reviewer": {
       "strategy": "fallback-chain",
       "pool_eligible": false,
       "selection_scope": "review-run",
-      "description": "Configured native /review primary plus the ordinary ordered retry fallback chain; never weighted."
+      "description": "Configured native /review primary plus the ordinary ordered retry fallback chain; never weighted and never pooled with advisor traffic."
     },
     "smol": {
       "strategy": "weighted-pool",
