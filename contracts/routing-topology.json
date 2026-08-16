@@ -15,16 +15,16 @@
       "description": "Configured plan-mode primary with the ordinary ordered retry fallback chain; never weighted."
     },
     "advisor": {
-      "strategy": "dedicated",
+      "strategy": "fallback-chain",
       "pool_eligible": false,
       "selection_scope": "advisor-runtime",
-      "description": "Dedicated advisor/watchdog model slot. Each configured advisor retains its own stable model runtime."
+      "description": "Configured advisor/watchdog primary plus the ordinary ordered retry fallback chain; never weighted."
     },
     "reviewer": {
-      "strategy": "dedicated",
+      "strategy": "fallback-chain",
       "pool_eligible": false,
       "selection_scope": "review-run",
-      "description": "Dedicated native /review model slot with structured review semantics; never pooled with advisor or helper traffic."
+      "description": "Configured native /review primary plus the ordinary ordered retry fallback chain; never weighted."
     },
     "smol": {
       "strategy": "weighted-pool",
