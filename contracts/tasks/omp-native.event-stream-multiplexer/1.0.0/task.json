@@ -1,0 +1,226 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+      "config_digest_sha256": "0bca4d9b8a790068b468a917d7818be738d543e59e71b71527071fcd4e0d11ab",
+      "image": "rolebench.local/omp-native.event-stream-multiplexer-baseline@sha256:1f6ec918b4e283428a16ac808eca685933666812a8631952f485f8dbb098cc81",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+      "config_digest_sha256": "90c3d6ca3271b72160c5d8099f512a5627d4d0b39b6dce73ac76c0d396ac90df",
+      "image": "rolebench.local/omp-native.event-stream-multiplexer-reference@sha256:0df22c4af729c01e7871871f6c3d6b8d676eaf36b62e4dc162bb169f11ec8d1f",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+      "config_digest_sha256": "198b399f3dfef2c9428caf9b67c7b5e22672947c19f4f3fcbb01fa6fb831a0ad",
+      "image": "rolebench.local/omp-native.event-stream-multiplexer-tamper@sha256:76d8ceae21edacb3b2a3b414741657f2fe72564ba32e535cef67ebe5e947ee09",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+    "config_digest_sha256": "5602f00af5ae6758b510fb319f619832968d803d8379826fd902228ad74f9e22",
+    "image": "rolebench.local/omp-native.event-stream-multiplexer-candidate@sha256:cb23d6342051f9596119f427b3cca4f0d943a083df34245bcc8e546739ffb330",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+      "prompt": {
+        "digest_sha256": "1b556fbc6131cdd74227c34c56b32c7d37538430e6992e2ca45139b4bef7c5c3",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "535ff3085315f20bb51d0dc3f46db78f5a7dab850abfd1367fe69a081865901f",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "1d7d60d535b9b245f130e2ee643c0629f7c4d79cfa82cead528a7b25700f6ca1",
+      "root": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "9c1f4589607185d668b9c37f3af9c9cdd4bec4f3e35f520af4bf443b7a1e0c2e",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.event-stream-multiplexer-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "code-generation",
+    "test-authoring",
+    "repository-navigation",
+    "targeted-verification"
+  ],
+  "content_digest_sha256": "e7272e7f8c4997f397c635a1335b3856ffa2c2c51345ef4ca75ba92d316ced79",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.event-stream-multiplexer",
+    "variant_id": "1.0.0-omp-native.event-stream-multiplexer"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Implement AsyncEventMultiplexer with channel subscription and topic filtering.",
+      "Implement backpressure queue management with drop-oldest policy.",
+      "Author unit tests verifying channel isolation and error propagation."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "a63331f9375cdbe1f5b0533cc05b41066c49837fefdf4ae95e650ee39d00d83b",
+      "evidence_path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "3735f5d4a1e9b5d51fe37d355802616a7f1c2ec3e0c7678bc635f78722ef6d10",
+      "evidence_path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "44e42070a36f3771faa4f4acefecaa5e1161e33509fa3e52c7764387e8a562e7",
+      "evidence_path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/reviews/split.json",
+      "family_id": "omp-native.event-stream-multiplexer",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "2b76f871b8b510bba2e0f3037d486690c891cffc3e7c3fabdc90a00f9249d3dd",
+      "evidence_path": "contracts/tasks/omp-native.event-stream-multiplexer/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "1d7d60d535b9b245f130e2ee643c0629f7c4d79cfa82cead528a7b25700f6ca1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "c0a9f3ae78da93c3cb38c784340f0a21edf9b6a2288e4db14d69c8a40044007a",
+      "runner_image": "rolebench.local/omp-native.event-stream-multiplexer-runner@sha256:09aa4775d0d474779fff2a346bef8d95871e2157468f960767e94f477519727f",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "33bd653af9c1716593cda28ad7aad5e0b3616f741389dd8797ff77446c338e06",
+      "verifier_image": "rolebench.local/omp-native.event-stream-multiplexer-verifier@sha256:a113e9610378139109cc645ca4e9904020ad69747183d9b060448e5e26fc2e67",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/implementation",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+    "config_digest_sha256": "c0a9f3ae78da93c3cb38c784340f0a21edf9b6a2288e4db14d69c8a40044007a",
+    "image": "rolebench.local/omp-native.event-stream-multiplexer-runner@sha256:09aa4775d0d474779fff2a346bef8d95871e2157468f960767e94f477519727f",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+    "kind": "authored",
+    "version": "authored/omp-native.event-stream-multiplexer@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.event-stream-multiplexer-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "44e42070a36f3771faa4f4acefecaa5e1161e33509fa3e52c7764387e8a562e7",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.event-stream-multiplexer",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "1d7d60d535b9b245f130e2ee643c0629f7c4d79cfa82cead528a7b25700f6ca1",
+    "config_digest_sha256": "33bd653af9c1716593cda28ad7aad5e0b3616f741389dd8797ff77446c338e06",
+    "image": "rolebench.local/omp-native.event-stream-multiplexer-verifier@sha256:a113e9610378139109cc645ca4e9904020ad69747183d9b060448e5e26fc2e67",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

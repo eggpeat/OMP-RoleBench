@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "774b7a5bb28589aa9828c5fc8b8b0497a78d3030967b66e4452db14e8ddca00c",
+    "public_tree_digest_sha256": "d9a88c5960a674155d3376f5e6d913a694360a671dc18a23004a1ac2f9fc90d2",
+    "verifier_digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "workspace_digest_sha256": "f381a8c93e2542087c0d54b6d28c3ba44688d0bb29c352c781c1197050d9c401"
+  },
+  "task_id": "omp-native.sync-to-async-client-refactor",
+  "task_version": "1.0.0"
+}

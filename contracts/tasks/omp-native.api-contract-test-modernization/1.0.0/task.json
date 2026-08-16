@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+      "config_digest_sha256": "9158acbb8d666cdf18a997f4746374b967ac3c00b8966e90a6677e7c8911d819",
+      "image": "rolebench.local/omp-native.api-contract-test-modernization-baseline@sha256:16428ebeb1a634250cc125d96758a1403bcd48a86810f4d19464c0c37b001be0",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+      "config_digest_sha256": "c39f68914390bfc6a06cf2a8d4c63999d16cb25e95a424f9be1844131a680703",
+      "image": "rolebench.local/omp-native.api-contract-test-modernization-reference@sha256:0f912ee0a6a38a7f7b0acfb88fd35c120e95b6e835daefd216727e449ccd7bbe",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+      "config_digest_sha256": "9c7b4346009d06ccb84b92d28557e3de93c52d4815be2905377b34285bcce3d8",
+      "image": "rolebench.local/omp-native.api-contract-test-modernization-tamper@sha256:1c3fdd3c479e7805d23161a2823073b75b773ec1bf01b161cdca943f3de91489",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+    "config_digest_sha256": "9c8db855bb7d68170764ac29478fd84477384a01f300ae8c93a52fc9b98500e2",
+    "image": "rolebench.local/omp-native.api-contract-test-modernization-candidate@sha256:114e4da64e7829ea4665347cb7208e904265a2a5c611a2391589c158a66d29fb",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+      "prompt": {
+        "digest_sha256": "dabba116c666e7b2a7ce338764725d441c8f4be3ff5d95bbd014a317984704e6",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "441cd5e4e9cc1966afb7c83da58a0a3389b062d4dd1a7b8ce8c42ea8af2a2fca",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "root": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.api-contract-test-modernization-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "test-diagnosis",
+    "harness-repair",
+    "mock-adaptation",
+    "contract-preservation"
+  ],
+  "content_digest_sha256": "d8eb72c2dd26340fdb3d0891de075cbe41cfdbb2dae6ff893889ca246b746518",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.api-contract-test-modernization",
+    "variant_id": "1.0.0-omp-native.api-contract-test-modernization"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Diagnose failing contract tests after API response shape migration.",
+      "Update mock fixtures to conform to new API contract without dropping assertions."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "a9dc23ff060dc0673211c821a43bcad154c500a320c06f839e41cd06889a3256",
+      "evidence_path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "bb9d855fbdb805df5a08abd150d8061dfb0005d44960d4053765251b2b95010d",
+      "evidence_path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "f03f5bb1029a72a0e08ea5a90698a7ef31243c5f6d8861e1fe0263506c3f9769",
+      "evidence_path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/reviews/split.json",
+      "family_id": "omp-native.api-contract-test-modernization",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "286b6d6cf8a5e6a16ff5b7299f3bb4c68a59aa0eea4452bed9dbe46f3e86fdd4",
+      "evidence_path": "contracts/tasks/omp-native.api-contract-test-modernization/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "fc33dc6a034541d62d8b9c5060ba5733a2f431da50b0c4a9754a3159d7379968",
+      "runner_image": "rolebench.local/omp-native.api-contract-test-modernization-runner@sha256:5c354b5e16371fc542a711bf62086be957a4c643f2d765ec46663772e1b40702",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "32246f7c494940f6867876042690dc10fe702bc8f0acf69bf94d1db6cbb4ee81",
+      "verifier_image": "rolebench.local/omp-native.api-contract-test-modernization-verifier@sha256:0e48c9fbbd4bbb7542cb3fb5a191b516f82c2889f5f9de0e41fc37d2e3f79524",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/test-repair",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+    "config_digest_sha256": "fc33dc6a034541d62d8b9c5060ba5733a2f431da50b0c4a9754a3159d7379968",
+    "image": "rolebench.local/omp-native.api-contract-test-modernization-runner@sha256:5c354b5e16371fc542a711bf62086be957a4c643f2d765ec46663772e1b40702",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+    "kind": "authored",
+    "version": "authored/omp-native.api-contract-test-modernization@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.api-contract-test-modernization-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "f03f5bb1029a72a0e08ea5a90698a7ef31243c5f6d8861e1fe0263506c3f9769",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.api-contract-test-modernization",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "config_digest_sha256": "32246f7c494940f6867876042690dc10fe702bc8f0acf69bf94d1db6cbb4ee81",
+    "image": "rolebench.local/omp-native.api-contract-test-modernization-verifier@sha256:0e48c9fbbd4bbb7542cb3fb5a191b516f82c2889f5f9de0e41fc37d2e3f79524",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

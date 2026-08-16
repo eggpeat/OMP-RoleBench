@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "dabba116c666e7b2a7ce338764725d441c8f4be3ff5d95bbd014a317984704e6",
+    "public_tree_digest_sha256": "0aff202a49e24204fcd93c27ed9301474bae3a0bd4996b9f369840c44ab81c94",
+    "verifier_digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "workspace_digest_sha256": "441cd5e4e9cc1966afb7c83da58a0a3389b062d4dd1a7b8ce8c42ea8af2a2fca"
+  },
+  "task_id": "omp-native.api-contract-test-modernization",
+  "task_version": "1.0.0"
+}

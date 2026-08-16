@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+      "config_digest_sha256": "4bbeb42287b52927cc118bcc7dcb7f9172e790b494976dc6052346d574481f94",
+      "image": "rolebench.local/omp-native.schema-enum-sync-baseline@sha256:e5f2043ff8e9b8936e08bb2377c3b4819f3875e10563d64dc459fb6ea7074f63",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+      "config_digest_sha256": "42fdd26de95b7bbdfa95e984596d894a91d4c971cdee9d6fd613429bb5dae42b",
+      "image": "rolebench.local/omp-native.schema-enum-sync-reference@sha256:9b4d57967c0e6c09da01f3e99148ea0c8f30be7a365134680d86ae6b64da1caf",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+      "config_digest_sha256": "0d8b68b3383f30b632e9c1c60887e305029f1d08dcd3ae1ed7aed201be7f02a7",
+      "image": "rolebench.local/omp-native.schema-enum-sync-tamper@sha256:e353c3beab82ee9554e4fde6645411bf7b4d917ac0219c1feba7ea62e8ac90d7",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+    "config_digest_sha256": "a82d7011fcbdb0c55cccdf02e7a9e6bdd53ce4e75621177c24a72214fdebe915",
+    "image": "rolebench.local/omp-native.schema-enum-sync-candidate@sha256:55d38e28048c13d9101a8be4bd78e6d6d9c9cb973d5c4959e5b96c32fbba5298",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+      "prompt": {
+        "digest_sha256": "834e23567c6903345274621c6e0cfb0ab4a33815828fcb024ac9093fb8ed2301",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "922997219221b03b600b8aaf1b8c2decb4b124056bbbbea12c5b1f9b09424ad5",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "root": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.schema-enum-sync-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "batch-editing",
+    "pattern-application",
+    "strict-formatting",
+    "exhaustiveness"
+  ],
+  "content_digest_sha256": "bb5ebb23add56e29925fb967889c9e7b8f6fca48c56313046dda21a2f40d4a28",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.schema-enum-sync",
+    "variant_id": "1.0.0-omp-native.schema-enum-sync"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Batch update 20 data models to add new enum variant.",
+      "Preserve exact AST formatting and typing annotations."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "e8306ef96f774f75294aff576e64d5d2dcdfe70b38d2817d1b9c574b39f96669",
+      "evidence_path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "217d28cadae42eea2db7f70df86f0ac030a97a26a824c3a0d15a850a8fdf9bfd",
+      "evidence_path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "d26d756a64d60323754d340a5799c7bd0d0c7983798a1d5c1c48d247c6f8fc59",
+      "evidence_path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/reviews/split.json",
+      "family_id": "omp-native.schema-enum-sync",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "1e6016918f2a74385626e1f10c55d2eb8c4a476c70545cb3b29a3a131459c009",
+      "evidence_path": "contracts/tasks/omp-native.schema-enum-sync/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "1467ec5a043f41de03cec108226c9ea1bece2195f8c8ae3394d4752d98d4a828",
+      "runner_image": "rolebench.local/omp-native.schema-enum-sync-runner@sha256:63c4e0883876157ca993714cb51d2685cf05a314edd1afc95976f5dfaecb5db3",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "7d6d63b25ebcdd7bec47aab463c8cc95fd2973efc25fbdb7dc525f1905ab2260",
+      "verifier_image": "rolebench.local/omp-native.schema-enum-sync-verifier@sha256:23ea588e6d4735ef0a8da963f3c4341e5305bd09d52176bcee30a1352d671ede",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/mechanical-edit",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+    "config_digest_sha256": "1467ec5a043f41de03cec108226c9ea1bece2195f8c8ae3394d4752d98d4a828",
+    "image": "rolebench.local/omp-native.schema-enum-sync-runner@sha256:63c4e0883876157ca993714cb51d2685cf05a314edd1afc95976f5dfaecb5db3",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "4d8b55a0252e53041a52c6021fcd4489da7702958f1495dea927d2413f93e828",
+    "kind": "authored",
+    "version": "authored/omp-native.schema-enum-sync@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.schema-enum-sync-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "d26d756a64d60323754d340a5799c7bd0d0c7983798a1d5c1c48d247c6f8fc59",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.schema-enum-sync",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "config_digest_sha256": "7d6d63b25ebcdd7bec47aab463c8cc95fd2973efc25fbdb7dc525f1905ab2260",
+    "image": "rolebench.local/omp-native.schema-enum-sync-verifier@sha256:23ea588e6d4735ef0a8da963f3c4341e5305bd09d52176bcee30a1352d671ede",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

@@ -1,0 +1,1 @@
+Apply `@deprecated` decorator and warning pass across all 25 functions in `lib/api.py`.

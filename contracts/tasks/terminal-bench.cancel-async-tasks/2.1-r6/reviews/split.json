@@ -1,1 +1,29 @@
-{"assignment":{"assignment_method":"author-assigned","confidentiality":"public","family_id":"terminal-bench.cancel-async-tasks","partition":"anchor","role":"task"},"capability_tags":["autonomous-task-execution","terminal-tool-use","code-editing","repository-navigation","targeted-verification"],"decision":"approved","findings":[],"rationale":"Autonomous delegated implementation of an asynchronous concurrency pool with strict behavioral invariants covering max concurrency, boundary validation, cancellation propagation, and cleanup completion.","review_type":"split","reviewed_at":"2026-08-15T10:39:25Z","reviewer":"rolebench/reviewer/role-fit-gate-v1","schema_version":"omp.task-review-evidence/v1","task_id":"terminal-bench.cancel-async-tasks","task_version":"2.1-r6"}
+{
+  "assignment": {
+    "assignment_method": "author-assigned",
+    "confidentiality": "public",
+    "family_id": "terminal-bench.cancel-async-tasks",
+    "partition": "anchor",
+    "role": "task"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "terminal-tool-use",
+    "code-editing",
+    "repository-navigation",
+    "targeted-verification",
+    "defect-reproduction",
+    "root-cause-analysis",
+    "targeted-patching",
+    "regression-testing"
+  ],
+  "decision": "approved",
+  "findings": [],
+  "rationale": "Autonomous delegated implementation of an asynchronous concurrency pool with strict behavioral invariants covering max concurrency, boundary validation, cancellation propagation, and cleanup completion.",
+  "review_type": "split",
+  "reviewed_at": "2026-08-15T10:39:25Z",
+  "reviewer": "rolebench/reviewer/role-fit-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "task_id": "terminal-bench.cancel-async-tasks",
+  "task_version": "2.1-r6"
+}

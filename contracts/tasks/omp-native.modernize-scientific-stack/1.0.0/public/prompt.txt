@@ -1,0 +1,1 @@
+Modernize legacy matrix operators in `analyze.py` to modern NumPy arrays.

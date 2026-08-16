@@ -1,0 +1,29 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "author-declaration",
+      "reference": "RoleBench task license."
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain MIT license notice."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+    "source_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+    "source_task": null,
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1"
+  },
+  "task_id": "omp-native.architecture-dependency-audit",
+  "task_version": "1.0.0"
+}

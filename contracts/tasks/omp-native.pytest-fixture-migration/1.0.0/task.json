@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+      "config_digest_sha256": "732723ac56eb68163d875d3e88563651e9435510107ac951aabc513206ccd46c",
+      "image": "rolebench.local/omp-native.pytest-fixture-migration-baseline@sha256:572132f358d0c936fce8b2749be6285c3678c51a48fb77dc4a459bfd0d789998",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+      "config_digest_sha256": "dbda3da2959e4d80dd24758a5e1a839698bb8043e0a077ce7dd2fbf5600482b8",
+      "image": "rolebench.local/omp-native.pytest-fixture-migration-reference@sha256:0975ab63277d0cff31e034c233695034dc58dcc877885bb165840ac7d0533e96",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+      "config_digest_sha256": "fb7281a6c1813e0e6986ce7b94c327059c93c0d8d0baa71ea7abf0b3587df333",
+      "image": "rolebench.local/omp-native.pytest-fixture-migration-tamper@sha256:7c8c7f44449fc4acba5bf820b62c7b2c9f415fbe080e1e146de937e15d3fb1d5",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+    "config_digest_sha256": "4d068554c76f5cec25403ed2431734f056fce9e842b45d4254b6203b6c1d7106",
+    "image": "rolebench.local/omp-native.pytest-fixture-migration-candidate@sha256:578b951014823966a04389c40595b535a5584800c3c2f221aa594502f0ce3bb4",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+      "prompt": {
+        "digest_sha256": "b245651d8462f0585791d99053744373a9d734fc9a25c57575132a61a084f71e",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "f7b8e00a84cb3baee46c09454271d513d77a8c18c731101a5371cb5006dd9cf5",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "root": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.pytest-fixture-migration-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "test-diagnosis",
+    "harness-repair",
+    "mock-adaptation",
+    "contract-preservation"
+  ],
+  "content_digest_sha256": "7c16d2e3ba96a0d3621a17994485e020163eca5076fa3c722edb6c3c772af7df",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.pytest-fixture-migration",
+    "variant_id": "1.0.0-omp-native.pytest-fixture-migration"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Migrate legacy unittest test cases to modern pytest fixtures.",
+      "Ensure all 45 test assertions remain active and pass."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "c13883e328bb930dbe0e668b6929f18d0fed4a398adc9b6c9148aa2a557dfed9",
+      "evidence_path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "98c70a6d58042ed2875d5c8a6e10231dd3906e1eba013b7f3bdb09092498e576",
+      "evidence_path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "32af084b904ad1f753a1eb3d0b666060aa29bf1b85268daba26e16ae2eadd6b5",
+      "evidence_path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/reviews/split.json",
+      "family_id": "omp-native.pytest-fixture-migration",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "ae488c55407a8e691ae42ce4a020ee361814578d85ec5eab3e9c40adb9dda5ba",
+      "evidence_path": "contracts/tasks/omp-native.pytest-fixture-migration/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "2b74e68e89d96d64f37f2130a7410154a293fa532d817bc6c9924e9fdbb3e48b",
+      "runner_image": "rolebench.local/omp-native.pytest-fixture-migration-runner@sha256:a5a2d272bc6a74eee66195cc6f29b7fe8d6d1f3316176fa0f1fba37ed6bda2eb",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "6a981c6f6e9caa0489e3f97d8b550dea7268d00bc1a442f87db28b63f418f49d",
+      "verifier_image": "rolebench.local/omp-native.pytest-fixture-migration-verifier@sha256:5b46b7a51c59bce1aa135e2fe698953698f56847c17ecf919b7eab03032ff950",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/test-repair",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+    "config_digest_sha256": "2b74e68e89d96d64f37f2130a7410154a293fa532d817bc6c9924e9fdbb3e48b",
+    "image": "rolebench.local/omp-native.pytest-fixture-migration-runner@sha256:a5a2d272bc6a74eee66195cc6f29b7fe8d6d1f3316176fa0f1fba37ed6bda2eb",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+    "kind": "authored",
+    "version": "authored/omp-native.pytest-fixture-migration@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.pytest-fixture-migration-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "32af084b904ad1f753a1eb3d0b666060aa29bf1b85268daba26e16ae2eadd6b5",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.pytest-fixture-migration",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "config_digest_sha256": "6a981c6f6e9caa0489e3f97d8b550dea7268d00bc1a442f87db28b63f418f49d",
+    "image": "rolebench.local/omp-native.pytest-fixture-migration-verifier@sha256:5b46b7a51c59bce1aa135e2fe698953698f56847c17ecf919b7eab03032ff950",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

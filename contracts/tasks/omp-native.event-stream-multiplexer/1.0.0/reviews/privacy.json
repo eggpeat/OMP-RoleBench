@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "1b556fbc6131cdd74227c34c56b32c7d37538430e6992e2ca45139b4bef7c5c3",
+    "public_tree_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+    "verifier_digest_sha256": "9c1f4589607185d668b9c37f3af9c9cdd4bec4f3e35f520af4bf443b7a1e0c2e",
+    "verifier_private_tree_digest_sha256": "1d7d60d535b9b245f130e2ee643c0629f7c4d79cfa82cead528a7b25700f6ca1",
+    "workspace_digest_sha256": "535ff3085315f20bb51d0dc3f46db78f5a7dab850abfd1367fe69a081865901f"
+  },
+  "task_id": "omp-native.event-stream-multiplexer",
+  "task_version": "1.0.0"
+}

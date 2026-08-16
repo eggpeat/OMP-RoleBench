@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "b245651d8462f0585791d99053744373a9d734fc9a25c57575132a61a084f71e",
+    "public_tree_digest_sha256": "4b2bb1212e8936f108868e15f2e56113821124c3205ef0cff2322f2285cef5ba",
+    "verifier_digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "workspace_digest_sha256": "f7b8e00a84cb3baee46c09454271d513d77a8c18c731101a5371cb5006dd9cf5"
+  },
+  "task_id": "omp-native.pytest-fixture-migration",
+  "task_version": "1.0.0"
+}

@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "397b776cf6871c25af6b620514f12982afdd807f0c9da631c4219428437d9be8",
+    "public_tree_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+    "verifier_digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "workspace_digest_sha256": "ef6c1d86e160ac736bb1d63cef18ec621b2e429ed8bac99a664029793a74ac2f"
+  },
+  "task_id": "omp-native.architecture-dependency-audit",
+  "task_version": "1.0.0"
+}

@@ -1,0 +1,226 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+      "config_digest_sha256": "f8242467886411ddbcaabf97b53a59669b4474148ea8d4eacca5ffb66019320a",
+      "image": "rolebench.local/omp-native.distributed-lease-deadlock-baseline@sha256:2067a1f11c40f0d2c78ab5ed119300653f002ebb373e94254453d039017cd5e8",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+      "config_digest_sha256": "f3ef9fb83e53496beed83eb0f1b0202dcf8014d04fb6c7f8d52a2fb1d64fbeae",
+      "image": "rolebench.local/omp-native.distributed-lease-deadlock-reference@sha256:cc5f4274845f5a3764b58ccef29f5cb4f26c3c575cd7a68f2470367b01b81037",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+      "config_digest_sha256": "547dec54bdea4291ff49c1f2f49a710dfe024e6a11a93b632e8207c3534ae851",
+      "image": "rolebench.local/omp-native.distributed-lease-deadlock-tamper@sha256:2eb26bb42d3b23a5e5180ecde1940452ad9ec1892896914eaef05e6fc3803877",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+    "config_digest_sha256": "73ec4db874f4b405e5a7976eb2cb5234fd5b4f3a8f7d0b9128a3ff2a4766ceaa",
+    "image": "rolebench.local/omp-native.distributed-lease-deadlock-candidate@sha256:7ca60fe83b6adee0e4d9d6b78b0fa11e28a05a68749ffb87a8601130e9a99427",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+      "prompt": {
+        "digest_sha256": "e2a462fb340fc1238e8c00a65773b0cc6666f93dfc9ee64fa05aacf8fb9f552c",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "4b530ca3ad2103dc361dc9b7e30a4e2a12c6eb877c47a9e1e2cada8ba5974d6e",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "root": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.distributed-lease-deadlock-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "defect-reproduction",
+    "root-cause-analysis",
+    "targeted-patching",
+    "regression-testing"
+  ],
+  "content_digest_sha256": "7fec3ca1d4fa647846dbe4cf482bbf5acbbdeb2f0a86885a99ede0a74ef189d2",
+  "difficulty": "hard",
+  "family": {
+    "family_id": "omp-native.distributed-lease-deadlock",
+    "variant_id": "1.0.0-omp-native.distributed-lease-deadlock"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Reproduce lease expiration deadlock under concurrent acquire.",
+      "Fix heartbeat lease renewal race condition.",
+      "Verify zero deadlocks across 10,000 simulated iterations."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "bba75f3bb4c8f2e2cd51eb85fafe161f87cf2c28e87c7215accbe2ef78b42f06",
+      "evidence_path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "4d6ef103c0307be382a331f44a863f6867745475f5f3a48a97d75a1b05e16329",
+      "evidence_path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "a6cfe74a5c966d9fedae8fecf3897b70e786099d72a8854e23f684bd4fd9b160",
+      "evidence_path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/reviews/split.json",
+      "family_id": "omp-native.distributed-lease-deadlock",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "fb4d56e1fd73b035d1d2507e29c377f467c84866f5fe089a0e853a82ddd92d28",
+      "evidence_path": "contracts/tasks/omp-native.distributed-lease-deadlock/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "41f911a1da43d51265959cd2227a2e5cb806e2d9970a8ec3ed4084bddd7e8aa0",
+      "runner_image": "rolebench.local/omp-native.distributed-lease-deadlock-runner@sha256:7380f77d231a3bbf7853ffd769f3194d4f39f724fd195f356c344b5c0906fd63",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "a37778cd7b1563d7b8bdd0194c6cb49ba919b296fc5597924e7420613e481aaa",
+      "verifier_image": "rolebench.local/omp-native.distributed-lease-deadlock-verifier@sha256:c34ece628889ffc955db8e031784fd4769293c8b623a4d3c7094e08cd571ad29",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/debugging",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+    "config_digest_sha256": "41f911a1da43d51265959cd2227a2e5cb806e2d9970a8ec3ed4084bddd7e8aa0",
+    "image": "rolebench.local/omp-native.distributed-lease-deadlock-runner@sha256:7380f77d231a3bbf7853ffd769f3194d4f39f724fd195f356c344b5c0906fd63",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+    "kind": "authored",
+    "version": "authored/omp-native.distributed-lease-deadlock@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.distributed-lease-deadlock-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "a6cfe74a5c966d9fedae8fecf3897b70e786099d72a8854e23f684bd4fd9b160",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.distributed-lease-deadlock",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "config_digest_sha256": "a37778cd7b1563d7b8bdd0194c6cb49ba919b296fc5597924e7420613e481aaa",
+    "image": "rolebench.local/omp-native.distributed-lease-deadlock-verifier@sha256:c34ece628889ffc955db8e031784fd4769293c8b623a4d3c7094e08cd571ad29",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

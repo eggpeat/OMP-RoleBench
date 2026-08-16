@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "e2a462fb340fc1238e8c00a65773b0cc6666f93dfc9ee64fa05aacf8fb9f552c",
+    "public_tree_digest_sha256": "a279a58e9f66571f4a2b815148289e7d6a5ebe96c2c754d029ab6c96b0b6402b",
+    "verifier_digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+    "verifier_private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "workspace_digest_sha256": "4b530ca3ad2103dc361dc9b7e30a4e2a12c6eb877c47a9e1e2cada8ba5974d6e"
+  },
+  "task_id": "omp-native.distributed-lease-deadlock",
+  "task_version": "1.0.0"
+}

@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+      "config_digest_sha256": "663988aaf9f57d94a1e79f553002d0a52ea5e15e40af8f2e91d9d0fa670b7c30",
+      "image": "rolebench.local/omp-native.architecture-dependency-audit-baseline@sha256:3faf8a518ce5d824c39fbeb5ccb2f55b532c9b87653cce1304437078b39e4506",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+      "config_digest_sha256": "bdb93ef05a5c4efde7b69920dfb285ea170ce12ee757f4c6c36e0a103396f3a5",
+      "image": "rolebench.local/omp-native.architecture-dependency-audit-reference@sha256:b52a20c19358c2548a59ae058e736150f1e998b98a976e3a3da52ca7ae349d94",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+      "config_digest_sha256": "c089e3389b92c0005bed2d286a9bd9b99c34763b33804915aa03652ac1cb4363",
+      "image": "rolebench.local/omp-native.architecture-dependency-audit-tamper@sha256:e56d3eb2bc28943c38691d0da314daf40ce9a0a9174afb9dac04fc6619fec54e",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+    "config_digest_sha256": "7559b1b4910863f7483b473c855820ac8a5d0e57905353199f3dba5d7d8006c5",
+    "image": "rolebench.local/omp-native.architecture-dependency-audit-candidate@sha256:d05cd6b2b33abc29bf208731ca125b597ed2eddf76fd105af9e170d2c7b80d79",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+      "prompt": {
+        "digest_sha256": "397b776cf6871c25af6b620514f12982afdd807f0c9da631c4219428437d9be8",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "ef6c1d86e160ac736bb1d63cef18ec621b2e429ed8bac99a664029793a74ac2f",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "root": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0413ce40c0af8cbda7db94b809c2eb107be38b8d646e149dccbb16d843a33fee",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.architecture-dependency-audit-v1"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "codebase-scouting",
+    "cross-file-tracing",
+    "grounded-summarization",
+    "read-only-safety"
+  ],
+  "content_digest_sha256": "271fbab7f1a6e1036a465f71ad5009762f0eeb15edc79e93003beeeb799fe25d",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.architecture-dependency-audit",
+    "variant_id": "1.0.0-omp-native.architecture-dependency-audit"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Traverse the codebase in read-only mode.",
+      "Extract structured dependency map connecting all imported modules and call chains."
+    ],
+    "mode": "executable-task-verifier",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "45cd7bfa0f7d1cd738416617b634f8d7d2523c65f6b03c4d9e372766e0eb015c",
+      "evidence_path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "17652d2c6a7e4ac22813122ba705ec3255a1b6d783d7e8de0e0318c72f4352f7",
+      "evidence_path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "48e72f4fe645639b4b2c3b1029d23eedc3f671d32bcce81afcd7a9edaf9d70d0",
+      "evidence_path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/reviews/split.json",
+      "family_id": "omp-native.architecture-dependency-audit",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T15:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "0191dee5a2fe60102aa84b014ad4b76400461548954e6c5f15feb03a23e2bd34",
+      "evidence_path": "contracts/tasks/omp-native.architecture-dependency-audit/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+      "reviewed_at": "2026-08-16T15:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "4edc50ec4023a1abdb5961dc1818d35346f89e19525f7cb555cdeb7e85207d63",
+      "runner_image": "rolebench.local/omp-native.architecture-dependency-audit-runner@sha256:a6c30a632139858c6eeb8299cfc015b010e416ebc146c6c2e3433878b2e74d16",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "42278b9086cf8661ab94a41ccf09e6048775448f51fc9d24bc3f06d93e99751e",
+      "verifier_image": "rolebench.local/omp-native.architecture-dependency-audit-verifier@sha256:9c82384e5d51801b374b58b0498786cb5e5163946ac70c8f6f4f8e1ae4e35076",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "task",
+  "role_contract": {
+    "contract_id": "role-contract/task/v1",
+    "digest_sha256": "e5bc9f04d2b2a77288381ced17ecba2655e1d0afcce22ed00cbb9dc137af3cfd"
+  },
+  "routing_eligible": false,
+  "routing_lane": "task/repo-research",
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+    "config_digest_sha256": "4edc50ec4023a1abdb5961dc1818d35346f89e19525f7cb555cdeb7e85207d63",
+    "image": "rolebench.local/omp-native.architecture-dependency-audit-runner@sha256:a6c30a632139858c6eeb8299cfc015b010e416ebc146c6c2e3433878b2e74d16",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "886637ac950827cee8166a0c5f12f08cb2e717c6506d4a8024391b493cb5a6f0",
+    "kind": "authored",
+    "version": "authored/omp-native.architecture-dependency-audit@1.0.0"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.architecture-dependency-audit-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "48e72f4fe645639b4b2c3b1029d23eedc3f671d32bcce81afcd7a9edaf9d70d0",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.architecture-dependency-audit",
+  "task_mix": "task-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "795c8bb9a218eb0009d6824e4aa89245bedbc2f6a9bdedc01054b415f8fcbea1",
+    "config_digest_sha256": "42278b9086cf8661ab94a41ccf09e6048775448f51fc9d24bc3f06d93e99751e",
+    "image": "rolebench.local/omp-native.architecture-dependency-audit-verifier@sha256:9c82384e5d51801b374b58b0498786cb5e5163946ac70c8f6f4f8e1ae4e35076",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "kind": "author-declaration",
+      "reference": "RoleBench task license."
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain MIT license notice."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+    "source_digest_sha256": "abe8efb10fc6fc66e873b39e80658d7d31eb35f1633510a667572c1fb6c8c9ed",
+    "source_task": null,
+    "verifier_private_tree_digest_sha256": "1d7d60d535b9b245f130e2ee643c0629f7c4d79cfa82cead528a7b25700f6ca1"
+  },
+  "task_id": "omp-native.event-stream-multiplexer",
+  "task_version": "1.0.0"
+}

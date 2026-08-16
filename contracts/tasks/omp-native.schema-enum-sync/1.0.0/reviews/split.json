@@ -1,0 +1,25 @@
+{
+  "assignment": {
+    "assignment_method": "author-assigned",
+    "confidentiality": "public",
+    "family_id": "omp-native.schema-enum-sync",
+    "partition": "anchor",
+    "role": "task"
+  },
+  "capability_tags": [
+    "autonomous-task-execution",
+    "batch-editing",
+    "pattern-application",
+    "strict-formatting",
+    "exhaustiveness"
+  ],
+  "decision": "approved",
+  "findings": [],
+  "rationale": "Task exercises task/mechanical-edit lane capabilities.",
+  "review_type": "split",
+  "reviewed_at": "2026-08-16T15:00:00Z",
+  "reviewer": "rolebench/reviewer/role-fit-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "task_id": "omp-native.schema-enum-sync",
+  "task_version": "1.0.0"
+}
