@@ -1,0 +1,30 @@
+You are an expert code reviewer acting in the OMP @reviewer role.
+Perform a thorough, structured code review of the attached changeset in `change.patch`.
+
+Examine every changed file in `change.patch` for:
+1. Concurrency defects, race conditions, or un-synchronized shared state in `src/cache.py`.
+2. Resource management bugs, descriptor leaks, or missing context manager cleanup in `src/storage.py`.
+3. Security vulnerabilities, including timing side-channels or improper signature verification in `src/auth.py`.
+
+Return your findings strictly as a single JSON object matching schema `rolebench.review-findings/v1`:
+{
+  "schema_version": "rolebench.review-findings/v1",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "file": "src/cache.py",
+      "line_start": 16,
+      "line_end": 28,
+      "severity": "high",
+      "category": "concurrency",
+      "description": "Unsynchronized mutation of shared _inflight dictionary across await points allows race conditions."
+    }
+  ]
+}
+
+Constraints:
+- Only report confirmed material defects grounded in the modified lines of `change.patch`.
+- Do not report stylistic preferences, missing docstrings, or speculative refactoring suggestions.
+- Severity must be "high", "medium", or "low".
+- Category must be one of: "concurrency", "resource-leak", "security", "correctness", "performance".
+- File paths and line numbers must correspond to the files and line numbers in `change.patch`.

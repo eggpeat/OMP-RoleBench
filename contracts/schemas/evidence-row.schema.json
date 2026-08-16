@@ -165,7 +165,7 @@
     }
   },
   "$defs": {
-    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]},
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "exactRoute": {
       "type": "object",

@@ -34,6 +34,16 @@ BUILTIN_ROLES: tuple[str, ...] = (
     "tiny",
     "task",
     "advisor",
+    "reviewer",
+)
+
+_TASK_ROUTING_LANES: tuple[str, ...] = (
+    "task/implementation",
+    "task/debugging",
+    "task/test-repair",
+    "task/refactor",
+    "task/repo-research",
+    "task/mechanical-edit",
 )
 
 _SCHEMA_DIRECTORY = Path("contracts/schemas")
@@ -53,7 +63,19 @@ _TASK_REVIEW_EVIDENCE_SCHEMA = "task-review-evidence.schema.json"
 _EXPERIMENT_LEDGER_ENTRY_SCHEMA = "experiment-ledger-entry.schema.json"
 _V1_TASK_PACKS: tuple[str, ...] = ("task", "smol", "slow")
 _V2_TASK_PACKS: tuple[str, ...] = ("default", "task", "smol", "slow", "plan", "advisor")
-_V3_TASK_PACKS: tuple[str, ...] = BUILTIN_ROLES
+_V3_TASK_PACKS: tuple[str, ...] = (
+    "default",
+    "smol",
+    "slow",
+    "vision",
+    "plan",
+    "designer",
+    "commit",
+    "tiny",
+    "task",
+    "advisor",
+)
+_V4_TASK_PACKS: tuple[str, ...] = BUILTIN_ROLES
 _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
     "attempt-observation": {
         "omp.attempt-observation/v1": "attempt-observation-v1",
@@ -70,7 +92,11 @@ _VERSIONED_ARTIFACT_SCHEMAS: dict[str, dict[str, str]] = {
     "role-registry": {
         "omp.role-registry/v1": "role-registry-v1",
         "omp.role-registry/v2": "role-registry-v2",
-        "omp.role-registry/v3": "role-registry",
+        "omp.role-registry/v3": "role-registry-v3",
+        "omp.role-registry/v4": "role-registry",
+    },
+    "task-suite-profile": {
+        "omp.task-suite-profile/v1": "task-suite-profile-v1",
     },
     "task-qualification": {
         "omp.task-qualification/v1": "task-qualification-v1",
@@ -103,6 +129,8 @@ _REQUIRED_SCHEMAS: tuple[str, ...] = (
     "role-contract.schema.json",
     "role-registry-v1.schema.json",
     "role-registry-v2.schema.json",
+    "role-registry-v3.schema.json",
+    "role-registry-v4.schema.json",
     "role-registry.schema.json",
     "route-policy.schema.json",
     "route.schema.json",
@@ -115,6 +143,7 @@ _REQUIRED_SCHEMAS: tuple[str, ...] = (
     "task-qualification-v1.schema.json",
     "task-qualification.schema.json",
     "task-review-evidence.schema.json",
+    "task-suite-profile-v1.schema.json",
     "verifier-result.schema.json",
     "worker-run-manifest-v1.schema.json",
     "worker-run-manifest.schema.json",
@@ -270,8 +299,16 @@ def _task_pack_roles(registry: JSONObject) -> tuple[str, ...]:
         return _V1_TASK_PACKS
     if schema_version == "omp.role-registry/v2":
         return _V2_TASK_PACKS
-    return _V3_TASK_PACKS
+    if schema_version == "omp.role-registry/v3":
+        return _V3_TASK_PACKS
+    return _V4_TASK_PACKS
 
+
+def _registry_roles(registry: JSONObject) -> tuple[str, ...]:
+    schema_version = registry.get("schema_version")
+    if schema_version in ("omp.role-registry/v1", "omp.role-registry/v2", "omp.role-registry/v3"):
+        return _V3_TASK_PACKS
+    return _V4_TASK_PACKS
 
 def load_repository(root: Path | None = None) -> Repository:
     """Load the registry, canonical role manifests, mapped task packs, and worker policy."""
@@ -283,7 +320,7 @@ def load_repository(root: Path | None = None) -> Repository:
         raise ContractError("contracts must be an object", _REGISTRY_FILE.as_posix(), "$.contracts")
 
     manifests: list[tuple[str, JSONObject]] = []
-    for role in BUILTIN_ROLES:
+    for role in _registry_roles(registry):
         relative_value = contracts.get(role)
         if not isinstance(relative_value, str):
             raise ContractError(
@@ -712,7 +749,6 @@ def _instance_diagnostics(
         validator.iter_errors(instance),
         key=lambda item: (
             tuple(str(part) for part in item.absolute_path),
-            tuple(str(part) for part in item.absolute_schema_path),
             item.message,
         ),
     )
@@ -722,19 +758,14 @@ def _instance_diagnostics(
 
 def _duplicate_diagnostics(value: JSONValue, relative: Path, parts: tuple[object, ...] = ()) -> Iterator[Diagnostic]:
     if isinstance(value, list):
-        seen: dict[str, int] = {}
+        seen: set[str] = set()
         for index, item in enumerate(value):
-            fingerprint = canonical_json(item)
-            first = seen.get(fingerprint)
-            if first is not None:
-                yield Diagnostic(
-                    relative.as_posix(),
-                    _json_path((*parts, index)),
-                    f"duplicate array item; first appears at index {first}",
-                )
-            else:
-                seen[fingerprint] = index
-            yield from _duplicate_diagnostics(item, relative, (*parts, index))
+            if isinstance(item, (dict, list)):
+                yield from _duplicate_diagnostics(item, relative, (*parts, index))
+            elif isinstance(item, str):
+                if item in seen:
+                    yield Diagnostic(relative.as_posix(), _json_path((*parts, index)), f"duplicate array item {item!r}")
+                seen.add(item)
     elif isinstance(value, dict):
         for key in sorted(value):
             yield from _duplicate_diagnostics(value[key], relative, (*parts, key))
@@ -743,6 +774,7 @@ def _duplicate_diagnostics(value: JSONValue, relative: Path, parts: tuple[object
 def _registry_semantics(registry: JSONObject) -> Iterator[Diagnostic]:
     relative = _REGISTRY_FILE
     task_pack_roles = _task_pack_roles(registry)
+    expected_roles = _registry_roles(registry)
     task_packs = registry.get("task_packs")
     if isinstance(task_packs, dict):
         actual = set(task_packs)
@@ -763,16 +795,16 @@ def _registry_semantics(registry: JSONObject) -> Iterator[Diagnostic]:
                     f"must be {expected_path!r}",
                 )
     roles = registry.get("roles")
-    if isinstance(roles, list) and roles != list(BUILTIN_ROLES):
+    if isinstance(roles, list) and roles != list(expected_roles):
         yield Diagnostic(
             relative.as_posix(),
             "$.roles",
-            f"roles must exactly equal {list(BUILTIN_ROLES)!r}",
+            f"roles must exactly equal {list(expected_roles)!r}",
         )
     contracts = registry.get("contracts")
     if isinstance(contracts, dict):
         actual = set(contracts)
-        expected = set(BUILTIN_ROLES)
+        expected = set(expected_roles)
         if actual != expected:
             missing = sorted(expected - actual)
             extra = sorted(actual - expected)
@@ -781,7 +813,7 @@ def _registry_semantics(registry: JSONObject) -> Iterator[Diagnostic]:
                 "$.contracts",
                 f"contract coverage mismatch; missing={missing!r}, extra={extra!r}",
             )
-        for role in BUILTIN_ROLES:
+        for role in expected_roles:
             expected_path = (_ROLE_DIRECTORY / f"{role}.json").as_posix()
             actual_path = contracts.get(role)
             if actual_path is not None and actual_path != expected_path:
@@ -791,7 +823,6 @@ def _registry_semantics(registry: JSONObject) -> Iterator[Diagnostic]:
                     f"must be {expected_path!r}",
                 )
     yield from _duplicate_diagnostics(registry, relative)
-
 
 def _manifest_semantics(
     role: str,
@@ -2042,6 +2073,20 @@ def _diagnostic_task_semantics(root: Path, task: JSONObject, relative: Path) -> 
             "public repository diagnostic tasks must not contain holdout material",
         )
     role = task.get("role")
+    routing_lane = task.get("routing_lane")
+    if routing_lane is not None:
+        if role != "task":
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.routing_lane",
+                f"routing_lane is not permitted for non-task role {role!r}",
+            )
+        elif routing_lane not in _TASK_ROUTING_LANES:
+            yield Diagnostic(
+                relative.as_posix(),
+                "$.routing_lane",
+                f"routing_lane {routing_lane!r} is not a valid registered task lane",
+            )
     if isinstance(role, str) and role in BUILTIN_ROLES:
         contract_relative = _ROLE_DIRECTORY / f"{role}.json"
         try:
@@ -2751,6 +2796,27 @@ def _task_pack_semantics(root: Path, pack: JSONObject, relative: Path) -> Iterat
                 "task-qualification",
                 qualification,
             )
+            entry_lane = entry.get("routing_lane")
+            if entry_lane is not None:
+                if role != "task":
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.entries[{index}].routing_lane",
+                        f"routing_lane is not permitted for non-task role {role!r}",
+                    )
+                elif entry_lane not in _TASK_ROUTING_LANES:
+                    yield Diagnostic(
+                        relative.as_posix(),
+                        f"$.entries[{index}].routing_lane",
+                        f"routing_lane {entry_lane!r} is not a valid registered task lane",
+                    )
+            task_lane = task.get("routing_lane")
+            if entry_lane is not None and task_lane is not None and entry_lane != task_lane:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    f"$.entries[{index}].routing_lane",
+                    f"entry routing_lane {entry_lane!r} does not match task routing_lane {task_lane!r}",
+                )
             try:
                 task_schema = _load_object(
                     root,
@@ -3094,7 +3160,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
     diagnostics.extend(_registry_semantics(registry))
 
     contracts = registry.get("contracts")
-    expected_files = {f"{role}.json" for role in BUILTIN_ROLES}
+    expected_files = {f"{role}.json" for role in _registry_roles(registry)}
     role_directory = resolved / _ROLE_DIRECTORY
     actual_files = (
         {path.relative_to(role_directory).as_posix() for path in role_directory.rglob("*.json")}
@@ -3108,7 +3174,7 @@ def validate_repository(root: Path | None = None) -> ValidationResult:
 
     role_schema = schemas.get(_ROLE_SCHEMA)
     contract_ids: dict[str, str] = {}
-    for role in BUILTIN_ROLES:
+    for role in _registry_roles(registry):
         relative = _ROLE_DIRECTORY / f"{role}.json"
         if not (resolved / relative).is_file():
             continue

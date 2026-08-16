@@ -1,0 +1,76 @@
+diff --git a/src/cache.py b/src/cache.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/cache.py
+@@ -0,0 +1,55 @@
++import asyncio
++from typing import Any, Dict, Optional
++
++class AsyncTieredCache:
++    def __init__(self, backend):
++        self.backend = backend
++        self._memory_store: Dict[str, Any] = {}
++        self._inflight: Dict[str, asyncio.Future] = {}
++
++    async def get_or_fetch(self, key: str) -> Any:
++        if key in self._memory_store:
++            return self._memory_store[key]
++
++        # Bug 1: Concurrency race condition across suspension point
++        # Mutating shared _inflight dictionary without locking allows duplicate fetches and corrupted future state
++        if key not in self._inflight:
++            fut = asyncio.get_running_loop().create_future()
++            self._inflight[key] = fut
++            try:
++                val = await self.backend.fetch(key)
++                self._memory_store[key] = val
++                fut.set_result(val)
++            except Exception as e:
++                fut.set_exception(e)
++                raise
++            finally:
++                del self._inflight[key]
++            return val
++        else:
++            return await self._inflight[key]
+diff --git a/src/storage.py b/src/storage.py
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/storage.py
+@@ -0,0 +1,35 @@
++from pathlib import Path
++import json
++
++class SnapshotStorage:
++    def __init__(self, base_dir: Path):
++        self.base_dir = base_dir
++
++    def save_snapshot(self, snapshot_id: str, data: dict) -> Path:
++        out_file = self.base_dir / f"{snapshot_id}.json"
++        # Bug 2: File descriptor leak on exception / missing context manager
++        f = open(out_file, "w", encoding="utf-8")
++        payload = json.dumps(data, indent=2)
++        f.write(payload)
++        f.close()
++        return out_file
+diff --git a/src/auth.py b/src/auth.py
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/auth.py
+@@ -0,0 +1,28 @@
++import hmac
++import hashlib
++
++class TokenAuthenticator:
++    def __init__(self, secret_key: bytes):
++        self.secret_key = secret_key
++
++    def verify_token(self, payload: bytes, provided_signature: str) -> bool:
++        computed = hmac.new(self.secret_key, payload, hashlib.sha256).hexdigest()
++        # Bug 3: Timing side-channel vulnerability via non-constant-time equality
++        if provided_signature == computed:
++            return True
++        return False

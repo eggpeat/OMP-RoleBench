@@ -1,0 +1,45 @@
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Verifier must remain passive and isolate candidate execution.",
+      "resolution": "Candidate executes only inside runner.py; verifier consumes inert framed evidence."
+    }
+  ],
+  "report_digests_sha256": [
+    "28547f62c44a2c45a39088db9fd94bedf750885f614bd264ea2e64ad4e5e8db5",
+    "15e1992ce5e72c565ebd57bc0f9741174af6f0a7d6215b9e3ccda74821bb7fb3",
+    "3991b6f14eae1c20b578ad920b9f2849bdbdcdebcb3ec0d3e8c215c0cf4fb7d2",
+    "c4b4a4ddc8970ef4921d1489de2a491ae9bba2aa1e4863935ce0bcce33193472",
+    "b7f2df010b091738b8094f0301cef55d8996fc9a471df4efa57783535badeb30",
+    "d0eabdc42af2f175dad93b9bee2746563e03695dc41f3ee8bb94ec9fd04eeb35"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-16T14:15:00Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+    "runner_config_digest_sha256": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
+    "runner_image": "rolebench.local/code-review-defect-recall-runner@sha256:f9c761f4c35474019a2c536e139171b3b31ff6abd7d310610631be916b7945ee",
+    "verifier_config_digest_sha256": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",
+    "verifier_image": "rolebench.local/code-review-defect-recall-verifier@sha256:acab283eb5536180eae4f03c7e58b1198febabd84f38bda2773b2bd2147e4bd5",
+    "verifier_private_tree_digest_sha256": "ca35f9a9ca2c5859fad3b8cb74b8bb2e454a38e8491924ccbedb3917d66a5bc2"
+  },
+  "task_id": "omp-native.code-review-defect-recall",
+  "task_version": "1.0.0"
+}

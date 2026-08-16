@@ -1,0 +1,25 @@
+{
+  "assignment": {
+    "assignment_method": "author-assigned",
+    "confidentiality": "public",
+    "family_id": "omp-native.code-review-precision-control",
+    "partition": "anchor",
+    "role": "reviewer"
+  },
+  "capability_tags": [
+    "code-review",
+    "defect-recall",
+    "false-positive-control",
+    "structured-findings",
+    "evidence-citation"
+  ],
+  "decision": "approved",
+  "findings": [],
+  "rationale": "Structured code review precision control and false-positive suppression directly exercise the reviewer role contract.",
+  "review_type": "split",
+  "reviewed_at": "2026-08-16T14:00:00Z",
+  "reviewer": "rolebench/reviewer/role-fit-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "task_id": "omp-native.code-review-precision-control",
+  "task_version": "1.0.0"
+}

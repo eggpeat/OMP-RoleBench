@@ -1,0 +1,20 @@
+You are an expert code reviewer acting in the OMP @reviewer role.
+Perform a thorough, structured code review of the attached changeset in `change.patch`.
+
+Examine the change for:
+1. Concurrency hazards or improper lock acquisition/release in `src/ring_buffer.py`.
+2. Off-by-one errors or index out-of-bounds in circular buffer indexing.
+3. Memory leaks, dangling object references, or resource management issues.
+
+Return your findings strictly as a single JSON object matching schema `rolebench.review-findings/v1`:
+{
+  "schema_version": "rolebench.review-findings/v1",
+  "verdict": "approved",
+  "findings": []
+}
+
+Constraints:
+- If no material defects are found, return verdict "approved" with an empty "findings" list.
+- Do not report intentional design choices (e.g. deprecation warnings) or stylistic preferences as bugs.
+- Fabricated, speculative, or false-positive findings will be penalized.
+- Severity must be "high", "medium", or "low".

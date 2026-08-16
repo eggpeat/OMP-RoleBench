@@ -23,13 +23,13 @@
     "roles": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 10,
+      "maxItems": 11,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["role", "expected", "lower", "upper", "unit"],
         "properties": {
-          "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+          "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]},
           "expected": {"type": "number", "minimum": 0},
           "lower": {"type": "number", "minimum": 0},
           "upper": {"type": "number", "minimum": 0},

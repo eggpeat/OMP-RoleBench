@@ -48,6 +48,13 @@ from .task_workflow import (
     scan_session_candidates,
     verify_task_pack,
 )
+from .suite_audit import (
+    LaneAuditResult,
+    RoleAuditResult,
+    SuiteAuditReport,
+    audit_task_suite,
+    format_suite_audit_human,
+)
 
 __all__ = [
     "BUILTIN_ROLES",
@@ -95,4 +102,9 @@ __all__ = [
     "verify_ledger",
     "verify_task_pack",
     "weighted_rendezvous_rank",
+    "LaneAuditResult",
+    "RoleAuditResult",
+    "SuiteAuditReport",
+    "audit_task_suite",
+    "format_suite_audit_human",
 ]

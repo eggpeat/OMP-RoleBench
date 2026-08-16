@@ -14,7 +14,7 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
     },
     "role": {
-      "enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]
+      "enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]
     },
     "task": {
       "type": "object",

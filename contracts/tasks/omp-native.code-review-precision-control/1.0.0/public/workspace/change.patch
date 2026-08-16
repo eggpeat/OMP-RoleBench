@@ -1,0 +1,60 @@
+diff --git a/src/ring_buffer.py b/src/ring_buffer.py
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/src/ring_buffer.py
+@@ -0,0 +1,52 @@
++from __future__ import annotations
++import threading
++from typing import Generic, Optional, TypeVar
++import warnings
++
++T = TypeVar("T")
++
++class ConcurrentRingBuffer(Generic[T]):
++    """Thread-safe bounded circular buffer with reentrant locking."""
++
++    def __init__(self, capacity: int) -> None:
++        if capacity <= 0:
++            raise ValueError(f"capacity must be positive, got {capacity}")
++        self._capacity = capacity
++        self._buffer: list[Optional[T]] = [None] * capacity
++        self._head = 0
++        self._tail = 0
++        self._size = 0
++        self._lock = threading.Lock()
++
++    def push(self, item: T) -> bool:
++        with self._lock:
++            if self._size == self._capacity:
++                return False
++            self._buffer[self._tail] = item
++            self._tail = (self._tail + 1) % self._capacity
++            self._size += 1
++            return True
++
++    def pop(self) -> Optional[T]:
++        with self._lock:
++            if self._size == 0:
++                return None
++            item = self._buffer[self._head]
++            self._buffer[self._head] = None
++            self._head = (self._head + 1) % self._capacity
++            self._size -= 1
++            return item
++
++    @property
++    def size(self) -> int:
++        with self._lock:
++            return self._size
++
++class LegacyBuffer(ConcurrentRingBuffer[T]):
++    """Deprecated alias for backwards compatibility."""
++
++    def __init__(self, capacity: int) -> None:
++        warnings.warn(
++            "LegacyBuffer is deprecated, use ConcurrentRingBuffer instead",
++            DeprecationWarning,
++            stacklevel=2,
++        )
++        super().__init__(capacity)

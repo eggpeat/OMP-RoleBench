@@ -43,6 +43,7 @@ from .task_workflow import (
     scan_session_candidates,
     verify_task_pack,
 )
+from .suite_audit import audit_task_suite, format_suite_audit_human
 from .worker import WorkerError, doctor_worker, run_worker
 
 
@@ -222,6 +223,12 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_run.add_argument("--run-id", required=True)
     prepare_run.add_argument("--output", type=Path, required=True)
     prepare_run.add_argument("--docker", default="docker", metavar="PATH")
+    suite_audit = task_commands.add_parser(
+        "suite-audit",
+        help="audit the task suite against the v1 freeze profile",
+    )
+    suite_audit.add_argument("--json", action="store_true", dest="as_json")
+    suite_audit.add_argument("--strict", action="store_true", dest="strict")
 
     ledger = groups.add_parser(
         "ledger",
@@ -686,6 +693,15 @@ def run(
                 docker=arguments.docker,
             )
             print(canonical_json(manifest), file=stdout)
+            return 0
+        if arguments.group == "tasks" and arguments.command == "suite-audit":
+            report = audit_task_suite(root)
+            if arguments.as_json:
+                print(canonical_json(report.to_dict()), file=stdout)
+            else:
+                print(format_suite_audit_human(report), file=stdout)
+            if arguments.strict:
+                return 0 if report.structurally_frozen else 1
             return 0
 
         if arguments.group == "ledger" and arguments.command == "verify":

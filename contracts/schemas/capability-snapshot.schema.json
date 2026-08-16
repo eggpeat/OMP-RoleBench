@@ -83,7 +83,7 @@
     "checksum_sha256": {"$ref": "#/$defs/sha256"}
   },
   "$defs": {
-    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]},
     "probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
     "probabilityEstimate": {
       "type": "object",

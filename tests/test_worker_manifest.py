@@ -241,7 +241,7 @@ class WorkerManifestTests(unittest.TestCase):
         self.assertIn(
             "worker-run-manifest.json:$.role: must be one of the built-in roles "
             "['default', 'smol', 'slow', 'vision', 'plan', 'designer', 'commit', "
-            "'tiny', 'task', 'advisor']",
+            "'tiny', 'task', 'advisor', 'reviewer']",
             self.rendered(result),
         )
 

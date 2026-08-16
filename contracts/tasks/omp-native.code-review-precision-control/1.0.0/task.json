@@ -1,0 +1,225 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+      "config_digest_sha256": "974bc8fb0ad9cb3fd09b50359316c33a07350c5387da9e2f6e49dc259077f705",
+      "image": "rolebench.local/code-review-precision-baseline@sha256:3e2273739ad38a057341828a96e150e83415660fd10a86dd3512cb2a878ad87d",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+      "config_digest_sha256": "d897726be04785b7dcc3a52cffb4c2935d91f0e2a8393a5240789543f48e3d19",
+      "image": "rolebench.local/code-review-precision-reference@sha256:f47869d5e38535f4fcc6eeec1daa4054331aba25b618793f5048a15c1d9c775e",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+      "config_digest_sha256": "e2bc22cbf7ff30a4c5b7884e01c654eb697b53e2c456f7e0108d4c054175ddae",
+      "image": "rolebench.local/code-review-precision-tamper@sha256:addc86b6c9482e3ff1a89993c9c4375b5239361d30e1c2e54b756aaaa4dcf054",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+    "config_digest_sha256": "7b07a25094786c2c6cfced0cd732f53240d1b736a9fcbd4a387dd9ad37ea1d53",
+    "image": "rolebench.local/code-review-precision-candidate@sha256:ef38ef66759e4911f0be02b8b934205a55acba917df21e36e4adfe5836d679a0",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+      "prompt": {
+        "digest_sha256": "8b686b7966cf6668c84e2fa0681cbec69a70dccf4e65bb9e8c39aab0c1d56845",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "56fabc2b97945017aaf939c2dd95fba26e48afa2d748b9b7854cec3c533613e0",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc",
+      "root": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "c3212037deb3be70f9585f33846c981a2664a4a32f9ba345595f430ed5ca94be",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.code-review-precision-control-reviewer-v1"
+  },
+  "capability_tags": [
+    "code-review",
+    "defect-recall",
+    "false-positive-control",
+    "structured-findings",
+    "evidence-citation"
+  ],
+  "content_digest_sha256": "d2e0e55af7e61ee489cbe8685670d1558a3c625c65918098aabe6d65395347d2",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.code-review-precision-control",
+    "variant_id": "1.0.0-omp-native.code-review-precision-control-reviewer-v1"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Approve the clean change with verdict 'approved'.",
+      "Report 0 false-positive defect findings.",
+      "Return strict review findings JSON schema."
+    ],
+    "mode": "clean-change-precision",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "a36b3dad5620ecb41e570bd3b18868b79c610548172968c0a34a8ead0c14cf9c",
+      "evidence_path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T14:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "0257ef3fdd55608c829e54f4aa284d9a74da49682f15d720d0262366fa4b67d0",
+      "evidence_path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T14:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "cf58b0a80091434528eced19e537398db0bd71a2d085b455be92ef2133177c47",
+      "evidence_path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/reviews/split.json",
+      "family_id": "omp-native.code-review-precision-control",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T14:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "94fec9d7bf1e1d624f3518a2503c778ff72b9f118d470f05af306eaf0a60cbfb",
+      "evidence_path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc",
+      "reviewed_at": "2026-08-16T14:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "f13b70a87e2cf0061ae05188c2734d2821f35af092be14180edcb2edc689cdc6",
+      "runner_image": "rolebench.local/code-review-precision-runner@sha256:a5e1c35fd7cc9388704eead480464c9af0c51699e81bb047bc0af315adb467f5",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "10dbd531317190808db5db4aebf9c6810841dfa1ccd4a6078f03df19d8a7b656",
+      "verifier_image": "rolebench.local/code-review-precision-verifier@sha256:204ece2ab143c639e0ce418de3d2ca34e65f1a802760627007f4f9cbc58c1950",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "reviewer",
+  "role_contract": {
+    "contract_id": "role-contract/reviewer/v1",
+    "digest_sha256": "17b391bb9c416a1a089c8ea59c6532f3a801418d7844982386a27644152f4f6f"
+  },
+  "routing_eligible": false,
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+    "config_digest_sha256": "f13b70a87e2cf0061ae05188c2734d2821f35af092be14180edcb2edc689cdc6",
+    "image": "rolebench.local/code-review-precision-runner@sha256:a5e1c35fd7cc9388704eead480464c9af0c51699e81bb047bc0af315adb467f5",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+    "kind": "authored",
+    "version": "omp-native/omp-native.code-review-precision-control@1"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.code-review-precision-control-reviewer-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "cf58b0a80091434528eced19e537398db0bd71a2d085b455be92ef2133177c47",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.code-review-precision-control",
+  "task_mix": "reviewer-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc",
+    "config_digest_sha256": "10dbd531317190808db5db4aebf9c6810841dfa1ccd4a6078f03df19d8a7b656",
+    "image": "rolebench.local/code-review-precision-verifier@sha256:204ece2ab143c639e0ce418de3d2ca34e65f1a802760627007f4f9cbc58c1950",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}
