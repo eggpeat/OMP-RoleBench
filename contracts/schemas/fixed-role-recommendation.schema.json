@@ -1,36 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:omp-rolebench:schema:fixed-role-recommendation:v1",
-  "title": "OMP Non-Pooled Role Recommendation v1",
-  "$comment": "Default, plan, slow, vision, designer, advisor, and reviewer each receive one configured primary plus an ordered fallback chain; none receive weights.",
+  "$id": "urn:omp-rolebench:schema:primary-routing-recommendation:v1",
+  "title": "OMP Primary + Fallback Recommendation v1",
+  "$comment": "Any native OMP role may use configured-primary selection with an ordered fallback chain. This artifact is a recommendation surface, not a capability restriction and contains no weights.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "recommendation_id", "created_at", "default", "plan", "slow", "vision", "designer", "advisor", "reviewer", "checksum_sha256"],
+  "required": ["schema_version","recommendation_id","created_at","default","plan","advisor","reviewer","smol","slow","vision","designer","commit","tiny","task","checksum_sha256"],
   "properties": {
-    "schema_version": {"const": "omp.fixed-role-recommendation/v1"},
-    "recommendation_id": {"type": "string", "minLength": 1},
-    "created_at": {"type": "string", "format": "date-time"},
-    "default": {"$ref": "#/$defs/fallbackRole"},
-    "plan": {"$ref": "#/$defs/fallbackRole"},
-    "slow": {"$ref": "#/$defs/fallbackRole"},
-    "vision": {"$ref": "#/$defs/fallbackRole"},
-    "designer": {"$ref": "#/$defs/fallbackRole"},
-    "advisor": {"$ref": "#/$defs/fallbackRole"},
-    "reviewer": {"$ref": "#/$defs/fallbackRole"},
-    "checksum_sha256": {"$ref": "#/$defs/sha256"}
+    "schema_version": {"const":"omp.primary-routing-recommendation/v1"},
+    "recommendation_id": {"type":"string","minLength":1},
+    "created_at": {"type":"string","format":"date-time"},
+    "default": {"$ref":"#/$defs/fallbackRole"},
+    "plan": {"$ref":"#/$defs/fallbackRole"},
+    "advisor": {"$ref":"#/$defs/fallbackRole"},
+    "reviewer": {"$ref":"#/$defs/fallbackRole"},
+    "smol": {"$ref":"#/$defs/fallbackRole"},
+    "slow": {"$ref":"#/$defs/fallbackRole"},
+    "vision": {"$ref":"#/$defs/fallbackRole"},
+    "designer": {"$ref":"#/$defs/fallbackRole"},
+    "commit": {"$ref":"#/$defs/fallbackRole"},
+    "tiny": {"$ref":"#/$defs/fallbackRole"},
+    "task": {"$ref":"#/$defs/fallbackRole"},
+    "checksum_sha256": {"$ref":"#/$defs/sha256"}
   },
   "$defs": {
-    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "status": {"enum": ["recommended", "insufficient-evidence", "no-qualified-route", "inactive"]},
-    "fallbackRole": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["status", "primary_route", "fallback_chain"],
-      "properties": {
-        "status": {"$ref": "#/$defs/status"},
-        "primary_route": {"type": ["string", "null"]},
-        "fallback_chain": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
-      }
-    }
+    "sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "status":{"enum":["recommended","insufficient-evidence","no-qualified-route","inactive"]},
+    "fallbackRole":{"type":"object","additionalProperties":false,"required":["status","primary_route","fallback_chain"],"properties":{"status":{"$ref":"#/$defs/status"},"primary_route":{"type":["string","null"]},"fallback_chain":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}}}}
   }
 }
