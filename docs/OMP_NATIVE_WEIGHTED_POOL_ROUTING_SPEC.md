@@ -25,18 +25,13 @@ plan
 slow
 vision
 designer
-```
-
-These roles use one configured primary route and OMP's existing ordered retry fallback chain. They are benchmarked and may receive RoleBench recommendations for the primary and fallback order, but they are not load-balanced during normal execution.
-
-### Dedicated roles
-
-```text
 advisor
 reviewer
 ```
 
-`advisor` and `reviewer` are separate native workflows with dedicated model identity. They are never pooled together and never share weighted allocation evidence.
+These roles use one configured primary route and OMP's existing ordered retry fallback chain. They are benchmarked and may receive RoleBench recommendations for the primary and fallback order, but they are not load-balanced during normal execution.
+
+`advisor` and `reviewer` remain separate native workflows and separate routing roles. Treating both as fallback-chain roles does not pool their evidence or make them interchangeable; it only avoids hard-coding a single model because of one operator's personal preference.
 
 ### User-controlled role
 
@@ -55,9 +50,9 @@ The four weighted roles are repeated helper/execution surfaces where independent
 - `tiny`: titles, metadata, classification, memory, and other bounded utility work
 - `task`: autonomous delegated child-agent execution
 
-`plan`, `slow`, `vision`, and `designer` instead behave like configured role primaries. Their model identity should remain stable for the logical role session or operation, with OMP's existing retry chain handling failures and depletion.
+`plan`, `slow`, `vision`, `designer`, `advisor`, and `reviewer` instead behave like configured role primaries. Their model identity should remain stable for the logical role session, operation, advisor runtime, or review run, with OMP's existing retry chain handling failures and depletion.
 
-`advisor` and `reviewer` have stronger native workflow semantics and remain dedicated. `default` owns the long-lived primary session and remains manual.
+`default` owns the long-lived primary session and remains manual.
 
 ## Routing topology
 
@@ -68,8 +63,8 @@ The four weighted roles are repeated helper/execution surfaces where independent
 | `slow` | fallback chain | role session |
 | `vision` | fallback chain | operation |
 | `designer` | fallback chain | child session |
-| `advisor` | dedicated | advisor runtime |
-| `reviewer` | dedicated | review run |
+| `advisor` | fallback chain | advisor runtime |
+| `reviewer` | fallback chain | review run |
 | `smol` | weighted pool | operation |
 | `commit` | weighted pool | operation |
 | `tiny` | weighted pool | operation |
@@ -99,7 +94,7 @@ No lanes are defined for non-pooled roles. No lanes are initially defined for `s
 RoleBench emits two different routing outputs:
 
 1. **`omp.pool-policy/v1`** — weighted allocations for `smol`, `commit`, `tiny`, and `task` only.
-2. **`omp.fixed-role-recommendation/v1`** — recommendations for `plan`, `slow`, `vision`, and `designer` as primary + ordered fallback chains, plus dedicated `advisor` and `reviewer` routes.
+2. **`omp.fixed-role-recommendation/v1`** — primary + ordered fallback-chain recommendations for `plan`, `slow`, `vision`, `designer`, `advisor`, and `reviewer`.
 
 `default` is intentionally absent from both automatic-control artifacts.
 
@@ -133,8 +128,8 @@ native non-pooled behavior
     ├── slow: primary + retry fallback chain
     ├── vision: primary + retry fallback chain
     ├── designer: primary + retry fallback chain
-    ├── advisor: dedicated runtime route
-    └── reviewer: dedicated review route
+    ├── advisor: primary + retry fallback chain
+    └── reviewer: primary + retry fallback chain
     ↓
 weighted pool policy for smol / commit / tiny / task
     ↓
@@ -143,7 +138,7 @@ static modelRoles assignment
 existing retry/fallback recovery
 ```
 
-Weighted selection uses deterministic weighted rendezvous hashing once per logical invocation. Existing fallback chains remain reactive recovery and the normal resolution mechanism for the four fallback-chain roles.
+Weighted selection uses deterministic weighted rendezvous hashing once per logical invocation. Existing fallback chains remain reactive recovery and the normal resolution mechanism for all six fallback-chain roles.
 
 ## Upstream OMP integration
 
@@ -162,7 +157,7 @@ interface RoleRouteRequest {
 Resolution precedence:
 
 1. explicit concrete override;
-2. native manual/dedicated/fallback-chain semantics;
+2. native manual/fallback-chain semantics;
 3. active weighted pool policy for one of the four pool-eligible roles;
 4. static `modelRoles` assignment;
 5. existing retry and recovery machinery.
@@ -184,6 +179,5 @@ All other roles remain outside weighted enforcement.
 Existing role contracts, task admission, verifier isolation, accounting, and calibration packs remain valid. A benchmark pack's existence does not imply pool eligibility. Routing topology determines how evidence may be consumed:
 
 - `smol`, `commit`, `tiny`, and `task` evidence may qualify weighted candidates;
-- `plan`, `slow`, `vision`, and `designer` evidence may rank a primary and fallback chain;
-- `advisor` and `reviewer` evidence may rank dedicated routes;
+- `plan`, `slow`, `vision`, `designer`, `advisor`, and `reviewer` evidence may rank a primary and fallback chain;
 - `default` evidence is informational unless the user explicitly applies it.
