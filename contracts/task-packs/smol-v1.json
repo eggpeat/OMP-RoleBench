@@ -2,11 +2,11 @@
   "entries": [
     {
       "qualification": {
-        "digest_sha256": "08c3e6f494a0dd57e1766ff91a3d592b19e5d181bacb4a99cd988408c0c6851b",
+        "digest_sha256": "9f84b62774773369272ab6c8de31da74f80e4d95d9edfe08429593a357337616",
         "path": "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6/qualification.json"
       },
       "task": {
-        "digest_sha256": "81c46e3480e1f5982e84eb9a451af9a4032a1b0c00c7921be0c5c03d1be2e3a0",
+        "digest_sha256": "0b84a87a19c749a84f1676bb74a049c29d26a7827a320b6adadb2972e4f50a6b",
         "path": "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6/task.json"
       }
     }

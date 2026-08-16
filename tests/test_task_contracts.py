@@ -1826,13 +1826,16 @@ class RoleAnchorSemanticTests(unittest.TestCase):
 
         self.assertEqual(decode_vim_string(r"\<Char-40>"), "(")
         self.assertEqual(decode_vim_string(r"\\<Char-40>"), r"\<Char-40>")
-        self.assertEqual(decode_vim_string(r"\<Bar>"), "|")
+        with self.assertRaisesRegex(
+            submission_error,
+            "unsupported Vim key notation",
+        ):
+            decode_vim_string(r"\<Bar>")
         with self.assertRaisesRegex(
             submission_error,
             "encoded Vim command separators are forbidden",
         ):
             decode_vim_string(r"\<Char-124>")
-
         lines = valid_script.splitlines()
         lines[0] = (
             "call setreg('a', \":call setline\\<Char-40>'.', 'bypass'"
@@ -1886,13 +1889,17 @@ class RoleAnchorSemanticTests(unittest.TestCase):
             r":tabe /tmp/file\<CR>u",
             r":b /tmp/file\<CR>u",
             r":w /tmp/out\<CR>u",
+            r":s/foo/bar/\<Esc>:e /etc/passwd\<CR>",
+            r":s/foo/bar/|e /etc/passwd\<CR>",
+            r":s/foo/bar/\<Bar>e /etc/passwd\<CR>",
+            r":s/foo/bar/\<Esc>:r /etc/hostname\<CR>",
         ):
             with self.subTest(command=command):
                 lines = valid_script.splitlines()
                 lines[0] = f"call setreg('a', \"{command}j\")"
                 with self.assertRaisesRegex(
                     submission_error,
-                    "forbidden",
+                    "forbidden|unsupported",
                 ):
                     validate_script("\n".join(lines) + "\n")
 

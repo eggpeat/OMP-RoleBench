@@ -21,12 +21,12 @@
     }
   ],
   "report_digests_sha256": [
-    "2dea42f9b105f9016f7b5ae7fad50317314d9958814653e5ceabe91b6543412a",
-    "428f2181422913110ea436c72974f41becd881e621ee4f7d0ca942092658decc",
-    "783bc2aa902f29433b3a9e1d809a528a4ae3eb102f3b211972d3fe6674452f85",
-    "1ff42e80ef18ce41989a6d458a89f0431173caf7f119457ad9fd31ad97a770ca",
-    "75d0b9f2c397289775b008a3f95c047d48e93880ebd02802d6280ef6d9399558",
-    "7f6d30013fcbf09279c928cbf8bcda43585ef7b92044f4f37e1340e4f82d3aab"
+    "a536d47b66614ceec0f7f0d04d408acc54e400ada5715cf1fa62ea72961092d3",
+    "e897bca590a7040ca88762a9554b6822354abcf9cc5075b0b0f4de8d6fc7c556",
+    "51edab0114cbcd0399259e059240f4c1cf55b659ffed84e180acbe5d4e8de16e",
+    "d09e6006a047bcd2f1e19c11372c6ae46247cf45505d99dfc29d771bc4a6b1d3",
+    "48074fc4568661f1706cdd5ae5d30657ed0d72a688139d061f7a421d0eec55b2",
+    "70fd0f640d8be43e1ff286766aec0b2d1b6cadcdf56a6dc980e6a0dd5725d04f"
   ],
   "review_type": "verifier",
   "reviewed_at": "2026-08-16T02:12:34Z",
@@ -34,8 +34,8 @@
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
     "public_tree_digest_sha256": "2696f269259a3367f32322e030ce605ac5fe67ee4710ebbc0ada49a36941243d",
-    "runner_config_digest_sha256": "671ee44af0d12c28cdaa525e9b6d6dcee9b4abe14d7669bbca70c897f6b48386",
-    "runner_image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:d078e197a48e35b62682f7b4b6c321f1ecc7c74dacebf384451b9a9025d3a987",
+    "runner_config_digest_sha256": "541aae9a7edf86a6eedd6d29b621fb06f683d97f0eb754ec6587b1f4659e6c5c",
+    "runner_image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:0e1cfe16661903e9cf5366d151c056989024a0aaa026e7c4588e845c0f5d68ca",
     "verifier_config_digest_sha256": "ae42eab1852ded64de1207af66ac0d267710eaf70b7f57be136ec75549c8a3e7",
     "verifier_image": "rolebench.local/large-scale-text-editing-smol-verifier@sha256:c192577b51b85702177aa9debb4f3089e43a0eb5e1305f25324b811a8da31e96",
     "verifier_private_tree_digest_sha256": "17c389cda5c23d31b86c8a4db1a82c958e826f7bf94f849f575d57f13233d3c4"

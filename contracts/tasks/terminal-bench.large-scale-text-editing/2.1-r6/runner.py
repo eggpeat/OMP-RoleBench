@@ -54,7 +54,6 @@ def _decode_vim_string(value: str) -> str:
         "nl": "\n",
         "return": "\r",
         "space": " ",
-        "bar": "|",
     }
     output: list[str] = []
     index = 0
@@ -117,7 +116,7 @@ def _validate_script(script: object) -> tuple[str, int]:
             decoded = _decode_vim_string(content)
             if not decoded:
                 raise SubmissionError("macro content must be non-empty")
-            if FORBIDDEN.search(decoded) or "!" in decoded:
+            if FORBIDDEN.search(decoded) or "!" in decoded or "|" in decoded:
                 raise SubmissionError("macro contains a forbidden command or character")
             if VIMSCRIPT_FUNCTION_CALL.search(decoded):
                 raise SubmissionError("Vimscript function calls are forbidden in macros")
@@ -127,7 +126,7 @@ def _validate_script(script: object) -> tuple[str, int]:
                 if colon_pos < 0:
                     break
                 end_pos = len(decoded)
-                for sep in ("\r", "\n"):
+                for sep in ("\r", "\n", "\x1b"):
                     sep_pos = decoded.find(sep, colon_pos)
                     if sep_pos >= 0 and sep_pos < end_pos:
                         end_pos = sep_pos
