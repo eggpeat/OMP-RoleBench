@@ -35,22 +35,34 @@ SEEDED_DEFECTS = [
     },
 ]
 
+from pathlib import Path
+
+SEVERITY_RANKS = {"low": 1, "medium": 2, "high": 3}
+
+
+def _matches_file(finding_file: str, allowed_patterns: list[str]) -> bool:
+    norm_finding = Path(finding_file.strip()).as_posix().removeprefix("./").removeprefix("/")
+    allowed_clean = {Path(p.strip()).as_posix().removeprefix("./").removeprefix("/") for p in allowed_patterns}
+    return norm_finding in allowed_clean
+
 
 def _matches_target(finding: dict, target: dict) -> bool:
     finding_file = finding.get("file", "")
-    if not any(finding_file.endswith(pat) or pat.endswith(finding_file) for pat in target["file_patterns"]):
+    if not _matches_file(finding_file, target["file_patterns"]):
         return False
     start = finding.get("line_start", 0)
     end = finding.get("line_end", 0)
     t_start, t_end = target["line_range"]
-    # Check for line range overlap
     if end < t_start or start > t_end:
         return False
     category = finding.get("category")
     if category not in target["expected_categories"]:
         return False
+    min_sev = target.get("min_severity", "low")
+    finding_sev = finding.get("severity", "low")
+    if SEVERITY_RANKS.get(finding_sev, 0) < SEVERITY_RANKS.get(min_sev, 0):
+        return False
     return True
-
 
 def verify_submission(submission: dict) -> tuple[bool, str, dict]:
     if not isinstance(submission, dict):

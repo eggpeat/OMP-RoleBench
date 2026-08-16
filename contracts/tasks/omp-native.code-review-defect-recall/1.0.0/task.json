@@ -69,10 +69,10 @@
       }
     },
     "verifier_private": {
-      "digest_sha256": "ca35f9a9ca2c5859fad3b8cb74b8bb2e454a38e8491924ccbedb3917d66a5bc2",
+      "digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
       "root": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/verifier-private",
       "verifier": {
-        "digest_sha256": "4067a3b5c94a5b30e2a20a1809583f39258f64c219c13b8e4f2be783cda5747a",
+        "digest_sha256": "a1fbe3c6b44cb005cccfb3b8cd28ec032dfd740a03ae4c42b38ada02bf6ad848",
         "kind": "file",
         "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/verifier-private/verifier.py"
       }
@@ -88,7 +88,7 @@
     "structured-findings",
     "evidence-citation"
   ],
-  "content_digest_sha256": "044161bb014f0d1447d9d77c520937ebd58de3f4d1ecce8588d90821884c0750",
+  "content_digest_sha256": "11fdac901c832c4bd8a5a0d576201be78ca3986c6c2a1e541386e1f032ec16e5",
   "difficulty": "medium",
   "family": {
     "family_id": "omp-native.code-review-defect-recall",
@@ -122,7 +122,7 @@
   "reviews": {
     "license": {
       "decision": "approved",
-      "evidence_digest_sha256": "859d2f553402c3cab5f55afed68e6c59afac1df5229fe659767e41e218e18849",
+      "evidence_digest_sha256": "e6f6fcf7822efa8d8aa270502f12cea486a1503c9f8d882a0fb1bf6a057adb39",
       "evidence_path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/reviews/license.json",
       "expression": "MIT",
       "redistribution": "permitted",
@@ -131,7 +131,7 @@
     },
     "privacy": {
       "decision": "approved",
-      "evidence_digest_sha256": "fa8fc778e9654e28fe98761e5fb191dffcb4a4499cd9fa3a01433a35a5708892",
+      "evidence_digest_sha256": "c3908d0d177efebc15f9e465a842dd50fdad8be68edd08563374dbf68f02e0c8",
       "evidence_path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/reviews/privacy.json",
       "reviewed_at": "2026-08-16T14:00:00Z",
       "reviewer": "rolebench/reviewer/privacy-gate-v1"
@@ -149,9 +149,9 @@
     },
     "verifier": {
       "decision": "approved",
-      "evidence_digest_sha256": "c19a72533ea551d0c7baf5e2ffac311b481133c2b8be841c0dfd02af3aef91ec",
+      "evidence_digest_sha256": "d07430465e1ab4bd9063d38b0896f9b7a83276584e77a8b457735834e1341d80",
       "evidence_path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/reviews/verifier.json",
-      "private_tree_digest_sha256": "ca35f9a9ca2c5859fad3b8cb74b8bb2e454a38e8491924ccbedb3917d66a5bc2",
+      "private_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
       "reviewed_at": "2026-08-16T14:15:00Z",
       "reviewer": "rolebench/reviewer/verifier-gate-v1",
       "runner_config_digest_sha256": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
@@ -215,7 +215,7 @@
     "argv": [
       "--rolebench-run"
     ],
-    "asset_tree_digest_sha256": "ca35f9a9ca2c5859fad3b8cb74b8bb2e454a38e8491924ccbedb3917d66a5bc2",
+    "asset_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
     "config_digest_sha256": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",
     "image": "rolebench.local/code-review-defect-recall-verifier@sha256:acab283eb5536180eae4f03c7e58b1198febabd84f38bda2773b2bd2147e4bd5",
     "platform": {

@@ -22,7 +22,7 @@
     "public_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
     "source_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
     "source_task": null,
-    "verifier_private_tree_digest_sha256": "ca35f9a9ca2c5859fad3b8cb74b8bb2e454a38e8491924ccbedb3917d66a5bc2"
+    "verifier_private_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145"
   },
   "task_id": "omp-native.code-review-defect-recall",
   "task_version": "1.0.0"

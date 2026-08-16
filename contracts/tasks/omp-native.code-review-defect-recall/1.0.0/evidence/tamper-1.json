@@ -154,12 +154,12 @@
       "runner_image": "f9c761f4c35474019a2c536e139171b3b31ff6abd7d310610631be916b7945ee",
       "runner_image_config": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
       "runtime_policy": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
-      "task": "be9e54f58c3e8c2cea5625d73092802ff18e828d70bb757d054542f7e790bf46",
+      "task": "c95151bd0d21106f1c0aabd657b2814aef237408ebaa2ded82006d82f2138f28",
       "task_public_tree": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
       "trajectory": "9c13a523d2c7e7a03a3fd8d55de045ea671617cdef7d4b478a5101687e341e76",
       "verifier_image": "acab283eb5536180eae4f03c7e58b1198febabd84f38bda2773b2bd2147e4bd5",
       "verifier_image_config": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",
-      "verifier_private_tree": "ca35f9a9ca2c5859fad3b8cb74b8bb2e454a38e8491924ccbedb3917d66a5bc2"
+      "verifier_private_tree": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145"
     },
     "evidence_use": "admission-only",
     "integrity": {
@@ -218,18 +218,18 @@
       "runner_image": "f9c761f4c35474019a2c536e139171b3b31ff6abd7d310610631be916b7945ee",
       "runner_image_config": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
       "runtime_policy": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
-      "task": "be9e54f58c3e8c2cea5625d73092802ff18e828d70bb757d054542f7e790bf46",
+      "task": "c95151bd0d21106f1c0aabd657b2814aef237408ebaa2ded82006d82f2138f28",
       "task_public_tree": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
       "trajectory": "9c13a523d2c7e7a03a3fd8d55de045ea671617cdef7d4b478a5101687e341e76",
       "verifier_image": "acab283eb5536180eae4f03c7e58b1198febabd84f38bda2773b2bd2147e4bd5",
       "verifier_image_config": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",
-      "verifier_private_tree": "ca35f9a9ca2c5859fad3b8cb74b8bb2e454a38e8491924ccbedb3917d66a5bc2"
+      "verifier_private_tree": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145"
     },
     "disposition": "excluded",
     "evidence_use": "admission-only",
     "failure_domain": "experiment_scope",
     "model_outcome": "no-valid-attempt",
-    "observation_digest_sha256": "21c9a4a3048ec60b5d9365fcf4385bbff5c648636dd596de159300c9b4b569db",
+    "observation_digest_sha256": "19fa2e7dbe4cba9b01539f89873e77ea785bd87ea2b79b38feb08ae798aa6bf6",
     "observation_id": "pr6-defect-recall-tamper-1-observation",
     "reason_code": "non-scored-evidence",
     "schema_version": "omp.attempt-outcome/v2",

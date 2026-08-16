@@ -2,11 +2,11 @@
   "entries": [
     {
       "qualification": {
-        "digest_sha256": "ae04d42c976d0a0ad82dc1698be918aacc34f18acbae3d92983cc0c2f11b353d",
+        "digest_sha256": "ec0e5ba4254b318c503e3a8e80809b1d20296ae46dface6ccad7c55bb5b50f16",
         "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/qualification.json"
       },
       "task": {
-        "digest_sha256": "880cc4848a9ccc74af718bae21ff5d986fc616f7742f7768102e1f7cb426c86d",
+        "digest_sha256": "d6ace492bac98a02604bd6181577565ea167176b45bac449891cecf8b296ca3f",
         "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/task.json"
       }
     },

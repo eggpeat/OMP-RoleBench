@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 
+sys.dont_write_bytecode = True
 from rolebench.contracts import (
     BUILTIN_ROLES,
     canonical_sha256,
@@ -23,8 +25,10 @@ class TestReviewerTasks(unittest.TestCase):
 
     def test_reviewer_role_contract(self) -> None:
         contract_path = self.root / "contracts/roles/reviewer.json"
+        self.assertTrue(contract_path.exists())
         with open(contract_path, "r", encoding="utf-8") as f:
             contract = json.load(f)
+        self.assertEqual(contract["role"], "reviewer")
         self.assertEqual(contract["contract_id"], "role-contract/reviewer/v1")
         self.assertIn("defect-recall", contract["required_capabilities"])
         self.assertIn("false-positive-control", contract["required_capabilities"])
@@ -71,6 +75,49 @@ class TestReviewerTasks(unittest.TestCase):
         v_out = json.loads(v_res.stdout)
         self.assertEqual(v_out["verdict"], "fail")
         self.assertEqual(v_out["score"], 0.0)
+
+    def test_defect_recall_verifier_rejects_suffix_tricks_and_low_severity(self) -> None:
+        task_dir = (self.root / "contracts/tasks/omp-native.code-review-defect-recall/1.0.0").resolve()
+        sys.path.insert(0, str(task_dir / "verifier-private"))
+        import verifier
+
+        # 1. Suffix trick: 'e.py' should NOT match 'src/cache.py'
+        suffix_trick_sub = {
+            "verdict": "changes_requested",
+            "findings": [
+                {
+                    "file": "e.py",
+                    "line_start": 16,
+                    "line_end": 28,
+                    "severity": "high",
+                    "category": "concurrency",
+                    "description": "race condition",
+                }
+            ],
+        }
+        passed, reason, details = verifier.verify_submission(suffix_trick_sub)
+        self.assertFalse(passed)
+        self.assertIn("missed material defects", reason)
+        self.assertEqual(details["recalled_defects"], 0)
+        self.assertEqual(details["false_positive_count"], 1)
+
+        # 2. Low severity on medium-minimum defect rejected
+        low_sev_sub = {
+            "verdict": "changes_requested",
+            "findings": [
+                {
+                    "file": "src/cache.py",
+                    "line_start": 16,
+                    "line_end": 28,
+                    "severity": "low",
+                    "category": "concurrency",
+                    "description": "race condition",
+                }
+            ],
+        }
+        passed, reason, details = verifier.verify_submission(low_sev_sub)
+        self.assertFalse(passed)
+        self.assertEqual(details["recalled_defects"], 0)
 
     def test_precision_control_verifier_and_probes(self) -> None:
         task_dir = (self.root / "contracts/tasks/omp-native.code-review-precision-control/1.0.0").resolve()

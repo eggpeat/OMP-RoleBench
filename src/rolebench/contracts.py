@@ -758,14 +758,19 @@ def _instance_diagnostics(
 
 def _duplicate_diagnostics(value: JSONValue, relative: Path, parts: tuple[object, ...] = ()) -> Iterator[Diagnostic]:
     if isinstance(value, list):
-        seen: set[str] = set()
+        seen: dict[str, int] = {}
         for index, item in enumerate(value):
-            if isinstance(item, (dict, list)):
-                yield from _duplicate_diagnostics(item, relative, (*parts, index))
-            elif isinstance(item, str):
-                if item in seen:
-                    yield Diagnostic(relative.as_posix(), _json_path((*parts, index)), f"duplicate array item {item!r}")
-                seen.add(item)
+            fingerprint = canonical_json(item)
+            first = seen.get(fingerprint)
+            if first is not None:
+                yield Diagnostic(
+                    relative.as_posix(),
+                    _json_path((*parts, index)),
+                    f"duplicate array item; first appears at index {first}",
+                )
+            else:
+                seen[fingerprint] = index
+            yield from _duplicate_diagnostics(item, relative, (*parts, index))
     elif isinstance(value, dict):
         for key in sorted(value):
             yield from _duplicate_diagnostics(value[key], relative, (*parts, key))
