@@ -65,26 +65,29 @@ A weighted role **must not re-hash on every API request or turn**. The selected 
 
 ## Weighted selection + fallback recovery
 
-Normal weighted execution:
+Normal weighted execution follows a normative 5-stage pipeline:
 
 ```text
 routing key + role + policy checksum
         ↓
-weighted-rendezvous ranking
+deterministic weighted-rendezvous ranking
         ↓
-selected route (pinned)
+selected route (pinned for execution boundary)
         ↓
 normal retries on that route
-        ↓ if recovery policy leaves route
-remaining qualified ranked candidates (optional optimization)
-        ↓ when weighted candidates are exhausted / skipped
-ordinary retry fallback chain
+        ↓ if replay-safe recovery leaves route
+remaining qualified ranked candidates from deterministic ranking (deduplicated)
+        ↓ when ranked candidates are exhausted or skipped
+configured retry fallback chain (deduplicated against ranked candidates)
 ```
 
-The fallback chain is required on weighted allocations in `omp.pool-policy/v1`.
+### Normative recovery and deduplication rules:
+1. **Sequential Traversal:** When the pinned route exhausts retries or suffers an outage, the recovery engine advances to the next eligible candidate in the deterministic rendezvous ranking.
+2. **Deduplication:** Any route ID in the remaining ranked candidates that also appears in `fallback_chain` is traversed in the ranked order and omitted from the trailing fallback chain, preventing duplicate evaluation loops.
+3. **Cooldown Reversion:** Following transient failure recovery, the execution returns to its **original pinned route**, never jumping to a global static primary or re-hashing the session.
+4. **Fallback Chain Guarantee:** The fallback chain is required on all weighted allocations in `omp.pool-policy/v1`.
 
 The existing OMP retry engine remains authoritative for whether a failed turn is replay-safe. OMP already refuses automatic replay after visible partial output, images, tool calls, or other replay-unsafe side effects; safe failures remove the failed assistant turn and continue the same logical prompt. A weighted router must not weaken those safeguards.
-
 ## Context and handoff safety
 
 ### New weighted task child
@@ -177,7 +180,7 @@ A role configured as `primary` still consumes provider/account capacity and must
 
 ## Upstream routing request
 
-The upstream seam should preserve semantic role identity and execution continuity:
+The upstream seam preserves semantic role identity and execution continuity:
 
 ```ts
 interface RoleRouteRequest {
@@ -191,16 +194,15 @@ interface RoleRouteRequest {
 }
 ```
 
-Resolution precedence:
+### Resolution precedence (normative):
 
-1. explicit concrete override;
-2. persisted pin for an existing/revived logical execution;
-3. configured role selection strategy (`primary` or `weighted`);
-4. existing model-role/default resolution;
-5. existing retry fallback machinery.
+1. **Explicit concrete caller/user model override:** Direct model names (e.g. `google/gemini-2.5-flash`, explicit thinking suffix, manual `/model` command) bypass weighted policy resolution for that session/turn.
+2. **Persisted route pin:** An existing, resumed, or revived execution restores its original pinned route from `session_init` rather than re-evaluating weighted selection.
+3. **Active role routing policy:** The active `omp.pool-policy/v1` (for `weighted`) or `omp.primary-routing-recommendation/v1` (for `primary`) resolves the route when requested via semantic alias (e.g. `@task`, `@smol`).
+4. **Existing static `modelRoles` assignment:** Fallback to static configuration when no active policy applies to the role.
+5. **Existing OMP automatic/default resolution:** Standard OMP runtime default model resolution.
 
 The router returns one initial concrete route and its routing metadata. It does not own message replay, compaction, tool side-effect safety, or persisted-session reconstruction.
-
 ## Required upstream tests
 
 Before weighted routing can be enforced, upstream OMP should add integration tests proving:
@@ -215,6 +217,10 @@ Before weighted routing can be enforced, upstream OMP should add integration tes
 8. main-session weighted `default` selection is pinned for the whole session;
 9. every native role accepts both `primary` and `weighted` strategy configuration;
 10. every weighted role retains an ordinary fallback chain.
+
+## Role and Reviewer Inventory Alignment
+
+RoleBench contracts define `reviewer` in `contracts/routing-topology.json` as a first-class native routing role alongside `advisor`. This guarantees that `advisor` (the runtime watchdog) and `reviewer` (the code/artifact reviewer) maintain strictly isolated evidence, thresholds, and allocations even when configured with the same model or selection strategy. Upstream OMP integration formalizes `@reviewer` as a dedicated built-in role to complement the existing `/review` workflow.
 
 ## Compatibility
 

@@ -20,11 +20,13 @@ from .ledger import LedgerError, append_artifacts, append_worker_report, verify_
 from .pool_routing import (
     PoolLane,
     PoolLaneRegistry,
+    build_normative_recovery_chain,
     load_pool_lane_registry,
     normalize_lane_id,
     resolve_pool_allocation,
     should_specialize,
     validate_pool_policy,
+    weighted_rendezvous_rank,
 )
 from .routing_topology import (
     BASELINE_PRIMARY_ROLES,
@@ -65,6 +67,7 @@ __all__ = [
     "TaskWorkflowError",
     "ValidationResult",
     "append_artifacts",
+    "build_normative_recovery_chain",
     "append_worker_report",
     "check_task_qualification",
     "classify_attempt",
@@ -91,4 +94,5 @@ __all__ = [
     "validate_value",
     "verify_ledger",
     "verify_task_pack",
+    "weighted_rendezvous_rank",
 ]

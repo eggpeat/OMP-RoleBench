@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 from typing import Mapping, Sequence
 
+import hashlib
+import math
 from jsonschema import Draft202012Validator, FormatChecker
 
 from .contracts import ContractError, resolve_root
@@ -276,3 +278,45 @@ def resolve_pool_allocation(
     if not isinstance(evidence, Mapping) or evidence.get("status") != "specialized":
         return default
     return allocation
+
+
+def weighted_rendezvous_rank(
+    routes: Sequence[Mapping[str, object]],
+    *,
+    routing_key: str,
+    role: str,
+    policy_checksum: str,
+    seed: str = "",
+) -> list[str]:
+    """Compute deterministic weighted rendezvous ranking for a set of candidate routes."""
+    scores: list[tuple[float, str]] = []
+    for item in routes:
+        route_id = str(item["route_id"])
+        weight_bps = int(item.get("weight_bps", 10_000))
+        key = f"{policy_checksum}:{seed}:{role}:{routing_key}:{route_id}".encode("utf-8")
+        digest = hashlib.sha256(key).digest()
+        uniform_val = int.from_bytes(digest[:8], "big") / (1 << 64)
+        uniform_val = max(1e-12, min(1.0 - 1e-12, uniform_val))
+        score = -weight_bps / math.log(uniform_val)
+        scores.append((score, route_id))
+    scores.sort(key=lambda pair: (pair[0], pair[1]), reverse=True)
+    return [route_id for _, route_id in scores]
+
+
+def build_normative_recovery_chain(
+    selected_route: str,
+    ranked_candidates: Sequence[str],
+    fallback_chain: Sequence[str],
+) -> list[str]:
+    """Build the deduplicated normative recovery sequence for a selected route."""
+    seen = {selected_route}
+    chain: list[str] = []
+    for candidate in ranked_candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            chain.append(candidate)
+    for fallback in fallback_chain:
+        if fallback not in seen:
+            seen.add(fallback)
+            chain.append(fallback)
+    return chain

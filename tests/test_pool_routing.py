@@ -6,10 +6,12 @@ import unittest
 
 from rolebench.contracts import ContractError
 from rolebench.pool_routing import (
+    build_normative_recovery_chain,
     load_pool_lane_registry,
     resolve_pool_allocation,
     should_specialize,
     validate_pool_policy,
+    weighted_rendezvous_rank,
 )
 from rolebench.routing_topology import (
     BASELINE_PRIMARY_ROLES,
@@ -165,6 +167,46 @@ class NativePoolRoutingTests(unittest.TestCase):
         )
         specialized = resolve_pool_allocation(candidate, role="task", lane="debugging")
         self.assertEqual(specialized["routes"][0]["route_id"], "provider/b:high")
+
+    def test_weighted_rendezvous_rank_is_deterministic_and_seed_sensitive(self) -> None:
+        routes = [
+            {"route_id": "provider/a:high", "weight_bps": 7000},
+            {"route_id": "provider/b:high", "weight_bps": 3000},
+        ]
+        rank1 = weighted_rendezvous_rank(
+            routes,
+            routing_key="session-abc",
+            role="task",
+            policy_checksum=ZERO,
+            seed="seed-1",
+        )
+        rank2 = weighted_rendezvous_rank(
+            routes,
+            routing_key="session-abc",
+            role="task",
+            policy_checksum=ZERO,
+            seed="seed-1",
+        )
+        self.assertEqual(rank1, rank2)
+        self.assertEqual(set(rank1), {"provider/a:high", "provider/b:high"})
+
+    def test_normative_recovery_chain_deduplicates_candidates_and_preserves_order(self) -> None:
+        ranked = ["provider/b:high", "provider/a:high", "provider/c:high"]
+        fallback_chain = ["provider/fallback:high", "provider/a:high", "provider/d:high"]
+        recovery = build_normative_recovery_chain(
+            selected_route=ranked[0],
+            ranked_candidates=ranked,
+            fallback_chain=fallback_chain,
+        )
+        self.assertEqual(
+            recovery,
+            [
+                "provider/a:high",
+                "provider/c:high",
+                "provider/fallback:high",
+                "provider/d:high",
+            ],
+        )
 
 
 if __name__ == "__main__":
