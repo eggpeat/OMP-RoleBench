@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:omp-rolebench:schema:fixed-role-recommendation:v1",
   "title": "OMP Non-Pooled Role Recommendation v1",
-  "$comment": "This artifact never controls default. Plan, slow, vision, and designer each receive one configured primary plus an ordered fallback chain. Advisor and reviewer each receive one dedicated route plus emergency fallbacks; none receive weights.",
+  "$comment": "This artifact never controls default. Plan, slow, vision, designer, advisor, and reviewer each receive one configured primary plus an ordered fallback chain; none receive weights.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "recommendation_id", "created_at", "plan", "slow", "vision", "designer", "advisor", "reviewer", "checksum_sha256"],
@@ -14,23 +14,13 @@
     "slow": {"$ref": "#/$defs/fallbackRole"},
     "vision": {"$ref": "#/$defs/fallbackRole"},
     "designer": {"$ref": "#/$defs/fallbackRole"},
-    "advisor": {"$ref": "#/$defs/dedicatedRole"},
-    "reviewer": {"$ref": "#/$defs/dedicatedRole"},
+    "advisor": {"$ref": "#/$defs/fallbackRole"},
+    "reviewer": {"$ref": "#/$defs/fallbackRole"},
     "checksum_sha256": {"$ref": "#/$defs/sha256"}
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "status": {"enum": ["recommended", "insufficient-evidence", "no-qualified-route", "inactive"]},
-    "dedicatedRole": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["status", "selected_route", "emergency_fallback"],
-      "properties": {
-        "status": {"$ref": "#/$defs/status"},
-        "selected_route": {"type": ["string", "null"]},
-        "emergency_fallback": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
-      }
-    },
     "fallbackRole": {
       "type": "object",
       "additionalProperties": false,
