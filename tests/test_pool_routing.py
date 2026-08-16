@@ -92,13 +92,15 @@ def policy() -> dict[str, object]:
 class NativePoolRoutingTests(unittest.TestCase):
     def test_exact_pool_boundary(self) -> None:
         topology = load_routing_topology(ROOT)
+        self.assertEqual(POOL_ROLES, ("smol", "commit", "tiny", "task"))
         self.assertEqual(
-            POOL_ROLES,
-            ("smol", "slow", "vision", "designer", "commit", "tiny", "task"),
+            FIXED_ROLES,
+            ("default", "plan", "slow", "vision", "designer", "advisor", "reviewer"),
         )
-        self.assertEqual(FIXED_ROLES, ("default", "plan", "advisor", "reviewer"))
         self.assertEqual(topology.strategy_for("default"), "manual")
-        self.assertEqual(topology.strategy_for("plan"), "fallback-chain")
+        for role in ("plan", "slow", "vision", "designer"):
+            with self.subTest(role=role):
+                self.assertEqual(topology.strategy_for(role), "fallback-chain")
         self.assertEqual(topology.strategy_for("advisor"), "dedicated")
         self.assertEqual(topology.strategy_for("reviewer"), "dedicated")
         self.assertEqual(
@@ -144,25 +146,13 @@ class NativePoolRoutingTests(unittest.TestCase):
     def test_specialization_requires_evidence_and_regret_reduction(self) -> None:
         lane = load_pool_lane_registry(ROOT).lanes["task/debugging"]
         self.assertFalse(
-            should_specialize(
-                lane,
-                direct_sample_count=11,
-                estimated_regret_reduction=0.10,
-            )
+            should_specialize(lane, direct_sample_count=11, estimated_regret_reduction=0.10)
         )
         self.assertFalse(
-            should_specialize(
-                lane,
-                direct_sample_count=12,
-                estimated_regret_reduction=0.009,
-            )
+            should_specialize(lane, direct_sample_count=12, estimated_regret_reduction=0.009)
         )
         self.assertTrue(
-            should_specialize(
-                lane,
-                direct_sample_count=12,
-                estimated_regret_reduction=0.01,
-            )
+            should_specialize(lane, direct_sample_count=12, estimated_regret_reduction=0.01)
         )
 
     def test_resolution_falls_back_to_task_default(self) -> None:
