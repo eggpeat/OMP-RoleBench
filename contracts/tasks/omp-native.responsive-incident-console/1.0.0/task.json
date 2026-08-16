@@ -1,1 +1,227 @@
-{"admission_agents":{"baseline":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc","config_digest_sha256":"9f31e2acced6811e5e94027c0b4740db723226f9c02a14a927643ce16b848cd1","image":"rolebench.local/responsive-incident-console-designer-baseline@sha256:29864594af0bf1b9210dcddb243c6cb70ee5b99a4b93eebe54e7f617588e528a","platform":{"architecture":"amd64","os":"linux","variant":null}},"reference":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc","config_digest_sha256":"4611d7e96b8d43ba00f0375396eb373d9b4f7efc6d112780bd50fd4e6c68b2bb","image":"rolebench.local/responsive-incident-console-designer-reference@sha256:198ed9d13e61941bb8654c7a90d0a1ac2b44e737cf319e2f978a0e89f0cef4c6","platform":{"architecture":"amd64","os":"linux","variant":null}},"tamper":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc","config_digest_sha256":"a65198b60b7f46866ae25f7e8de3b2d244cf25cd107c26e7a59606298699a335","image":"rolebench.local/responsive-incident-console-designer-tamper@sha256:2d93f1c4a7687614d5f0dca50491b15357ff4f59e45e8dac119a4b345ae4c1bf","platform":{"architecture":"amd64","os":"linux","variant":null}}},"agent":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc","config_digest_sha256":"124c5029f3292326a34b87efafbb6c740742e46a891315d51fe5dcced124872a","image":"rolebench.local/responsive-incident-console-designer-candidate@sha256:dac451641e4afe3de6be1dbbca68640b16c868dcf56160d1458a39207fe89893","platform":{"architecture":"amd64","os":"linux","variant":null}},"assets":{"public":{"digest_sha256":"4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc","prompt":{"digest_sha256":"31ebc24cbdb8bff61019af04f7ab1d2d62f191411629331c7dc1195a7c95cfe7","kind":"file","path":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/public/prompt.txt"},"root":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/public","workspace":{"digest_sha256":"49be35a93abcdacc85ede6672f8e6a41381d076b4965434476e6c8cdabe38310","kind":"tree","path":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/public/workspace"}},"verifier_private":{"digest_sha256":"6ca38817363b1a756a04cca83afb3cdcda9c8d63c491fd48e3ac70325444f0ac","root":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/verifier-private","verifier":{"digest_sha256":"e4d805e271eea1894ca0de80e714f0b94b9ceb823f69ab49495ce7d830c31c4d","kind":"file","path":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/verifier-private/verifier.py"}}},"authorship":{"author":"rolebench/curator/responsive-incident-console-designer-v1"},"capability_tags":["ui-implementation","visual-design-judgment","interaction-design","responsive-layout","accessibility-reasoning"],"content_digest_sha256":"c73978c64f254507be35f64d03383d63edeabe425c2e2e96f0c7443ab8290d43","difficulty":"hard","family":{"family_id":"omp-native.responsive-incident-console","variant_id":"1.0.0-responsive-incident-console-designer-v1"},"license":{"expression":"MIT","redistribution":"permitted"},"objective":{"criteria":["Implement the requested semantic desktop shell, navigation, service filter, incident cards, and timeline disclosure.","Preserve three-column desktop layout without horizontal overflow at 1280 pixels.","Collapse to a usable mobile layout with labeled navigation and no sidebar at 390 pixels.","Provide visible keyboard focus and operable disclosure interactions.","Meet objective fixed-brief content, semantic structure, responsive layout, interaction, focus, contrast, and screenshot checks in the browser-based runner."],"mode":"browser-interaction-check","observation":{"artifact_kind":"executable","authority":"source-separated-service","runner_output_trust":"untrusted"},"scoring":"binary"},"partition":"anchor","policy":{"digest_sha256":"dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70","path":"contracts/scored-worker-policy-v2.json"},"reviews":{"license":{"decision":"approved","evidence_digest_sha256":"e0d42ef4d11c47da496eb6bdad069b7912f88e4d837423211a852dc33a25bac9","evidence_path":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/license.json","expression":"MIT","redistribution":"permitted","reviewed_at":"2026-08-15T21:13:35Z","reviewer":"rolebench/reviewer/license-gate-v1"},"privacy":{"decision":"approved","evidence_digest_sha256":"f5f1c00d6683b1d3763e9a66f9a6b549940f6da47ac6aeced1b02c9d17b28a13","evidence_path":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/privacy.json","reviewed_at":"2026-08-15T21:13:35Z","reviewer":"rolebench/reviewer/privacy-gate-v1"},"split":{"assignment_method":"author-assigned","confidentiality":"public","decision":"approved","evidence_digest_sha256":"72e67e0e8602d7cdf26caf523bb2a6ac6e80e941465eca8feb40a2dc1a9470bc","evidence_path":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/split.json","family_id":"omp-native.responsive-incident-console","partition":"anchor","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/role-fit-gate-v1"},"verifier":{"decision":"approved","evidence_digest_sha256":"e3a8fff7c0db61b4a2eaece2d2145c51d3a53d7e1b293b930303b634709d7ae3","evidence_path":"contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/verifier.json","private_tree_digest_sha256":"6ca38817363b1a756a04cca83afb3cdcda9c8d63c491fd48e3ac70325444f0ac","reviewed_at":"2026-08-16T00:38:34Z","reviewer":"rolebench/reviewer/verifier-gate-v1","runner_config_digest_sha256":"03e0fec33f0f236aa11d869572e1514c1ba1cb72ee711e977398b02a8ae70393","runner_image":"rolebench.local/responsive-incident-console-designer-runner@sha256:ad378802191f86ffe2a2a12e3cde58753fbd4cebd2f254f025484da7b440c05f","runner_platform":{"architecture":"amd64","os":"linux","variant":null},"verifier_config_digest_sha256":"58b97605107fd7128070e6ef59f83c331cb9b6a31464267c80ca45d9217c51db","verifier_image":"rolebench.local/responsive-incident-console-designer-verifier@sha256:7c6753f96c410522c1d750a696713672f9c1b888145e6516ab0f2527ef7bee3b","verifier_platform":{"architecture":"amd64","os":"linux","variant":null}}},"role":"designer","role_contract":{"contract_id":"role-contract/designer/v1","digest_sha256":"d2af35132faead9ec29cd01aa8fb671b309cc92b6894de1c29f84a8b46205bbc"},"routing_eligible":false,"runner":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc","config_digest_sha256":"03e0fec33f0f236aa11d869572e1514c1ba1cb72ee711e977398b02a8ae70393","image":"rolebench.local/responsive-incident-console-designer-runner@sha256:ad378802191f86ffe2a2a12e3cde58753fbd4cebd2f254f025484da7b440c05f","platform":{"architecture":"amd64","os":"linux","variant":null}},"schema_version":"omp.diagnostic-task/v2","source":{"digest_sha256":"9cf68a265cb60c8a34a0d7bde0c9ac33456240d7e66b3e903fa3d3a1acbe04ee","kind":"authored","version":"omp-native/responsive-incident-console@1"},"split":{"assignment_method":"author-assigned","author_id":"rolebench/curator/responsive-incident-console-designer-v1","confidentiality":"public","provenance_digest_sha256":"72e67e0e8602d7cdf26caf523bb2a6ac6e80e941465eca8feb40a2dc1a9470bc","reviewer_id":"rolebench/reviewer/role-fit-gate-v1"},"task_id":"omp-native.responsive-incident-console","task_mix":"designer-v1","task_version":"1.0.0","unscored_failures":["infrastructure","provider","runner","verifier"],"verifier":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"6ca38817363b1a756a04cca83afb3cdcda9c8d63c491fd48e3ac70325444f0ac","config_digest_sha256":"58b97605107fd7128070e6ef59f83c331cb9b6a31464267c80ca45d9217c51db","image":"rolebench.local/responsive-incident-console-designer-verifier@sha256:7c6753f96c410522c1d750a696713672f9c1b888145e6516ab0f2527ef7bee3b","platform":{"architecture":"amd64","os":"linux","variant":null}}}
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+      "config_digest_sha256": "9f31e2acced6811e5e94027c0b4740db723226f9c02a14a927643ce16b848cd1",
+      "image": "rolebench.local/responsive-incident-console-designer-baseline@sha256:29864594af0bf1b9210dcddb243c6cb70ee5b99a4b93eebe54e7f617588e528a",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+      "config_digest_sha256": "4611d7e96b8d43ba00f0375396eb373d9b4f7efc6d112780bd50fd4e6c68b2bb",
+      "image": "rolebench.local/responsive-incident-console-designer-reference@sha256:198ed9d13e61941bb8654c7a90d0a1ac2b44e737cf319e2f978a0e89f0cef4c6",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+      "config_digest_sha256": "a65198b60b7f46866ae25f7e8de3b2d244cf25cd107c26e7a59606298699a335",
+      "image": "rolebench.local/responsive-incident-console-designer-tamper@sha256:2d93f1c4a7687614d5f0dca50491b15357ff4f59e45e8dac119a4b345ae4c1bf",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+    "config_digest_sha256": "124c5029f3292326a34b87efafbb6c740742e46a891315d51fe5dcced124872a",
+    "image": "rolebench.local/responsive-incident-console-designer-candidate@sha256:dac451641e4afe3de6be1dbbca68640b16c868dcf56160d1458a39207fe89893",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+      "prompt": {
+        "digest_sha256": "31ebc24cbdb8bff61019af04f7ab1d2d62f191411629331c7dc1195a7c95cfe7",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "49be35a93abcdacc85ede6672f8e6a41381d076b4965434476e6c8cdabe38310",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "2995010c0ab7fa1ae1dda300ebda0e3b7b45a302c443c998876287e4fbe6b63b",
+      "root": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "0b6e0dee8c898717483160a22c342a955b9831be68a2e83d395072813ee1bd7c",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/responsive-incident-console-designer-v1"
+  },
+  "capability_tags": [
+    "ui-implementation",
+    "visual-design-judgment",
+    "interaction-design",
+    "responsive-layout",
+    "accessibility-reasoning"
+  ],
+  "content_digest_sha256": "c5a59fa67f751624953ba6284e91dcfa3610de0d3ff4cf78dcce3ab310f0f086",
+  "difficulty": "hard",
+  "family": {
+    "family_id": "omp-native.responsive-incident-console",
+    "variant_id": "1.0.0-responsive-incident-console-designer-v1"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Implement the requested semantic desktop shell, navigation, service filter, incident cards, and timeline disclosure.",
+      "Preserve three-column desktop layout without horizontal overflow at 1280 pixels.",
+      "Collapse to a usable mobile layout with labeled navigation and no sidebar at 390 pixels.",
+      "Provide visible keyboard focus and operable disclosure interactions.",
+      "Meet objective fixed-brief content, semantic structure, responsive layout, interaction, focus, contrast, and screenshot checks in the browser-based runner."
+    ],
+    "mode": "browser-interaction-check",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "933398bb82c6b3abef64130d63b2ac35b12cee3d2c27f97d2d51c71159c2855c",
+      "evidence_path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T01:16:48Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "c4d17260a0d960005565ea29f1c12b3141778b2db8c57f2bb0a16d44f0c6fff3",
+      "evidence_path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T01:16:48Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "72e67e0e8602d7cdf26caf523bb2a6ac6e80e941465eca8feb40a2dc1a9470bc",
+      "evidence_path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/split.json",
+      "family_id": "omp-native.responsive-incident-console",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-15T18:30:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "505ade39d760e738826b9abe6e78b79bd6cf97f49748dc53c5af4563de2a6787",
+      "evidence_path": "contracts/tasks/omp-native.responsive-incident-console/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "2995010c0ab7fa1ae1dda300ebda0e3b7b45a302c443c998876287e4fbe6b63b",
+      "reviewed_at": "2026-08-16T01:16:48Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "683b10380fbf821da5884311f5d4bee8fada7cfd6bf8b622507a2639319e6cd4",
+      "runner_image": "rolebench.local/responsive-incident-console-designer-runner@sha256:62ac817109630ec35670cb0067febe9275bbbde53189ff077d3f888c7d43ae38",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "866fb9f7855fdf44d59b931f0166dcfcb21aaae87f6e1db37197c2a097a6a325",
+      "verifier_image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:2de3f027e3f95c990308af46b2f312ef5672e38dc625efec75fd9f7abf5db0de",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "designer",
+  "role_contract": {
+    "contract_id": "role-contract/designer/v1",
+    "digest_sha256": "d2af35132faead9ec29cd01aa8fb671b309cc92b6894de1c29f84a8b46205bbc"
+  },
+  "routing_eligible": false,
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "4d4fa91778dec5a3cab1a9315e6236b4d1d7080ad00c2c2ac01b7b59f659d2bc",
+    "config_digest_sha256": "683b10380fbf821da5884311f5d4bee8fada7cfd6bf8b622507a2639319e6cd4",
+    "image": "rolebench.local/responsive-incident-console-designer-runner@sha256:62ac817109630ec35670cb0067febe9275bbbde53189ff077d3f888c7d43ae38",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "9cf68a265cb60c8a34a0d7bde0c9ac33456240d7e66b3e903fa3d3a1acbe04ee",
+    "kind": "authored",
+    "version": "omp-native/responsive-incident-console@1"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/responsive-incident-console-designer-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "72e67e0e8602d7cdf26caf523bb2a6ac6e80e941465eca8feb40a2dc1a9470bc",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.responsive-incident-console",
+  "task_mix": "designer-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "2995010c0ab7fa1ae1dda300ebda0e3b7b45a302c443c998876287e4fbe6b63b",
+    "config_digest_sha256": "866fb9f7855fdf44d59b931f0166dcfcb21aaae87f6e1db37197c2a097a6a325",
+    "image": "rolebench.local/responsive-incident-console-designer-verifier@sha256:2de3f027e3f95c990308af46b2f312ef5672e38dc625efec75fd9f7abf5db0de",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

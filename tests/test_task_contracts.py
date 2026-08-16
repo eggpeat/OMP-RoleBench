@@ -1790,6 +1790,28 @@ class RoleAnchorSemanticTests(unittest.TestCase):
                 }
                 self.assertEqual(actual_dimensions, expected_dimensions)
 
+    def test_vim_runner_rejects_function_calls_inside_macros(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
+        )
+        namespace = runpy.run_path(str(task_dir / "runner.py"))
+        validate_script = namespace["_validate_script"]
+        submission_error = namespace["SubmissionError"]
+        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
+
+        validate_script(valid_script)
+        lines = valid_script.splitlines()
+        lines[0] = (
+            "call setreg('a', \":call setline('.', 'bypass')"
+            "\\<CR>j\")"
+        )
+        with self.assertRaisesRegex(
+            submission_error,
+            "Vimscript function calls are forbidden",
+        ):
+            validate_script("\n".join(lines) + "\n")
+
     def test_commit_verifier_rejects_negated_required_actions(self) -> None:
         task_dir = (
             PRODUCT_ROOT
@@ -1802,6 +1824,13 @@ class RoleAnchorSemanticTests(unittest.TestCase):
         is_valid = verifier["_valid_submission"]
 
         self.assertTrue(is_valid(valid_submission))
+        self.assertEqual(
+            valid_submission["evidence"],
+            ["change.patch:8-9", "change.patch:10-11"],
+        )
+        wider_evidence = deepcopy(valid_submission)
+        wider_evidence["evidence"][0] = "change.patch:7-9"
+        self.assertFalse(is_valid(wider_evidence))
         for subject in (
             "do not invalidate l1 before backing-store deletion",
             "do not ever invalidate l1 before backing-store deletion",

@@ -249,7 +249,7 @@ def _valid_submission(submission: object) -> bool:
         or submission.get("type") != "fix"
         or submission.get("scope") != "cache"
         or submission.get("evidence")
-        != ["change.patch:7-9", "change.patch:10-11"]
+        != ["change.patch:8-9", "change.patch:10-11"]
         or submission.get("breaking") is not False
         or not isinstance(subject, str)
         or not isinstance(body, list)

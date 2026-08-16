@@ -21,21 +21,21 @@
     }
   ],
   "report_digests_sha256": [
-    "4001174e51e46ba7b52c1f3592d8acad698a8861f5ac81750e4fccdf50c29d17",
-    "9db110c4e52f1a06351a3f15fa5b87e820abba10d8e7ad04c33c4d8405bc8298",
-    "aed9ea6d8d033aa0741bc5934a98562ea5b4ea5d243c2a23cbec281a51308257",
-    "2fddb4c755b60a1fba83c68be082825a6112e036519a54f910469ad3e74d6c49",
-    "f2122e5a308dac1e64486312b228d34e66ea1c7113bc2164908ff806c84c4e7f",
-    "eecec9cd35b997b9f74afb40e4bb7f5623261cf651e22be62173a262d9eaa502"
+    "5c2a18980ae5a64217795140c9bc083c79f0ab3135c76cbcc919291a7930e10a",
+    "3b76f6f19da09b224bd1a437ac0540f2b869b7884b0109f0fee104576048d9b3",
+    "09c5d62493bdfa9f9cd362fd7e5cec45cce73c167ba2a4c99c912fd9c070596d",
+    "b3b830d92d0492af402ae5e1f35812cc4bacf4ce429379d72bb86a92f2bfffbe",
+    "a7ccbff7331c5b8e4f8e2de7306709ce5bb5b25b84fe617f2fb12cbd003c4a26",
+    "a3e1d01e6ff9d3d35bbc4da659671de82879ad9cce61debb9303f2bcfa9e5b78"
   ],
   "review_type": "verifier",
-  "reviewed_at": "2026-08-15T23:13:57Z",
+  "reviewed_at": "2026-08-16T01:16:48Z",
   "reviewer": "rolebench/reviewer/verifier-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
     "public_tree_digest_sha256": "2696f269259a3367f32322e030ce605ac5fe67ee4710ebbc0ada49a36941243d",
-    "runner_config_digest_sha256": "ad2200e8cda2ecd689713090f72b73a243f985615a8bbe04ce96de94cc627742",
-    "runner_image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:7dbd136dd4441267ffc3a1f43b6426c55418db6f39c51af226ae5553655d295d",
+    "runner_config_digest_sha256": "243155cb2676f4c0272861f2587d37bbd769e301dffc9577bbed16ad95577ab3",
+    "runner_image": "rolebench.local/large-scale-text-editing-smol-runner@sha256:9660b1aa92de23d8412a2e267a538b1df6f8ccb3520da8d7606e258c85a8d82a",
     "verifier_config_digest_sha256": "ae42eab1852ded64de1207af66ac0d267710eaf70b7f57be136ec75549c8a3e7",
     "verifier_image": "rolebench.local/large-scale-text-editing-smol-verifier@sha256:c192577b51b85702177aa9debb4f3089e43a0eb5e1305f25324b811a8da31e96",
     "verifier_private_tree_digest_sha256": "17c389cda5c23d31b86c8a4db1a82c958e826f7bf94f849f575d57f13233d3c4"

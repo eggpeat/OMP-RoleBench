@@ -265,6 +265,8 @@ def main() -> int:
         "mobile_menu_visible",
         "mobile_menu_button",
         "mobile_menu_focusable",
+        "mobile_menu_focus_indicator",
+        "cards_horizontally_in_view",
         "grid_columns",
         "primary_width",
         "primary_height",
@@ -312,6 +314,7 @@ def main() -> int:
                     "active_navigation_current",
                     "mobile_menu_button",
                     "solid_text_backgrounds",
+                    "cards_horizontally_in_view",
                     "text_contrast_aa",
                 )
             )
@@ -326,11 +329,13 @@ def main() -> int:
         or desktop.get("sidebar_visible") is not True
         or desktop.get("sidebar_left_of_grid") is not True
         or desktop.get("mobile_menu_visible") is not False
+        or desktop.get("mobile_menu_focus_indicator") is not False
         or desktop.get("grid_columns") != 3
         or mobile.get("viewport_width") != 390
         or mobile.get("sidebar_visible") is not False
         or mobile.get("mobile_menu_visible") is not True
         or mobile.get("mobile_menu_focusable") is not True
+        or mobile.get("mobile_menu_focus_indicator") is not True
         or mobile.get("grid_columns") != 1
     ):
         return reject()

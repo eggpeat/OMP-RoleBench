@@ -18,8 +18,8 @@
         "--rolebench-run"
       ],
       "asset_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
-      "config_digest_sha256": "b029330c8aad11e25a7f204017091b7561a62162841cbf92ba59a7149d6b4081",
-      "image": "rolebench.local/diff-commit-message-commit-reference@sha256:04e5c146af96d91154416131b2c55e70ea1e451763db3b69bf623290d206b32e",
+      "config_digest_sha256": "2558bedfcae1c676e8e968d2f48ed31c080555f300392a79551c4789896eaa68",
+      "image": "rolebench.local/diff-commit-message-commit-reference@sha256:9e67be0199862952dd8a83d9ef3b2ced550e1dbeac545fbbbfbdf107eaff28ca",
       "platform": {
         "architecture": "amd64",
         "os": "linux",
@@ -31,8 +31,8 @@
         "--rolebench-run"
       ],
       "asset_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
-      "config_digest_sha256": "2a889a33424aaf340053bce4542bf7128bd5bf8f8c08599d109e829c19987261",
-      "image": "rolebench.local/diff-commit-message-commit-tamper@sha256:6509a6fc38869a6e03bb9fff2dcdc19c7c0bb04767d1ab2f8d38d512d7bd2eab",
+      "config_digest_sha256": "b49070aabc3ba43607020fb6ce866b92b2755da049d934fa5c026e2015aa538a",
+      "image": "rolebench.local/diff-commit-message-commit-tamper@sha256:9821ad1853a810d49e30eab05a5702fe747301657daa43b528ac7785d6022678",
       "platform": {
         "architecture": "amd64",
         "os": "linux",
@@ -69,10 +69,10 @@
       }
     },
     "verifier_private": {
-      "digest_sha256": "09c37065867423f32caf4d5b7508ec2be47d867b6910aa0644e46479e37083c1",
+      "digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
       "root": "contracts/tasks/omp-native.diff-commit-message/1.0.0/verifier-private",
       "verifier": {
-        "digest_sha256": "68556510190c562157fe00bb58dbebc9e4c352f2ca0ae8f9d9bb855e3dd12235",
+        "digest_sha256": "3a2296ce1a2aff6dc9370080bbb0d35312d9ac7a46575ec7cc839ac6eec14c2e",
         "kind": "file",
         "path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/verifier-private/verifier.py"
       }
@@ -87,7 +87,7 @@
     "commit-convention-adherence",
     "evidence-bounded-generation"
   ],
-  "content_digest_sha256": "957be17e1589d08fe3a71794d4375822b68ca7f6ebad679ce5b419682d2c6bbc",
+  "content_digest_sha256": "abc4a61ccb1ccc5770dc9fa6d494d302f80ed63775c3359a85a9a3365003acab",
   "difficulty": "easy",
   "family": {
     "family_id": "omp-native.diff-commit-message",
@@ -121,18 +121,18 @@
   "reviews": {
     "license": {
       "decision": "approved",
-      "evidence_digest_sha256": "182a0ed91c3ee45be59c6da6bc4e073393278a642724128f4ebe57c3de4e3149",
+      "evidence_digest_sha256": "11f4183ecd5cbb79874e8d34ecccb5d3edde0b1390902af0c3515b9276971cb4",
       "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/license.json",
       "expression": "MIT",
       "redistribution": "permitted",
-      "reviewed_at": "2026-08-15T23:03:04Z",
+      "reviewed_at": "2026-08-16T01:16:48Z",
       "reviewer": "rolebench/reviewer/license-gate-v1"
     },
     "privacy": {
       "decision": "approved",
-      "evidence_digest_sha256": "95e494c6c87630125a7a9380f2d924795b6b267fd72312f0efb65137de090b12",
+      "evidence_digest_sha256": "47bd33d93745119b10720dcd9c775473786c64bc5b87088d5a0efb22493d5b49",
       "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/privacy.json",
-      "reviewed_at": "2026-08-15T23:03:04Z",
+      "reviewed_at": "2026-08-16T01:16:48Z",
       "reviewer": "rolebench/reviewer/privacy-gate-v1"
     },
     "split": {
@@ -148,10 +148,10 @@
     },
     "verifier": {
       "decision": "approved",
-      "evidence_digest_sha256": "3ee500c6380d84c5e0c658b0a55ae9da777a6a66365bfe8bd9db7ad7d188c5c8",
+      "evidence_digest_sha256": "ac9bf3f2a3c3e0a503f5c916537510599388cbcb2d152844c32d8f60051f4543",
       "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/verifier.json",
-      "private_tree_digest_sha256": "09c37065867423f32caf4d5b7508ec2be47d867b6910aa0644e46479e37083c1",
-      "reviewed_at": "2026-08-15T23:10:04Z",
+      "private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+      "reviewed_at": "2026-08-16T01:16:48Z",
       "reviewer": "rolebench/reviewer/verifier-gate-v1",
       "runner_config_digest_sha256": "68fb537fdd3790f5789a1a09b031c48298d3d9ab54d3d0df0211ac4399143b41",
       "runner_image": "rolebench.local/diff-commit-message-commit-runner@sha256:f8c6b9ec51c4f4fc3ea30223ed28451ca248ffbbda812bd32a2872728f225717",
@@ -160,8 +160,8 @@
         "os": "linux",
         "variant": null
       },
-      "verifier_config_digest_sha256": "68b52fea18831dc1e6126bc1de3e4d9e815f680a32d46e2a8f56a021a0bc1178",
-      "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:3dd3d2460a9997770b9a3bc972ab70e6bceaf463a8b2b291e7a24da0c0666039",
+      "verifier_config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
+      "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
       "verifier_platform": {
         "architecture": "amd64",
         "os": "linux",
@@ -214,9 +214,9 @@
     "argv": [
       "--rolebench-run"
     ],
-    "asset_tree_digest_sha256": "09c37065867423f32caf4d5b7508ec2be47d867b6910aa0644e46479e37083c1",
-    "config_digest_sha256": "68b52fea18831dc1e6126bc1de3e4d9e815f680a32d46e2a8f56a021a0bc1178",
-    "image": "rolebench.local/diff-commit-message-commit-verifier@sha256:3dd3d2460a9997770b9a3bc972ab70e6bceaf463a8b2b291e7a24da0c0666039",
+    "asset_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+    "config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
+    "image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
     "platform": {
       "architecture": "amd64",
       "os": "linux",

@@ -22,6 +22,7 @@ RUN = re.compile(r"^%normal! @([abc])$")
 FORBIDDEN = re.compile(
     r"(?i)(?:^|[^a-z])(?:system|execute|source|read|write|edit|function|autocmd|terminal|python|perl|ruby|lua|job_start|channel|sockconnect)(?:[^a-z]|$)|:!|`|\x00"
 )
+VIMSCRIPT_FUNCTION_CALL = re.compile(r"(?i)[a-z_][a-z0-9_#]*\s*\(")
 
 
 class SubmissionError(ValueError):
@@ -89,6 +90,8 @@ def _validate_script(script: object) -> tuple[str, int]:
             decoded = _decode_vim_string(content)
             if not decoded:
                 raise SubmissionError("macro content must be non-empty")
+            if VIMSCRIPT_FUNCTION_CALL.search(decoded):
+                raise SubmissionError("Vimscript function calls are forbidden in macros")
             macros[register] = decoded
             continue
         match = RUN.fullmatch(line)

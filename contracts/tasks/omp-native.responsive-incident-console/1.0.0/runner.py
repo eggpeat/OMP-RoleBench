@@ -144,6 +144,19 @@ AUDIT = r"""
       ? contrast(blend(rgba(getComputedStyle(node).color), background), background)
       : 0;
   };
+  const focusIndicatorFor = (node) => {
+    if (!node || document.activeElement !== node || !visible(node)) return false;
+    const style = getComputedStyle(node);
+    const background = effectiveBackground(node.parentElement || node) || [255, 255, 255];
+    const outline = rgba(style.outlineColor);
+    return (
+      style.outlineStyle !== 'none'
+      && Number.parseFloat(style.outlineWidth) >= 2
+      && Number.parseFloat(style.outlineOffset) >= 0
+      && outline[3] > 0
+      && contrast(blend(outline, background), background) >= 3
+    );
+  };
 
   const sidebar = document.querySelector('[data-role="sidebar"]');
   const menu = document.querySelector('[data-role="mobile-menu"]');
@@ -161,30 +174,15 @@ AUDIT = r"""
     primaryFocused = document.activeElement === primary;
   }
 
-  const primaryStyle = primary ? getComputedStyle(primary) : null;
   const primaryRect = primary ? primary.getBoundingClientRect() : {width: 0, height: 0};
-  const surroundingBackground = (
-    primary && primary.parentElement
-      ? effectiveBackground(primary.parentElement)
-      : null
-  ) || [255, 255, 255];
-  const outline = primaryStyle ? rgba(primaryStyle.outlineColor) : [0, 0, 0, 0];
-  const outlineContrast = contrast(blend(outline, surroundingBackground), surroundingBackground);
-  const focusIndicator = Boolean(
-    primaryFocused
-    && visible(primary)
-    && primaryStyle
-    && primaryStyle.outlineStyle !== 'none'
-    && Number.parseFloat(primaryStyle.outlineWidth) >= 2
-    && Number.parseFloat(primaryStyle.outlineOffset) >= 0
-    && outline[3] > 0
-    && outlineContrast >= 3
-  );
+  const focusIndicator = primaryFocused && focusIndicatorFor(primary);
 
   const cards = grid ? [...grid.querySelectorAll('article')].filter(rendered) : [];
   const cardRects = cards.map((card) => card.getBoundingClientRect());
   const firstTop = cardRects.length ? Math.min(...cardRects.map((rect) => rect.top)) : 0;
   const columns = cardRects.filter((rect) => Math.abs(rect.top - firstTop) < 2).length;
+  const cardsHorizontallyInView = cardRects.length > 0
+    && cardRects.every((rect) => rect.right > 0 && rect.left < window.innerWidth);
 
   const navLabels = navLinks.map((node) => normalize(node));
   const filterControls = [...document.querySelectorAll('select')].filter(visible);
@@ -192,9 +190,11 @@ AUDIT = r"""
     [...control.querySelectorAll('option')].map(normalize)
   );
   let mobileMenuFocusable = false;
+  let mobileMenuFocusIndicator = false;
   if (mobileMenuButton && visible(menu)) {
     menu.focus({preventScroll: true});
     mobileMenuFocusable = document.activeElement === menu && menu.tabIndex >= 0;
+    mobileMenuFocusIndicator = mobileMenuFocusable && focusIndicatorFor(menu);
   }
   const productRendered = normalize(document.querySelector('header')).includes(brief.product);
   const navigationRendered =
@@ -275,7 +275,7 @@ AUDIT = r"""
       threshold,
     };
   });
-  const paintedBackgroundImagesAbsent = [
+  const unsupportedPaintEffectsAbsent = [
     document.documentElement,
     ...document.querySelectorAll('body, body *'),
   ].filter(rendered).every((node) => {
@@ -284,11 +284,15 @@ AUDIT = r"""
       getComputedStyle(node, '::before'),
       getComputedStyle(node, '::after'),
     ];
-    return styles.every((style) => style.backgroundImage === 'none');
+    return styles.every((style) =>
+      style.backgroundImage === 'none'
+      && style.filter === 'none'
+      && (style.backdropFilter || 'none') === 'none'
+    );
   });
   const textContrasts = textMetrics.map((metric) => metric.ratio);
   const minimumTextContrast = textContrasts.length ? Math.min(...textContrasts) : 0;
-  const solidTextBackgrounds = paintedBackgroundImagesAbsent
+  const solidTextBackgrounds = unsupportedPaintEffectsAbsent
     && textMetrics.every((metric) => metric.solid);
   const textContrastAa = textMetrics.length > 0
     && textMetrics.every((metric) => metric.ratio >= metric.threshold);
@@ -300,6 +304,8 @@ AUDIT = r"""
     mobile_menu_visible: visible(menu),
     mobile_menu_button: mobileMenuButton,
     mobile_menu_focusable: mobileMenuFocusable,
+    mobile_menu_focus_indicator: mobileMenuFocusIndicator,
+    cards_horizontally_in_view: cardsHorizontallyInView,
     grid_columns: columns,
     primary_width: Math.round(primaryRect.width),
     primary_height: Math.round(primaryRect.height),
