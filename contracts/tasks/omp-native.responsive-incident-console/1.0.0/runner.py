@@ -96,11 +96,24 @@ AUDIT = r"""
   };
   const effectiveBackground = (node) => {
     const layers = [];
+    let coverage = 0;
     for (let current = node; current; current = current.parentElement) {
-      layers.push(rgba(getComputedStyle(current).backgroundColor));
+      const style = getComputedStyle(current);
+      if (coverage < 0.999 && style.backgroundImage !== 'none') return null;
+      const layer = rgba(style.backgroundColor);
+      layers.push(layer);
+      coverage += (1 - coverage) * layer[3];
+      if (coverage >= 0.999) break;
     }
     let color = [255, 255, 255];
-    for (const layer of layers.reverse()) color = blend(layer, color);
+    for (const layer of layers.reverse()) {
+      const a = layer[3];
+      color = [
+        layer[0] * a + color[0] * (1 - a),
+        layer[1] * a + color[1] * (1 - a),
+        layer[2] * a + color[2] * (1 - a),
+      ];
+    }
     return color;
   };
   const luminance = (color) => {
@@ -113,18 +126,34 @@ AUDIT = r"""
   const contrast = (foreground, background) => {
     const first = luminance(foreground);
     const second = luminance(background);
-    return Math.round(((Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05)) * 100) / 100;
+    const hi = Math.max(first, second);
+    const lo = Math.min(first, second);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const effectiveOpacity = (node) => {
+    let opacity = 1;
+    for (let current = node; current; current = current.parentElement) {
+      opacity *= Number(getComputedStyle(current).opacity || 1);
+    }
+    return opacity;
   };
   const nodeContrast = (node) => {
+    if (!node) return 0;
     const background = effectiveBackground(node);
-    const foreground = blend(rgba(getComputedStyle(node).color), background);
-    return contrast(foreground, background);
+    return background
+      ? contrast(blend(rgba(getComputedStyle(node).color), background), background)
+      : 0;
   };
 
   const sidebar = document.querySelector('[data-role="sidebar"]');
   const menu = document.querySelector('[data-role="mobile-menu"]');
   const grid = document.querySelector('[data-role="incident-grid"]');
   const primary = document.querySelector('[data-role="primary-action"]');
+  const navLinks = [...document.querySelectorAll('nav a')];
+  const currentNavLinks = navLinks.filter((node) => node.getAttribute('aria-current') === 'page');
+  const mobileMenuButton = menu instanceof HTMLButtonElement
+    && Boolean((menu.getAttribute('aria-label') || '').trim())
+    && !menu.disabled;
   const disclosures = [...document.querySelectorAll('details')];
   let primaryFocused = false;
   if (primary) {
@@ -134,24 +163,39 @@ AUDIT = r"""
 
   const primaryStyle = primary ? getComputedStyle(primary) : null;
   const primaryRect = primary ? primary.getBoundingClientRect() : {width: 0, height: 0};
-  const primaryBackground = primary ? effectiveBackground(primary) : [255, 255, 255];
-  const primaryForeground = primaryStyle ? blend(rgba(primaryStyle.color), primaryBackground) : [255, 255, 255];
-  const surroundingBackground = primary && primary.parentElement
-    ? effectiveBackground(primary.parentElement)
-    : [255, 255, 255];
+  const surroundingBackground = (
+    primary && primary.parentElement
+      ? effectiveBackground(primary.parentElement)
+      : null
+  ) || [255, 255, 255];
   const outline = primaryStyle ? rgba(primaryStyle.outlineColor) : [0, 0, 0, 0];
   const outlineContrast = contrast(blend(outline, surroundingBackground), surroundingBackground);
+  const focusIndicator = Boolean(
+    primaryFocused
+    && visible(primary)
+    && primaryStyle
+    && primaryStyle.outlineStyle !== 'none'
+    && Number.parseFloat(primaryStyle.outlineWidth) >= 2
+    && Number.parseFloat(primaryStyle.outlineOffset) >= 0
+    && outline[3] > 0
+    && outlineContrast >= 3
+  );
 
   const cards = grid ? [...grid.querySelectorAll('article')].filter(rendered) : [];
   const cardRects = cards.map((card) => card.getBoundingClientRect());
   const firstTop = cardRects.length ? Math.min(...cardRects.map((rect) => rect.top)) : 0;
   const columns = cardRects.filter((rect) => Math.abs(rect.top - firstTop) < 2).length;
 
-  const navLabels = [...document.querySelectorAll('nav a')].map(normalize);
+  const navLabels = navLinks.map((node) => normalize(node));
   const filterControls = [...document.querySelectorAll('select')].filter(visible);
   const filterOptions = filterControls.flatMap((control) =>
     [...control.querySelectorAll('option')].map(normalize)
   );
+  let mobileMenuFocusable = false;
+  if (mobileMenuButton && visible(menu)) {
+    menu.focus({preventScroll: true});
+    mobileMenuFocusable = document.activeElement === menu && menu.tabIndex >= 0;
+  }
   const productRendered = normalize(document.querySelector('header')).includes(brief.product);
   const navigationRendered =
     navLabels.length === brief.navigation.length &&
@@ -159,6 +203,15 @@ AUDIT = r"""
   const filtersRendered =
     filterControls.length > 0 &&
     brief.filters.every((label) => filterOptions.includes(label));
+  const sidebarRect = sidebar ? sidebar.getBoundingClientRect() : null;
+  const gridRect = grid ? grid.getBoundingClientRect() : null;
+  const sidebarLeftOfGrid = Boolean(
+    sidebarRect && gridRect && visible(sidebar) && rendered(grid)
+    && sidebarRect.left < gridRect.left
+    && sidebarRect.right <= gridRect.left + 1
+    && sidebarRect.top <= Math.max(0, gridRect.top) + 1
+    && sidebarRect.bottom >= Math.min(window.innerHeight, gridRect.bottom) - 1
+  );
   const incidentCardMatches = brief.incidents.map((incident) =>
     cards.filter((candidate) => normalize(candidate).includes(incident.id))
   );
@@ -209,32 +262,58 @@ AUDIT = r"""
       textElements.add(control);
     }
   }
-  const textContrasts = [...textElements].map(nodeContrast);
-
+  const textMetrics = [...textElements].map((node) => {
+    const style = getComputedStyle(node);
+    const fontSize = Number.parseFloat(style.fontSize);
+    const fontWeight = style.fontWeight === 'bold' ? 700 : Number.parseFloat(style.fontWeight);
+    const threshold = fontSize >= 24 || (fontSize >= (14 * 96 / 72) && fontWeight >= 700) ? 3 : 4.5;
+    const background = effectiveBackground(node);
+    const solid = background !== null && effectiveOpacity(node) >= 0.999;
+    return {
+      ratio: solid ? contrast(blend(rgba(style.color), background), background) : 0,
+      solid,
+      threshold,
+    };
+  });
+  const paintedBackgroundImagesAbsent = [
+    document.documentElement,
+    ...document.querySelectorAll('body, body *'),
+  ].filter(rendered).every((node) => {
+    const styles = [
+      getComputedStyle(node),
+      getComputedStyle(node, '::before'),
+      getComputedStyle(node, '::after'),
+    ];
+    return styles.every((style) => style.backgroundImage === 'none');
+  });
+  const textContrasts = textMetrics.map((metric) => metric.ratio);
+  const minimumTextContrast = textContrasts.length ? Math.min(...textContrasts) : 0;
+  const solidTextBackgrounds = paintedBackgroundImagesAbsent
+    && textMetrics.every((metric) => metric.solid);
+  const textContrastAa = textMetrics.length > 0
+    && textMetrics.every((metric) => metric.ratio >= metric.threshold);
   return {
-    viewport_width: window.innerWidth,
-    horizontal_overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+    viewport_width: innerWidth,
+    horizontal_overflow: document.documentElement.scrollWidth > innerWidth + 1,
     sidebar_visible: visible(sidebar),
+    sidebar_left_of_grid: sidebarLeftOfGrid,
     mobile_menu_visible: visible(menu),
+    mobile_menu_button: mobileMenuButton,
+    mobile_menu_focusable: mobileMenuFocusable,
     grid_columns: columns,
-    primary_width: Math.round(primaryRect.width * 100) / 100,
-    primary_height: Math.round(primaryRect.height * 100) / 100,
-    primary_contrast: primaryStyle ? contrast(primaryForeground, primaryBackground) : 0,
+    primary_width: Math.round(primaryRect.width),
+    primary_height: Math.round(primaryRect.height),
+    primary_contrast: nodeContrast(primary),
     body_contrast: nodeContrast(document.body),
-    minimum_text_contrast: textContrasts.length ? Math.min(...textContrasts) : 0,
-    focus_indicator: Boolean(
-      primaryFocused &&
-      visible(primary) &&
-      primaryStyle &&
-      primaryStyle.outlineStyle !== 'none' &&
-      parseFloat(primaryStyle.outlineWidth) >= 2 &&
-      parseFloat(primaryStyle.outlineOffset) >= 0 &&
-      outline[3] > 0 &&
-      outlineContrast >= 3
-    ),
+    minimum_text_contrast: minimumTextContrast,
+    solid_text_backgrounds: solidTextBackgrounds,
+    text_contrast_aa: textContrastAa,
+    focus_indicator: focusIndicator,
     disclosure_visible_after_open: disclosureVisible,
+    navigation_rendered: navigationRendered,
+    active_navigation_current: currentNavLinks.length === 1,
     brief_content_rendered:
-      productRendered && navigationRendered && filtersRendered && incidentsRendered
+      productRendered && navigationRendered && filtersRendered && incidentsRendered,
   };
 })()
 """
@@ -249,10 +328,25 @@ class StructureParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.tags: dict[str, int] = {}
         self.attributes: list[tuple[str, dict[str, str | None]]] = []
+        self.navigation_links: list[dict[str, str | None]] = []
+        self._navigation_depth = 0
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        values = dict(attrs)
         self.tags[tag] = self.tags.get(tag, 0) + 1
-        self.attributes.append((tag, dict(attrs)))
+        self.attributes.append((tag, values))
+        if tag == "nav":
+            self._navigation_depth += 1
+        elif tag == "a" and self._navigation_depth:
+            self.navigation_links.append(values)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "nav" and self._navigation_depth:
+            self._navigation_depth -= 1
 
 def _forbidden_asset_url(value: str | None) -> bool:
     if value is None:
@@ -346,9 +440,32 @@ def _validate_submission(value: object, brief: dict[str, object]) -> tuple[str, 
         raise SubmissionError("UI contains forbidden active or remote content")
     semantics = all(parser.tags.get(tag, 0) >= count for tag, count in {"header": 1, "nav": 1, "main": 1, "section": 1, "article": 3, "form": 1, "details": 3, "summary": 3, "button": 1}.items())
     linked_css = any(tag == "link" and attrs.get("rel") == "stylesheet" and attrs.get("href") == "styles.css" for tag, attrs in parser.attributes)
-    active_nav = any(attrs.get("aria-current") == "page" for _, attrs in parser.attributes)
-    mobile_label = any(attrs.get("data-role") == "mobile-menu" and bool(attrs.get("aria-label")) for _, attrs in parser.attributes)
-    hooks = all(any(attrs.get("data-role") == role for _, attrs in parser.attributes) for role in ("sidebar", "mobile-menu", "incident-grid", "primary-action"))
+    active_nav = (
+        sum(
+            attrs.get("aria-current", "").casefold() == "page"
+            for attrs in parser.navigation_links
+        )
+        == 1
+    )
+    mobile_hooks = [
+        (tag, attrs)
+        for tag, attrs in parser.attributes
+        if attrs.get("data-role") == "mobile-menu"
+    ]
+    mobile_label = (
+        len(mobile_hooks) == 1
+        and mobile_hooks[0][0] == "button"
+        and bool((mobile_hooks[0][1].get("aria-label") or "").strip())
+        and "disabled" not in mobile_hooks[0][1]
+    )
+    hook_counts = {
+        role: sum(
+            attrs.get("data-role") == role
+            for _, attrs in parser.attributes
+        )
+        for role in {"mobile-menu", "incident-grid", "primary-action"}
+    }
+    hooks = all(count == 1 for count in hook_counts.values())
     content_complete = all(item in html for item in _required_content(brief))
     checks = {
         "semantic_structure": semantics,

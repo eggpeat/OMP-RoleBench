@@ -66,6 +66,14 @@ def _is_sha256(value: object) -> bool:
         and all(character in "0123456789abcdef" for character in value)
     )
 
+def _is_contrast_ratio(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and 1 <= value <= 21
+    )
+
 
 def _emit_result(
     *,
@@ -253,7 +261,10 @@ def main() -> int:
         "viewport_width",
         "horizontal_overflow",
         "sidebar_visible",
+        "sidebar_left_of_grid",
         "mobile_menu_visible",
+        "mobile_menu_button",
+        "mobile_menu_focusable",
         "grid_columns",
         "primary_width",
         "primary_height",
@@ -261,8 +272,12 @@ def main() -> int:
         "minimum_text_contrast",
         "brief_content_rendered",
         "body_contrast",
+        "solid_text_backgrounds",
+        "text_contrast_aa",
         "focus_indicator",
         "disclosure_visible_after_open",
+        "navigation_rendered",
+        "active_navigation_current",
         "screenshot_bytes",
         "screenshot_sha256",
     }
@@ -279,16 +294,27 @@ def main() -> int:
             or not isinstance(surface.get("primary_height"), (int, float))
             or surface.get("primary_width") < 44
             or surface.get("primary_height") < 44
-            or not isinstance(surface.get("primary_contrast"), (int, float))
-            or not isinstance(surface.get("body_contrast"), (int, float))
-            or isinstance(surface.get("minimum_text_contrast"), bool)
-            or not isinstance(surface.get("minimum_text_contrast"), (int, float))
-            or surface.get("minimum_text_contrast") < 4.5
-            or surface.get("brief_content_rendered") is not True
-            or surface.get("primary_contrast") < 4.5
-            or surface.get("body_contrast") < 4.5
-            or surface.get("focus_indicator") is not True
-            or surface.get("disclosure_visible_after_open") is not True
+            or not all(
+                _is_contrast_ratio(surface.get(key))
+                for key in (
+                    "primary_contrast",
+                    "body_contrast",
+                    "minimum_text_contrast",
+                )
+            )
+            or any(
+                surface.get(key) is not True
+                for key in (
+                    "brief_content_rendered",
+                    "focus_indicator",
+                    "disclosure_visible_after_open",
+                    "navigation_rendered",
+                    "active_navigation_current",
+                    "mobile_menu_button",
+                    "solid_text_backgrounds",
+                    "text_contrast_aa",
+                )
+            )
             or isinstance(surface.get("screenshot_bytes"), bool)
             or not isinstance(surface.get("screenshot_bytes"), int)
             or surface.get("screenshot_bytes") < 4096
@@ -298,11 +324,13 @@ def main() -> int:
     if (
         desktop.get("viewport_width") != 1280
         or desktop.get("sidebar_visible") is not True
+        or desktop.get("sidebar_left_of_grid") is not True
         or desktop.get("mobile_menu_visible") is not False
-        or desktop.get("grid_columns") < 2
+        or desktop.get("grid_columns") != 3
         or mobile.get("viewport_width") != 390
         or mobile.get("sidebar_visible") is not False
         or mobile.get("mobile_menu_visible") is not True
+        or mobile.get("mobile_menu_focusable") is not True
         or mobile.get("grid_columns") != 1
     ):
         return reject()

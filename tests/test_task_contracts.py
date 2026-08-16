@@ -2054,6 +2054,88 @@ class ResponsiveIncidentRunnerTests(unittest.TestCase):
                 ):
                     validate_submission(submission, {})
 
+    def test_binds_navigation_and_menu_semantics_to_audit_hooks(self) -> None:
+        task_dir = (
+            PRODUCT_ROOT
+            / "contracts/tasks/omp-native.responsive-incident-console/1.0.0"
+        )
+        namespace = runpy.run_path(str(task_dir / "runner.py"))
+        validate_submission = namespace["_validate_submission"]
+        reference = runpy.run_path(str(task_dir / "probes/reference.py"))
+        brief = json.loads(
+            (task_dir / "public/workspace/brief.json").read_text(encoding="utf-8")
+        )
+        valid_html = reference["html"]
+        valid = {
+            "schema_version": "rolebench.ui-implementation/v1",
+            "files": {
+                "index.html": valid_html,
+                "styles.css": reference["css"],
+            },
+        }
+        _, _, checks = validate_submission(valid, brief)
+        self.assertTrue(checks["active_navigation_labelled"])
+        self.assertTrue(checks["mobile_menu_labelled"])
+        self.assertTrue(checks["audit_hooks_present"])
+
+        unrelated_current = valid_html.replace(
+            ' aria-current="page"',
+            "",
+            1,
+        ).replace(
+            '<div class="brand">',
+            '<div class="brand" aria-current="page">',
+            1,
+        )
+        menu_element = (
+            '<button class="menu-button" type="button" '
+            'data-role="mobile-menu" aria-label="Open primary navigation">'
+            "Menu</button>"
+        )
+        tampered_cases = {
+            "unrelated aria-current": (
+                unrelated_current,
+                "active_navigation_labelled",
+            ),
+            "non-button menu hook": (
+                valid_html.replace(
+                    menu_element,
+                    '<div class="menu-button" data-role="mobile-menu" '
+                    'aria-label="Open primary navigation">Menu</div>',
+                    1,
+                ),
+                "mobile_menu_labelled",
+            ),
+            "disabled menu button": (
+                valid_html.replace(
+                    'type="button" data-role="mobile-menu"',
+                    'type="button" disabled data-role="mobile-menu"',
+                    1,
+                ),
+                "mobile_menu_labelled",
+            ),
+            "duplicate menu hook": (
+                valid_html.replace(
+                    "</header>",
+                    '<button data-role="mobile-menu" aria-label="Other menu">'
+                    "Other</button></header>",
+                    1,
+                ),
+                "audit_hooks_present",
+            ),
+        }
+        for name, (html, failed_check) in tampered_cases.items():
+            with self.subTest(name=name):
+                tampered = {
+                    "schema_version": "rolebench.ui-implementation/v1",
+                    "files": {
+                        "index.html": html,
+                        "styles.css": reference["css"],
+                    },
+                }
+                _, _, tampered_checks = validate_submission(tampered, brief)
+                self.assertFalse(tampered_checks[failed_check])
+
 
 class PublishedCandidateRegressionTests(unittest.TestCase):
     def test_memory_candidate_meets_verifier_narrative_gates(self) -> None:
