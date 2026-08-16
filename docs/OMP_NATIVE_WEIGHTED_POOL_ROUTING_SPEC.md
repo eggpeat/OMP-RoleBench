@@ -1,73 +1,143 @@
-# OMP Native Weighted Routing Boundary
+# OMP Native Routing Strategy and Context-Continuity Spec
 
-- **Status:** Authoritative routing-boundary decision
-- **Applies to:** OMP RoleBench policy generation and the future upstream OMP router
+- **Status:** Draft upstream architecture contract
+- **Applies to:** RoleBench policy generation and a future upstream OMP router
 
 ## Decision
 
-RoleBench benchmarks native OMP model roles, but weighted routing is permitted only for roles whose invocations are naturally fungible helper/execution work.
-
-### Weighted pools
+Every native OMP model role can use either normal configured-primary selection or weighted selection. This is an upstream capability surface, not an opinion about which models or strategies a particular user should prefer.
 
 ```text
-smol
-commit
-tiny
-task
+selection_strategy = primary | weighted
+retry_fallback_chain = always available
 ```
 
-Each new logical invocation may deterministically select a qualified route from that role's weighted pool. Selection remains sticky for the operation or child session identified by the routing topology.
+The two concepts are orthogonal:
 
-### Configured primary + ordinary fallback chain
+- `primary` chooses the configured primary route for normal execution.
+- `weighted` chooses one route from a weighted roster for normal execution.
+- `retry_fallback_chain` is reactive recovery after the selected route fails, exhausts retries, loses auth/capacity, or otherwise becomes unusable.
+
+Weighted selection therefore never removes fallbacks.
+
+## Baseline RoleBench policy
+
+RoleBench's current baseline recommendation remains intentionally opinionated:
 
 ```text
-default
-plan
-slow
-vision
-designer
-advisor
-reviewer
+primary:
+  default
+  plan
+  slow
+  vision
+  designer
+  advisor
+  reviewer
+
+weighted:
+  smol
+  commit
+  tiny
+  task
 ```
 
-These roles use one configured primary route and OMP's existing ordered retry fallback chain. They are benchmarked and may receive RoleBench recommendations for the primary and fallback order, but they are not load-balanced during normal execution.
+That baseline is represented by `baseline_strategy` in `contracts/routing-topology.json`. It is **not** an immutable OMP restriction. Any native role can be configured as `primary` or `weighted` by another operator or policy.
 
-`advisor` and `reviewer` remain separate native workflows and separate routing roles. Treating both as fallback-chain roles does not pool their evidence or make them interchangeable; it only avoids hard-coding one preferred model into the architecture.
+## Native selection scopes
 
-`default` remains the primary long-lived session role, but that does not make its routing semantics fundamentally different from the other non-pooled roles: it has a configured primary and can use the ordinary retry fallback chain. RoleBench may recommend that chain without automatically rotating the session through a weighted pool.
+Weighted selection must happen only at the role's native logical execution boundary and must remain pinned for that boundary.
 
-## Why the boundary exists
+| Native role | Selection scope |
+|---|---|
+| `default` | main session |
+| `plan` | plan/role session |
+| `slow` | role session |
+| `vision` | operation |
+| `designer` | child session |
+| `advisor` | advisor runtime |
+| `reviewer` | review run |
+| `smol` | operation |
+| `commit` | operation |
+| `tiny` | operation |
+| `task` | child session |
 
-The four weighted roles are repeated helper/execution surfaces where independent invocations can safely land on different qualified models:
+A weighted role **must not re-hash on every API request or turn**. The selected route is pinned until the logical execution boundary ends. This prevents provider/model churn from fragmenting one conversation.
 
-- `smol`: fast, bounded helper work
-- `commit`: commit-message generation
-- `tiny`: titles, metadata, classification, memory, and other bounded utility work
-- `task`: autonomous delegated child-agent execution
+## Weighted selection + fallback recovery
 
-`default`, `plan`, `slow`, `vision`, `designer`, `advisor`, and `reviewer` instead behave like configured role primaries. Their model identity should remain stable for the logical session, operation, advisor runtime, or review run, with OMP's existing retry chain handling failures and depletion.
+Normal weighted execution:
 
-## Routing topology
+```text
+routing key + role + policy checksum
+        ↓
+weighted-rendezvous ranking
+        ↓
+selected route (pinned)
+        ↓
+normal retries on that route
+        ↓ if recovery policy leaves route
+remaining qualified ranked candidates (optional optimization)
+        ↓ when weighted candidates are exhausted / skipped
+ordinary retry fallback chain
+```
 
-| Native role | Strategy | Selection scope |
-|---|---|---|
-| `default` | fallback chain | main session |
-| `plan` | fallback chain | role session |
-| `slow` | fallback chain | role session |
-| `vision` | fallback chain | operation |
-| `designer` | fallback chain | child session |
-| `advisor` | fallback chain | advisor runtime |
-| `reviewer` | fallback chain | review run |
-| `smol` | weighted pool | operation |
-| `commit` | weighted pool | operation |
-| `tiny` | weighted pool | operation |
-| `task` | weighted pool | child session |
+The fallback chain is required on weighted allocations in `omp.pool-policy/v1`.
 
-`contracts/routing-topology.json` is the authority for this classification. `omp.pool-policy/v1` structurally permits only `smol`, `commit`, `tiny`, and `task`.
+The existing OMP retry engine remains authoritative for whether a failed turn is replay-safe. OMP already refuses automatic replay after visible partial output, images, tool calls, or other replay-unsafe side effects; safe failures remove the failed assistant turn and continue the same logical prompt. A weighted router must not weaken those safeguards.
+
+## Context and handoff safety
+
+### New weighted task child
+
+A newly spawned `task` child is already a separate OMP session. OMP does **not** blindly clone the parent transcript into the child. The task executor builds a child-specific runtime with:
+
+- the selected agent's system prompt and tool contract;
+- the task/assignment;
+- optional shared task context;
+- the active plan reference when execution is following a plan;
+- inherited workspace/tool/auth configuration as allowed by the task contract.
+
+That isolation is desirable. Picking a different model for a **new** task child does not pollute an existing child context because there is no prior child transcript to pollute. The selected model starts from the same explicit task handoff that any statically configured `@task` model would receive.
+
+The router must resolve the weighted route **before** `createAgentSession` starts the child. Once created, the child route is pinned.
+
+### Retry fallback inside an existing child/session
+
+Fallback recovery is different from spawning a new child. OMP's native retry path switches the model on the existing `AgentSession` and continues against the same session history, subject to replay-safety checks. No synthetic summary handoff should be inserted merely because the provider/model changed.
+
+This means a model fallback gets the conversation and tool history that OMP already considers safe to replay/continue. The router should delegate switching to the existing `TurnRecovery`/fallback machinery rather than creating a replacement session.
+
+### Revive/resume
+
+A parked or persisted task child must **not** be re-routed just because the weighted policy would choose a different route today. OMP already reopens the saved JSONL, restores the full message history, and reconstructs the persisted subagent runtime from `session_init`, including the stored model role/resolved model pattern.
+
+Therefore the integration contract is:
+
+```text
+new logical execution → route once
+existing live execution → keep pin
+park/revive → restore pin + transcript
+process resume → restore pin + transcript
+retry fallback → switch within same session via native recovery
+```
+
+A future explicit operator command may request re-selection, but ordinary revive/resume must never silently re-hash.
+
+### Parent → child handoff quality
+
+Weighted routing does not itself improve or degrade the semantic task handoff. The quality of a new task child depends on the assignment/context supplied by the spawning workflow. Upstream integration should preserve OMP's existing task inputs unchanged and add routing metadata separately.
+
+The routing layer must never:
+
+- inject model-specific prose into the task prompt;
+- append the weighted roster to child context;
+- copy hidden parent scratch state into a child;
+- truncate the existing plan reference to fit a selected model without using normal OMP context/compaction rules;
+- synthesize a summary when ordinary same-session retry can continue safely.
 
 ## Task lanes
 
-Only `task` receives workload-sensitive lanes in v1:
+Only `task` receives routing lanes in v1:
 
 ```text
 task/implementation
@@ -78,64 +148,36 @@ task/repo-research
 task/mechanical-edit
 ```
 
-A lane is not a model role and is not an agent identity. An agent or workflow may request `@task` plus a lane. If direct lane evidence is insufficient or specialization does not reduce held-out allocation regret enough, the lane inherits the generic `task` pool exactly.
+A lane is neither a new role nor an agent identity. It only changes the weighted candidate distribution. If evidence is insufficient, the lane inherits the generic `task` weighted allocation and fallback chain exactly.
 
-No lanes are defined for non-pooled roles. No lanes are initially defined for `smol`, `commit`, or `tiny`.
+## Policy artifacts
 
-## Artifact separation
+### Weighted policy
 
-RoleBench emits two different routing outputs:
+`omp.pool-policy/v1` may contain **any native role**. Each allocation contains:
 
-1. **`omp.pool-policy/v1`** — weighted allocations for `smol`, `commit`, `tiny`, and `task` only.
-2. **`omp.fixed-role-recommendation/v1`** — primary + ordered fallback-chain recommendations for `default`, `plan`, `slow`, `vision`, `designer`, `advisor`, and `reviewer`.
+- qualified weighted routes summing to 10,000 basis points;
+- the role's native stickiness/selection scope;
+- an ordered `fallback_chain`;
+- optional task-lane allocations for `task` only.
 
-The fixed-role recommendation artifact contains no weights. A recommendation can be adopted by the operator or upstream OMP configuration without turning that role into pooled traffic.
+### Configured-primary recommendation
+
+`omp.primary-routing-recommendation/v1` may also contain **any native role**. Each role receives:
+
+- a recommended primary route;
+- an ordered fallback chain;
+- no weights.
+
+These are alternative normal-selection strategies over the same native role. An upstream user can choose either regardless of the RoleBench baseline.
 
 ## Capacity treatment
 
-Non-pooled does not mean invisible. Before optimizing weighted pools:
+A role configured as `primary` still consumes provider/account capacity and must be included in demand/capacity planning. A role configured as `weighted` contributes allocatable demand. Changing a role's strategy changes what the optimizer may allocate; it does not change the role's semantic runtime contract.
 
-```text
-usable capacity
-    = reported capacity
-    - expected default load
-    - expected plan load
-    - expected slow load
-    - expected vision load
-    - expected designer load
-    - expected advisor load
-    - expected reviewer load
-    - explicit reserves
-```
+## Upstream routing request
 
-RoleBench may report infeasibility, but it may not reassign these fixed-role loads merely to satisfy a weighted allocation.
-
-## Runtime resolution
-
-```text
-explicit concrete override
-    ↓
-native non-pooled behavior
-    ├── default: primary + retry fallback chain
-    ├── plan: primary + retry fallback chain
-    ├── slow: primary + retry fallback chain
-    ├── vision: primary + retry fallback chain
-    ├── designer: primary + retry fallback chain
-    ├── advisor: primary + retry fallback chain
-    └── reviewer: primary + retry fallback chain
-    ↓
-weighted pool policy for smol / commit / tiny / task
-    ↓
-static modelRoles assignment
-    ↓
-existing retry/fallback recovery
-```
-
-Weighted selection uses deterministic weighted rendezvous hashing once per logical invocation. Existing fallback chains remain reactive recovery and the normal resolution mechanism for all seven fallback-chain roles.
-
-## Upstream OMP integration
-
-The central routing seam can remain small:
+The upstream seam should preserve semantic role identity and execution continuity:
 
 ```ts
 interface RoleRouteRequest {
@@ -143,6 +185,8 @@ interface RoleRouteRequest {
   routingKey: string;
   consumer: string;
   lane?: string;
+  selectionScope: string;
+  resumedPin?: PersistedRoutePin;
   explicitOverride?: string;
 }
 ```
@@ -150,26 +194,28 @@ interface RoleRouteRequest {
 Resolution precedence:
 
 1. explicit concrete override;
-2. native configured-primary/fallback-chain semantics;
-3. active weighted pool policy for one of the four pool-eligible roles;
-4. static `modelRoles` assignment;
-5. existing retry and recovery machinery.
+2. persisted pin for an existing/revived logical execution;
+3. configured role selection strategy (`primary` or `weighted`);
+4. existing model-role/default resolution;
+5. existing retry fallback machinery.
 
-The router must reject or ignore any policy attempt to pool `default`, `plan`, `slow`, `vision`, `designer`, `advisor`, or `reviewer`.
+The router returns one initial concrete route and its routing metadata. It does not own message replay, compaction, tool side-effect safety, or persisted-session reconstruction.
 
-## Rollout
+## Required upstream tests
 
-Weighted enforcement can be introduced in the lowest-risk order:
+Before weighted routing can be enforced, upstream OMP should add integration tests proving:
 
-```text
-tiny → commit → smol → task
-```
+1. a weighted `task` route is selected before child-session creation;
+2. two new task children can select different models without sharing child transcripts;
+3. one task child's route remains pinned across multiple turns;
+4. task `context` and `planReference` are byte-for-byte unchanged by routing;
+5. retry fallback switches models within the same child session and preserves replay-safe history;
+6. replay-unsafe partial output prevents automatic cross-model replay exactly as it does today;
+7. persisted/cold-revived children restore their original resolved route and full history instead of re-hashing;
+8. main-session weighted `default` selection is pinned for the whole session;
+9. every native role accepts both `primary` and `weighted` strategy configuration;
+10. every weighted role retains an ordinary fallback chain.
 
-All other roles remain outside weighted enforcement.
+## Compatibility
 
-## Repository compatibility
-
-Existing role contracts, task admission, verifier isolation, accounting, and calibration packs remain valid. A benchmark pack's existence does not imply pool eligibility. Routing topology determines how evidence may be consumed:
-
-- `smol`, `commit`, `tiny`, and `task` evidence may qualify weighted candidates;
-- `default`, `plan`, `slow`, `vision`, `designer`, `advisor`, and `reviewer` evidence may rank a primary and fallback chain.
+No benchmark pack grants or removes a routing capability. RoleBench evidence ranks routes; policy chooses a strategy; OMP's native runtime defines the selection boundary and continuity semantics.
