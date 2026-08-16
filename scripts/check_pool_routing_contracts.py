@@ -19,7 +19,15 @@ def main() -> int:
             {
                 "valid": True,
                 "topology_id": topology.topology_id,
-                "fixed_roles": list(FIXED_ROLES),
+                "fallback_chain_roles": [
+                    role for role in FIXED_ROLES if topology.strategy_for(role) == "fallback-chain"
+                ],
+                "dedicated_roles": [
+                    role for role in FIXED_ROLES if topology.strategy_for(role) == "dedicated"
+                ],
+                "manual_roles": [
+                    role for role in FIXED_ROLES if topology.strategy_for(role) == "manual"
+                ],
                 "pool_roles": list(POOL_ROLES),
                 "task_lanes": sorted(lanes.lanes),
             },
