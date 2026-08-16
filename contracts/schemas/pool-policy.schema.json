@@ -2,314 +2,115 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:omp-rolebench:schema:pool-policy:v1",
   "title": "OMP Weighted Pool Policy v1",
-  "$comment": "Only smol, slow, vision, designer, commit, tiny, and task may appear. Default is manual; plan uses a normal fallback chain; advisor and reviewer are dedicated. Semantic validation enforces unique route IDs, exact 10000-bps totals, known task lanes, and exact inheritance for non-specialized lanes.",
+  "$comment": "Only smol, commit, tiny, and task may appear. Default is manual; plan, slow, vision, and designer use configured primaries with ordinary retry fallback chains; advisor and reviewer are dedicated. Semantic validation enforces unique route IDs, exact 10000-bps totals, known task lanes, and exact inheritance for non-specialized lanes.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "policy_id",
-    "created_at",
-    "valid_from",
-    "valid_until",
-    "routing_topology",
-    "lane_registry",
-    "evidence_snapshot",
-    "capacity_snapshot",
-    "fixed_load_snapshot",
-    "optimizer_version",
-    "allocation_algorithm",
-    "allocation_seed",
-    "pools",
-    "checksum_sha256"
-  ],
+  "required": ["schema_version", "policy_id", "created_at", "valid_from", "valid_until", "routing_topology", "lane_registry", "evidence_snapshot", "capacity_snapshot", "fixed_load_snapshot", "optimizer_version", "allocation_algorithm", "allocation_seed", "pools", "checksum_sha256"],
   "properties": {
-    "schema_version": {
-      "const": "omp.pool-policy/v1"
-    },
-    "policy_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "created_at": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "valid_from": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "valid_until": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "routing_topology": {
-      "$ref": "#/$defs/topologyReference"
-    },
-    "lane_registry": {
-      "$ref": "#/$defs/laneReference"
-    },
-    "capacity_snapshot": {
-      "$ref": "#/$defs/genericReference"
-    },
-    "optimizer_version": {
-      "type": "string",
-      "minLength": 1
-    },
-    "allocation_algorithm": {
-      "const": "weighted-rendezvous-v1"
-    },
-    "allocation_seed": {
-      "type": "string",
-      "minLength": 1
-    },
+    "schema_version": {"const": "omp.pool-policy/v1"},
+    "policy_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "valid_until": {"type": "string", "format": "date-time"},
+    "routing_topology": {"$ref": "#/$defs/topologyReference"},
+    "lane_registry": {"$ref": "#/$defs/laneReference"},
+    "capacity_snapshot": {"$ref": "#/$defs/genericReference"},
+    "evidence_snapshot": {"$ref": "#/$defs/genericReference"},
+    "fixed_load_snapshot": {"$ref": "#/$defs/genericReference"},
+    "optimizer_version": {"type": "string", "minLength": 1},
+    "allocation_algorithm": {"const": "weighted-rendezvous-v1"},
+    "allocation_seed": {"type": "string", "minLength": 1},
     "pools": {
       "type": "object",
       "minProperties": 1,
       "additionalProperties": false,
       "properties": {
-        "smol": {
-          "$ref": "#/$defs/simplePool"
-        },
-        "slow": {
-          "$ref": "#/$defs/simplePool"
-        },
-        "vision": {
-          "$ref": "#/$defs/simplePool"
-        },
-        "designer": {
-          "$ref": "#/$defs/simplePool"
-        },
-        "commit": {
-          "$ref": "#/$defs/simplePool"
-        },
-        "tiny": {
-          "$ref": "#/$defs/simplePool"
-        },
-        "task": {
-          "$ref": "#/$defs/taskPool"
-        }
+        "smol": {"$ref": "#/$defs/simplePool"},
+        "commit": {"$ref": "#/$defs/simplePool"},
+        "tiny": {"$ref": "#/$defs/simplePool"},
+        "task": {"$ref": "#/$defs/taskPool"}
       }
     },
-    "checksum_sha256": {
-      "$ref": "#/$defs/sha256"
-    },
-    "evidence_snapshot": {
-      "$ref": "#/$defs/genericReference"
-    },
-    "fixed_load_snapshot": {
-      "$ref": "#/$defs/genericReference"
-    }
+    "checksum_sha256": {"$ref": "#/$defs/sha256"}
   },
   "$defs": {
-    "sha256": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "topologyReference": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "schema_version",
-        "topology_id",
-        "checksum_sha256"
-      ],
+      "required": ["schema_version", "topology_id", "checksum_sha256"],
       "properties": {
-        "schema_version": {
-          "const": "omp.routing-topology/v1"
-        },
-        "topology_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "checksum_sha256": {
-          "$ref": "#/$defs/sha256"
-        }
+        "schema_version": {"const": "omp.routing-topology/v1"},
+        "topology_id": {"type": "string", "minLength": 1},
+        "checksum_sha256": {"$ref": "#/$defs/sha256"}
       }
     },
     "laneReference": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "schema_version",
-        "registry_id",
-        "checksum_sha256"
-      ],
+      "required": ["schema_version", "registry_id", "checksum_sha256"],
       "properties": {
-        "schema_version": {
-          "const": "omp.pool-lane-registry/v1"
-        },
-        "registry_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "checksum_sha256": {
-          "$ref": "#/$defs/sha256"
-        }
+        "schema_version": {"const": "omp.pool-lane-registry/v1"},
+        "registry_id": {"type": "string", "minLength": 1},
+        "checksum_sha256": {"$ref": "#/$defs/sha256"}
       }
     },
     "genericReference": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "schema_version",
-        "snapshot_id",
-        "checksum_sha256"
-      ],
+      "required": ["schema_version", "snapshot_id", "checksum_sha256"],
       "properties": {
-        "schema_version": {
-          "type": "string",
-          "minLength": 1
-        },
-        "snapshot_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "checksum_sha256": {
-          "$ref": "#/$defs/sha256"
-        }
+        "schema_version": {"type": "string", "minLength": 1},
+        "snapshot_id": {"type": "string", "minLength": 1},
+        "checksum_sha256": {"$ref": "#/$defs/sha256"}
       }
     },
     "route": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "route_id",
-        "weight_bps"
-      ],
+      "required": ["route_id", "weight_bps"],
       "properties": {
-        "route_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "weight_bps": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 10000
-        }
+        "route_id": {"type": "string", "minLength": 1},
+        "weight_bps": {"type": "integer", "minimum": 1, "maximum": 10000}
       }
     },
     "allocation": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "routes",
-        "emergency_fallback"
-      ],
+      "required": ["routes", "emergency_fallback"],
       "properties": {
-        "routes": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/route"
-          }
-        },
-        "emergency_fallback": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+        "routes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/route"}},
+        "emergency_fallback": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
       }
     },
     "simplePool": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "quality_floor",
-        "reliability_floor",
-        "confidence",
-        "stickiness_scope",
-        "default"
-      ],
+      "required": ["quality_floor", "reliability_floor", "confidence", "stickiness_scope", "default"],
       "properties": {
-        "quality_floor": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "reliability_floor": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "stickiness_scope": {
-          "enum": [
-            "role-session",
-            "child-session",
-            "operation"
-          ]
-        },
-        "default": {
-          "$ref": "#/$defs/allocation"
-        }
+        "quality_floor": {"type": "number", "minimum": 0, "maximum": 1},
+        "reliability_floor": {"type": "number", "minimum": 0, "maximum": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "stickiness_scope": {"enum": ["child-session", "operation"]},
+        "default": {"$ref": "#/$defs/allocation"}
       }
     },
     "laneAllocation": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "routes",
-        "emergency_fallback",
-        "evidence"
-      ],
+      "required": ["routes", "emergency_fallback", "evidence"],
       "properties": {
-        "routes": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/route"
-          }
-        },
-        "emergency_fallback": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
+        "routes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/route"}},
+        "emergency_fallback": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "evidence": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "status",
-            "direct_sample_count",
-            "estimated_regret_reduction",
-            "inheritance_source"
-          ],
+          "required": ["status", "direct_sample_count", "estimated_regret_reduction", "inheritance_source"],
           "properties": {
-            "status": {
-              "enum": [
-                "specialized",
-                "inherited",
-                "insufficient-evidence"
-              ]
-            },
-            "direct_sample_count": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "estimated_regret_reduction": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            },
-            "inheritance_source": {
-              "enum": [
-                "lane",
-                "hierarchical-pooled",
-                "role-default"
-              ]
-            }
+            "status": {"enum": ["specialized", "inherited", "insufficient-evidence"]},
+            "direct_sample_count": {"type": "integer", "minimum": 0},
+            "estimated_regret_reduction": {"type": "number", "minimum": 0, "maximum": 1},
+            "inheritance_source": {"enum": ["lane", "hierarchical-pooled", "role-default"]}
           }
         }
       }
@@ -317,44 +118,17 @@
     "taskPool": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "quality_floor",
-        "reliability_floor",
-        "confidence",
-        "stickiness_scope",
-        "default",
-        "lanes"
-      ],
+      "required": ["quality_floor", "reliability_floor", "confidence", "stickiness_scope", "default", "lanes"],
       "properties": {
-        "quality_floor": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "reliability_floor": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "stickiness_scope": {
-          "const": "child-session"
-        },
-        "default": {
-          "$ref": "#/$defs/allocation"
-        },
+        "quality_floor": {"type": "number", "minimum": 0, "maximum": 1},
+        "reliability_floor": {"type": "number", "minimum": 0, "maximum": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "stickiness_scope": {"const": "child-session"},
+        "default": {"$ref": "#/$defs/allocation"},
         "lanes": {
           "type": "object",
-          "propertyNames": {
-            "pattern": "^[a-z][a-z0-9-]*$"
-          },
-          "additionalProperties": {
-            "$ref": "#/$defs/laneAllocation"
-          }
+          "propertyNames": {"pattern": "^[a-z][a-z0-9-]*$"},
+          "additionalProperties": {"$ref": "#/$defs/laneAllocation"}
         }
       }
     }
