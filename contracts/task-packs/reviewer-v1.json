@@ -1,0 +1,43 @@
+{
+  "entries": [
+    {
+      "qualification": {
+        "digest_sha256": "ec0e5ba4254b318c503e3a8e80809b1d20296ae46dface6ccad7c55bb5b50f16",
+        "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "d6ace492bac98a02604bd6181577565ea167176b45bac449891cecf8b296ca3f",
+        "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "91c1571226646eef8733454716062dee5f9cd84d42a3d539e9028f8d6c0fc705",
+        "path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "d003240566d47c464c8c123088d2d746058e0182787d6918621f6bcded2dbbd6",
+        "path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/task.json"
+      }
+    }
+  ],
+  "pack_id": "task-pack/reviewer/v1",
+  "partition": "anchor",
+  "required_capabilities": [
+    "code-review",
+    "defect-recall",
+    "false-positive-control",
+    "structured-findings",
+    "evidence-citation"
+  ],
+  "role": "reviewer",
+  "role_contract": {
+    "contract_id": "role-contract/reviewer/v1",
+    "digest_sha256": "17b391bb9c416a1a089c8ea59c6532f3a801418d7844982386a27644152f4f6f"
+  },
+  "routing_eligible": false,
+  "schema_version": "omp.task-pack/v1",
+  "selection_method": "fixed-anchor",
+  "status": "calibration",
+  "task_mix": "reviewer-v1"
+}

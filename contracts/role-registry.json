@@ -1,5 +1,5 @@
 {
-  "schema_version": "omp.role-registry/v3",
+  "schema_version": "omp.role-registry/v4",
   "source": {
     "repository": "can1357/oh-my-pi",
     "revision": "a5090f1f81cf0ac072fbd1ec949eebe6bbbc23a9",
@@ -16,7 +16,8 @@
     "commit",
     "tiny",
     "task",
-    "advisor"
+    "advisor",
+    "reviewer"
   ],
   "contracts": {
     "default": "contracts/roles/default.json",
@@ -28,7 +29,8 @@
     "commit": "contracts/roles/commit.json",
     "tiny": "contracts/roles/tiny.json",
     "task": "contracts/roles/task.json",
-    "advisor": "contracts/roles/advisor.json"
+    "advisor": "contracts/roles/advisor.json",
+    "reviewer": "contracts/roles/reviewer.json"
   },
   "task_packs": {
     "default": "contracts/task-packs/default-v1.json",
@@ -40,6 +42,7 @@
     "commit": "contracts/task-packs/commit-v1.json",
     "tiny": "contracts/task-packs/tiny-v1.json",
     "task": "contracts/task-packs/task-v1.json",
-    "advisor": "contracts/task-packs/advisor-v1.json"
+    "advisor": "contracts/task-packs/advisor-v1.json",
+    "reviewer": "contracts/task-packs/reviewer-v1.json"
   }
 }

@@ -8,7 +8,7 @@
   "properties": {
     "schema_version": {"const": "omp.role-contract/v1"},
     "contract_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*/v1$"},
-    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]},
     "display_name": {"type": "string", "minLength": 1},
     "diagnostic_contract": {"type": "string", "minLength": 1},
     "required_capabilities": {

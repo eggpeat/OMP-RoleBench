@@ -13,7 +13,7 @@
     "mode": {"enum": ["shadow", "enforce"]},
     "policy_id": {"type": "string", "minLength": 1},
     "policy_checksum_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]},
     "routing_key_hash": {
       "$comment": "Privacy-safe one-way routing key hash; raw routing keys are forbidden by the closed schema.",
       "type": "string",

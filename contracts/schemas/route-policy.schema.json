@@ -43,7 +43,8 @@
         "commit": {"$ref": "#/$defs/rolePolicy"},
         "tiny": {"$ref": "#/$defs/rolePolicy"},
         "task": {"$ref": "#/$defs/rolePolicy"},
-        "advisor": {"$ref": "#/$defs/rolePolicy"}
+        "advisor": {"$ref": "#/$defs/rolePolicy"},
+        "reviewer": {"$ref": "#/$defs/rolePolicy"}
       }
     },
     "checksum_sha256": {"$ref": "#/$defs/sha256"}

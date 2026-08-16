@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp-rolebench:schema:task-suite-profile:v1",
+  "title": "OMP Task Suite Profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "version",
+    "status",
+    "roles",
+    "task_lanes",
+    "diversity_dimensions",
+    "verifier_standards",
+    "split_policy",
+    "readiness_lifecycle"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "omp.task-suite-profile/v1"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "status": {
+      "enum": ["draft", "structurally-ready", "frozen"]
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default",
+        "smol",
+        "slow",
+        "vision",
+        "plan",
+        "designer",
+        "commit",
+        "tiny",
+        "task",
+        "advisor",
+        "reviewer"
+      ],
+      "properties": {
+        "default": {"$ref": "#/$defs/role_requirement"},
+        "smol": {"$ref": "#/$defs/role_requirement"},
+        "slow": {"$ref": "#/$defs/role_requirement"},
+        "vision": {"$ref": "#/$defs/role_requirement"},
+        "plan": {"$ref": "#/$defs/role_requirement"},
+        "designer": {"$ref": "#/$defs/role_requirement"},
+        "commit": {"$ref": "#/$defs/role_requirement"},
+        "tiny": {"$ref": "#/$defs/role_requirement"},
+        "task": {"$ref": "#/$defs/role_requirement"},
+        "advisor": {"$ref": "#/$defs/role_requirement"},
+        "reviewer": {"$ref": "#/$defs/role_requirement"}
+      }
+    },
+    "task_lanes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task/implementation",
+        "task/debugging",
+        "task/test-repair",
+        "task/refactor",
+        "task/repo-research",
+        "task/mechanical-edit"
+      ],
+      "properties": {
+        "task/implementation": {"$ref": "#/$defs/lane_requirement"},
+        "task/debugging": {"$ref": "#/$defs/lane_requirement"},
+        "task/test-repair": {"$ref": "#/$defs/lane_requirement"},
+        "task/refactor": {"$ref": "#/$defs/lane_requirement"},
+        "task/repo-research": {"$ref": "#/$defs/lane_requirement"},
+        "task/mechanical-edit": {"$ref": "#/$defs/lane_requirement"}
+      }
+    },
+    "diversity_dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_families",
+        "min_distinct_languages",
+        "min_distinct_environments",
+        "difficulty_distribution",
+        "mutation_modes"
+      ],
+      "properties": {
+        "source_families": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+        },
+        "min_distinct_languages": {"type": "integer", "minimum": 1},
+        "min_distinct_environments": {"type": "integer", "minimum": 1},
+        "difficulty_distribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["easy", "medium", "hard", "expert"],
+          "properties": {
+            "easy": {"type": "number", "minimum": 0, "maximum": 1},
+            "medium": {"type": "number", "minimum": 0, "maximum": 1},
+            "hard": {"type": "number", "minimum": 0, "maximum": 1},
+            "expert": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        },
+        "mutation_modes": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"enum": ["mutation", "read-only"]}
+        }
+      }
+    },
+    "verifier_standards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disallow_candidate_execution_in_verifier",
+        "disallow_unvalidated_self_reporting",
+        "disallow_keyword_only_semantic_checks",
+        "disallow_leaked_holdouts",
+        "require_tamper_rejection"
+      ],
+      "properties": {
+        "disallow_candidate_execution_in_verifier": {"const": true},
+        "disallow_unvalidated_self_reporting": {"const": true},
+        "disallow_keyword_only_semantic_checks": {"const": true},
+        "disallow_leaked_holdouts": {"const": true},
+        "require_tamper_rejection": {"const": true}
+      }
+    },
+    "split_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy",
+        "disjoint_family_enforcement",
+        "holdout_confidentiality"
+      ],
+      "properties": {
+        "strategy": {"const": "family-disjoint"},
+        "disjoint_family_enforcement": {"const": true},
+        "holdout_confidentiality": {"const": "confidential-external"}
+      }
+    },
+    "readiness_lifecycle": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["state", "description", "routing_eligible"],
+        "properties": {
+          "state": {"enum": ["draft", "structurally-ready", "calibration-required", "heldout-required", "routing-eligible"]},
+          "description": {"type": "string", "minLength": 1},
+          "routing_eligible": {"type": "boolean"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "role_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "direct_measurement_contract",
+        "required_capabilities",
+        "min_anchor_count",
+        "primary_metric",
+        "verifier_mode"
+      ],
+      "properties": {
+        "role": {
+          "enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]
+        },
+        "direct_measurement_contract": {"type": "string", "minLength": 1},
+        "required_capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+        },
+        "min_anchor_count": {"type": "integer", "minimum": 1},
+        "primary_metric": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "verifier_mode": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+      }
+    },
+    "lane_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lane",
+        "role",
+        "direct_work_definition",
+        "required_capabilities",
+        "min_anchor_count",
+        "min_calibration_samples",
+        "min_regret_reduction_bps"
+      ],
+      "properties": {
+        "lane": {
+          "enum": [
+            "task/implementation",
+            "task/debugging",
+            "task/test-repair",
+            "task/refactor",
+            "task/repo-research",
+            "task/mechanical-edit"
+          ]
+        },
+        "role": {"const": "task"},
+        "direct_work_definition": {"type": "string", "minLength": 1},
+        "required_capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+        },
+        "min_anchor_count": {"type": "integer", "minimum": 1},
+        "min_calibration_samples": {"type": "integer", "minimum": 1},
+        "min_regret_reduction_bps": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

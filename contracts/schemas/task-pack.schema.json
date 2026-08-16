@@ -8,7 +8,7 @@
   "properties": {
     "schema_version": {"const": "omp.task-pack/v1"},
     "pack_id": {"$ref": "#/$defs/id"},
-    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]},
+    "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]},
     "task_mix": {"$ref": "#/$defs/id"},
     "role_contract": {
       "type": "object", "additionalProperties": false, "required": ["contract_id", "digest_sha256"],
@@ -27,7 +27,22 @@
       "type": "array", "maxItems": 10000,
       "items": {
         "type": "object", "additionalProperties": false, "required": ["task", "qualification"],
-        "properties": {"task": {"$ref": "#/$defs/reference"}, "qualification": {"$ref": "#/$defs/reference"}}
+        "properties": {
+          "task": {"$ref": "#/$defs/reference"},
+          "qualification": {"$ref": "#/$defs/reference"},
+          "routing_lane": {
+            "type": ["string", "null"],
+            "enum": [
+              "task/implementation",
+              "task/debugging",
+              "task/test-repair",
+              "task/refactor",
+              "task/repo-research",
+              "task/mechanical-edit",
+              null
+            ]
+          }
+        }
       }
     }
   },

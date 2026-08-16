@@ -432,6 +432,7 @@ class CanonicalFixedPackTests(TaskContractFixture):
             "tiny": 1,
             "task": 1,
             "advisor": 2,
+            "reviewer": 2,
         }
         self.assertEqual(
             tuple(role for role, _ in repository.task_packs),

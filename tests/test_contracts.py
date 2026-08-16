@@ -61,11 +61,17 @@ class SuccessfulRepositoryTests(ContractFixture):
     def test_v1_role_registry_repository_remains_valid(self) -> None:
         registry = self.read_json("contracts/role-registry.json")
         registry["schema_version"] = "omp.role-registry/v1"
+        registry["roles"] = [r for r in registry["roles"] if r != "reviewer"]
+        registry["contracts"].pop("reviewer", None)
+        if (self.root / "contracts/roles/reviewer.json").exists():
+            (self.root / "contracts/roles/reviewer.json").unlink()
         task_packs = registry["task_packs"]
         self.assertIsInstance(task_packs, dict)
-        for role in ("default", "vision", "plan", "designer", "commit", "tiny", "advisor"):
-            task_packs.pop(role)
-            (self.root / f"contracts/task-packs/{role}-v1.json").unlink()
+        for role in ("default", "vision", "plan", "designer", "commit", "tiny", "advisor", "reviewer"):
+            task_packs.pop(role, None)
+            p = self.root / f"contracts/task-packs/{role}-v1.json"
+            if p.exists():
+                p.unlink()
         self.write_json("contracts/role-registry.json", registry)
 
         result = validate_repository(self.root)
@@ -80,11 +86,17 @@ class SuccessfulRepositoryTests(ContractFixture):
     def test_v2_role_registry_repository_remains_valid(self) -> None:
         registry = self.read_json("contracts/role-registry.json")
         registry["schema_version"] = "omp.role-registry/v2"
+        registry["roles"] = [r for r in registry["roles"] if r != "reviewer"]
+        registry["contracts"].pop("reviewer", None)
+        if (self.root / "contracts/roles/reviewer.json").exists():
+            (self.root / "contracts/roles/reviewer.json").unlink()
         task_packs = registry["task_packs"]
         self.assertIsInstance(task_packs, dict)
-        for role in ("vision", "designer", "commit", "tiny"):
-            task_packs.pop(role)
-            (self.root / f"contracts/task-packs/{role}-v1.json").unlink()
+        for role in ("vision", "designer", "commit", "tiny", "reviewer"):
+            task_packs.pop(role, None)
+            p = self.root / f"contracts/task-packs/{role}-v1.json"
+            if p.exists():
+                p.unlink()
         self.write_json("contracts/role-registry.json", registry)
 
         result = validate_repository(self.root)
@@ -96,6 +108,29 @@ class SuccessfulRepositoryTests(ContractFixture):
             ("default", "task", "smol", "slow", "plan", "advisor"),
         )
 
+    def test_v3_role_registry_repository_remains_valid(self) -> None:
+        registry = self.read_json("contracts/role-registry.json")
+        registry["schema_version"] = "omp.role-registry/v3"
+        registry["roles"] = [r for r in registry["roles"] if r != "reviewer"]
+        registry["contracts"].pop("reviewer", None)
+        if (self.root / "contracts/roles/reviewer.json").exists():
+            (self.root / "contracts/roles/reviewer.json").unlink()
+        task_packs = registry["task_packs"]
+        self.assertIsInstance(task_packs, dict)
+        task_packs.pop("reviewer", None)
+        p = self.root / "contracts/task-packs/reviewer-v1.json"
+        if p.exists():
+            p.unlink()
+        self.write_json("contracts/role-registry.json", registry)
+
+        result = validate_repository(self.root)
+
+        self.assertTrue(result.valid, result.diagnostics)
+        repository = load_repository(self.root)
+        self.assertEqual(
+            tuple(role for role, _ in repository.task_packs),
+            ("default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"),
+        )
     def test_contracts_validate_cli_reports_repository_valid(self) -> None:
         output = StringIO()
         status = run(

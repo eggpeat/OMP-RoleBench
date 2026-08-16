@@ -110,7 +110,7 @@
               "partition": {"enum": ["anchor", "adaptive", "holdout"]},
               "assignment_method": {"enum": ["author-assigned", "deterministic-hash", "independent-review"]},
               "confidentiality": {"enum": ["public", "confidential"]},
-              "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor"]}
+              "role": {"enum": ["default", "smol", "slow", "vision", "plan", "designer", "commit", "tiny", "task", "advisor", "reviewer"]}
             }
           }
         }

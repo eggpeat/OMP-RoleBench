@@ -1,0 +1,227 @@
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+      "config_digest_sha256": "4b5e036febc86cc087dc1113df43f41b6a68455c3998034d4c948cd3123339bc",
+      "image": "rolebench.local/code-review-defect-recall-baseline@sha256:110cbb12e1a5826ea3129887b631f839fa1544557f46c551aabe05e8d5973a53",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+      "config_digest_sha256": "02bbe53564504529917b98e0f9f4714adc36b875dcf7e20bf3b3627147dd4e90",
+      "image": "rolebench.local/code-review-defect-recall-reference@sha256:04a640fc70628f118845e46eaa1f3e88e2e65c50fde67b7f0df538cd666d90f9",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+      "config_digest_sha256": "730e547f324041c5e0fe50d0aa2668e7b7a3ff99545ffd426989631d480f4e41",
+      "image": "rolebench.local/code-review-defect-recall-tamper@sha256:930a05b785cefdcc49f3aabf1969faaa6ad410b53ee9df9a3dc7584dbc82f4d5",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+    "config_digest_sha256": "223cce12362d8bc3630f9bd8fb269884e45931e4ccf4d6d90c3918d49b52052d",
+    "image": "rolebench.local/code-review-defect-recall-candidate@sha256:2d0289b90fd55cc2e05fcd3857325cafc26d8f98104e40932430c7870edef5d3",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+      "prompt": {
+        "digest_sha256": "87a7e86298272f1b40a0d596a0ef1229844e60f74a793dbe8c6af23ed5e15829",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "6c8bd947a0320ffb8d66e68d333f9d71de3361db8980d5ef449d5ca5ba6d0454",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
+      "root": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "a1fbe3c6b44cb005cccfb3b8cd28ec032dfd740a03ae4c42b38ada02bf6ad848",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/omp-native.code-review-defect-recall-reviewer-v1"
+  },
+  "capability_tags": [
+    "code-review",
+    "defect-recall",
+    "false-positive-control",
+    "structured-findings",
+    "evidence-citation"
+  ],
+  "content_digest_sha256": "11fdac901c832c4bd8a5a0d576201be78ca3986c6c2a1e541386e1f032ec16e5",
+  "difficulty": "medium",
+  "family": {
+    "family_id": "omp-native.code-review-defect-recall",
+    "variant_id": "1.0.0-omp-native.code-review-defect-recall-reviewer-v1"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Detect the concurrency race condition in src/cache.py.",
+      "Detect the unclosed file handle leak in src/storage.py.",
+      "Detect the timing side-channel comparison in src/auth.py.",
+      "Report verdict 'changes_requested' with exact line citations.",
+      "Report 0 false-positive or fabricated findings."
+    ],
+    "mode": "seeded-defect-recall",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "e6f6fcf7822efa8d8aa270502f12cea486a1503c9f8d882a0fb1bf6a057adb39",
+      "evidence_path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-16T14:00:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "c3908d0d177efebc15f9e465a842dd50fdad8be68edd08563374dbf68f02e0c8",
+      "evidence_path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-16T14:00:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "83e2a9875cb33d2c9da8eba58764151e548a67c14ffca978a5e0692190b01014",
+      "evidence_path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/reviews/split.json",
+      "family_id": "omp-native.code-review-defect-recall",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-16T14:00:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "d07430465e1ab4bd9063d38b0896f9b7a83276584e77a8b457735834e1341d80",
+      "evidence_path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
+      "reviewed_at": "2026-08-16T14:15:00Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
+      "runner_image": "rolebench.local/code-review-defect-recall-runner@sha256:f9c761f4c35474019a2c536e139171b3b31ff6abd7d310610631be916b7945ee",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",
+      "verifier_image": "rolebench.local/code-review-defect-recall-verifier@sha256:acab283eb5536180eae4f03c7e58b1198febabd84f38bda2773b2bd2147e4bd5",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "reviewer",
+  "role_contract": {
+    "contract_id": "role-contract/reviewer/v1",
+    "digest_sha256": "17b391bb9c416a1a089c8ea59c6532f3a801418d7844982386a27644152f4f6f"
+  },
+  "routing_eligible": false,
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+    "config_digest_sha256": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
+    "image": "rolebench.local/code-review-defect-recall-runner@sha256:f9c761f4c35474019a2c536e139171b3b31ff6abd7d310610631be916b7945ee",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+    "kind": "authored",
+    "version": "omp-native/omp-native.code-review-defect-recall@1"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/omp-native.code-review-defect-recall-reviewer-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "83e2a9875cb33d2c9da8eba58764151e548a67c14ffca978a5e0692190b01014",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.code-review-defect-recall",
+  "task_mix": "reviewer-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
+    "config_digest_sha256": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",
+    "image": "rolebench.local/code-review-defect-recall-verifier@sha256:acab283eb5536180eae4f03c7e58b1198febabd84f38bda2773b2bd2147e4bd5",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

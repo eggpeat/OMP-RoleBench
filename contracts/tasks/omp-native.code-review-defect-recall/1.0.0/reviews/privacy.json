@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-16T14:00:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "87a7e86298272f1b40a0d596a0ef1229844e60f74a793dbe8c6af23ed5e15829",
+    "public_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+    "verifier_digest_sha256": "a1fbe3c6b44cb005cccfb3b8cd28ec032dfd740a03ae4c42b38ada02bf6ad848",
+    "verifier_private_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
+    "workspace_digest_sha256": "6c8bd947a0320ffb8d66e68d333f9d71de3361db8980d5ef449d5ca5ba6d0454"
+  },
+  "task_id": "omp-native.code-review-defect-recall",
+  "task_version": "1.0.0"
+}
