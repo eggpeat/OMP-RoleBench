@@ -13,6 +13,7 @@ import base64
 import concurrent.futures
 import json
 import os
+import re
 import socket
 import sqlite3
 import subprocess
@@ -430,15 +431,51 @@ def _route_supports_images(route: dict[str, Any]) -> bool:
 
 
 def collect_task_images(task_dir: Path) -> list[tuple[str, bytes]]:
-    """Collect image assets from the task workspace for vision-capable providers."""
-    workspace_dir = task_dir / "public/workspace"
+    """Collect image assets from the task public tree for vision-capable providers."""
     images: list[tuple[str, bytes]] = []
-    if workspace_dir.exists():
-        for fpath in sorted(workspace_dir.glob("**/*")):
-            if fpath.is_file() and fpath.suffix.lower() in IMAGE_EXTENSIONS and fpath.stat().st_size <= 4 * 1024 * 1024:
-                rel = fpath.relative_to(workspace_dir).as_posix()
-                images.append((rel, fpath.read_bytes()))
+    public_dir = task_dir / "public"
+    for fpath in _collect_workspace_files(task_dir):
+        if fpath.suffix.lower() in IMAGE_EXTENSIONS and fpath.stat().st_size <= 4 * 1024 * 1024:
+            rel = fpath.relative_to(public_dir).as_posix()
+            images.append((rel, fpath.read_bytes()))
     return images
+
+
+# Extensions whose raw bytes are useless/harmful as prompt text. These are
+# base64-embedded instead (small ones) or injected as images (.png etc.).
+BINARY_EXTENSIONS = frozenset(
+    {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bin",
+        ".wasm",
+    }
+)
+# Binary-but-textual-analysis extensions: small enough to embed as base64 so the
+# model can reason about them (e.g. SQLite db/wal forensics).
+BASE64_EMBEDDABLE_EXTENSIONS = frozenset({".db", ".wal", ".sqlite", ".sqlite3", ".encrypted"})
+BASE64_EMBED_MAX_BYTES = 256 * 1024
+# Text files larger than the inline cap are truncated with an explicit marker
+# rather than silently dropped. Silently dropping bottle.py (175KB) made
+# fix-code-vulnerability unanswerable in v1.
+TEXT_INLINE_MAX_BYTES = 512 * 1024
+
+
+def _collect_workspace_files(task_dir: Path) -> list[Path]:
+    """All loadable files under public/, across every subdirectory.
+
+    Reads all of public/ (workspace/, data/, etc.), not just workspace/, so
+    tasks like multi-source-data-merger (sources under public/data/) actually
+    deliver their inputs to the model."""
+    public_dir = task_dir / "public"
+    out: list[Path] = []
+    if public_dir.exists():
+        for fpath in sorted(public_dir.rglob("*")):
+            if fpath.is_file() and fpath.name != "prompt.txt":
+                out.append(fpath)
+    return out
 
 
 def build_task_prompt(task_dir: Path) -> str:
@@ -446,17 +483,38 @@ def build_task_prompt(task_dir: Path) -> str:
     prompt_file = task_dir / "public/prompt.txt"
     base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else "Execute the assigned software engineering task."
 
-    workspace_dir = task_dir / "public/workspace"
+    public_dir = task_dir / "public"
     workspace_context = []
-    if workspace_dir.exists():
-        for fpath in sorted(workspace_dir.glob("**/*")):
-            if fpath.is_file() and fpath.suffix.lower() not in BINARY_EXTENSIONS and fpath.stat().st_size < 32 * 1024:
-                try:
-                    rel = fpath.relative_to(workspace_dir)
-                    text = fpath.read_text(encoding="utf-8", errors="replace")
-                    workspace_context.append(f"--- File: {rel} ---\n{text}\n")
-                except Exception:
-                    pass
+    for fpath in _collect_workspace_files(task_dir):
+        suffix = fpath.suffix.lower()
+        size = fpath.stat().st_size
+        rel = fpath.relative_to(public_dir).as_posix()
+        try:
+            if suffix in IMAGE_EXTENSIONS:
+                continue  # injected separately as image content blocks
+            if suffix in BASE64_EMBEDDABLE_EXTENSIONS:
+                if size <= BASE64_EMBED_MAX_BYTES:
+                    b64 = base64.b64encode(fpath.read_bytes()).decode()
+                    workspace_context.append(
+                        f"--- File: {rel} (base64-encoded {suffix} binary, {size} bytes) ---\n{b64}\n"
+                    )
+                else:
+                    workspace_context.append(
+                        f"--- File: {rel} ({suffix} binary, {size} bytes, too large to embed) ---\n[binary content omitted]\n"
+                    )
+                continue
+            if suffix in BINARY_EXTENSIONS:
+                continue  # undecodable binary, not an image; skip
+            # Text-ish file.
+            if size <= TEXT_INLINE_MAX_BYTES:
+                text = fpath.read_text(encoding="utf-8", errors="replace")
+            else:
+                raw = fpath.read_bytes()[:TEXT_INLINE_MAX_BYTES]
+                text = raw.decode("utf-8", errors="replace")
+                text += f"\n[... truncated: {size} bytes total, showing first {TEXT_INLINE_MAX_BYTES} ...]"
+            workspace_context.append(f"--- File: {rel} ---\n{text}\n")
+        except Exception:
+            pass
 
     context_str = "\n".join(workspace_context)
     if context_str:
@@ -465,19 +523,83 @@ def build_task_prompt(task_dir: Path) -> str:
 
 
 def extract_clean_json_or_patch(raw: str) -> str:
-    """Strip markdown formatting or code blocks from model response."""
+    """Extract the substantive payload from a model response.
+
+    Models frequently wrap the answer in prose plus a fenced block. Be liberal
+    in what we accept: prefer the last fenced block, else the largest balanced
+    JSON object, else strip leading/trailing fences. Never let surrounding
+    conversational text turn a correct answer into a scored-fail."""
     text = raw.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    elif text.startswith("```diff"):
-        text = text[7:]
-    elif text.startswith("```python"):
-        text = text[9:]
-    elif text.startswith("```"):
-        text = text[3:]
+    if not text:
+        return text
+
+    # 1. Prefer the last fenced code block (models put the final answer last).
+    fence_blocks = re.findall(r"```(?:[a-zA-Z0-9_-]+)?\n(.*?)```", text, flags=re.DOTALL)
+    if fence_blocks:
+        candidate = fence_blocks[-1].strip()
+        if candidate:
+            return candidate
+
+    # 2. Largest balanced top-level JSON object/array in the text.
+    best = _largest_balanced_json(text)
+    if best is not None:
+        return best
+
+    # 3. Strip a single leading/trailing fence pair.
+    if text.startswith("```"):
+        newline = text.find("\n")
+        if newline != -1:
+            text = text[newline + 1:]
     if text.endswith("```"):
         text = text[:-3]
     return text.strip()
+
+
+def _largest_balanced_json(text: str) -> str | None:
+    """Return the largest balanced {...} or [...] span, or None."""
+    best: str | None = None
+    for opener, closer in (("{", "}"), ("[", "]")):
+        start = text.find(opener)
+        while start != -1:
+            depth = 0
+            in_str = False
+            escape = False
+            end = -1
+            for i in range(start, len(text)):
+                ch = text[i]
+                if in_str:
+                    if escape:
+                        escape = False
+                    elif ch == "\\":
+                        escape = True
+                    elif ch == '"':
+                        in_str = False
+                    continue
+                if ch == '"':
+                    in_str = True
+                elif ch == opener:
+                    depth += 1
+                elif ch == closer:
+                    depth -= 1
+                    if depth == 0:
+                        end = i
+                        break
+            if end != -1:
+                span = text[start:end + 1]
+                if best is None or len(span) > len(best):
+                    best = span
+                start = text.find(opener, end + 1)
+            else:
+                break
+    if best is not None:
+        stripped = best.strip()
+        # Only accept if it actually parses as JSON.
+        try:
+            json.loads(stripped)
+            return stripped
+        except (ValueError, json.JSONDecodeError):
+            return None
+    return None
 
 
 def is_timeout_error(exc: BaseException) -> bool:

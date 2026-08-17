@@ -100,7 +100,7 @@ class ScoreDockerInjectTests(unittest.TestCase):
 
 
 class BuildTaskPromptTests(unittest.TestCase):
-    def test_binary_file_exclusion(self) -> None:
+    def test_binary_file_handling(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             task_dir = Path(tmpdir)
             prompt_file = task_dir / "public" / "prompt.txt"
@@ -110,26 +110,15 @@ class BuildTaskPromptTests(unittest.TestCase):
             ws_dir = task_dir / "public" / "workspace"
             ws_dir.mkdir(parents=True, exist_ok=True)
 
-            # Text files that should be included
+            # Text files that should be included (paths relative to public/).
             (ws_dir / "main.py").write_text("print('hello')", encoding="utf-8")
             (ws_dir / "notes.txt").write_text("Important notes.", encoding="utf-8")
 
-            # Binary extensions that must be excluded (.png, .jpg, .jpeg, .gif, .db, .wal, .bin, .wasm, .sqlite, .sqlite3)
-            binary_files = [
-                "image.png",
-                "photo.jpg",
-                "photo.jpeg",
-                "anim.gif",
-                "data.db",
-                "data.wal",
-                "tool.bin",
-                "module.wasm",
-                "store.sqlite",
-                "store.sqlite3",
-                "UPPER.PNG",
-                "UPPER.DB",
-            ]
-            for bname in binary_files:
+            # Undecodable binaries / images: skipped (images go to image blocks).
+            skipped = ["image.png", "photo.jpg", "photo.jpeg", "anim.gif", "tool.bin", "module.wasm", "UPPER.PNG"]
+            # Small analysis binaries: base64-embedded so the model can reason about them.
+            embedded = ["data.db", "data.wal", "store.sqlite", "store.sqlite3", "UPPER.DB"]
+            for bname in skipped + embedded:
                 (ws_dir / bname).write_bytes(b"\x00\x01\x02\x03\xff\xfe")
 
             nested_dir = ws_dir / "nested" / "sub"
@@ -140,13 +129,51 @@ class BuildTaskPromptTests(unittest.TestCase):
             result = live.build_task_prompt(task_dir)
 
             self.assertIn("Solve the problem.", result)
-            self.assertIn("--- File: main.py ---\nprint('hello')", result)
-            self.assertIn("--- File: notes.txt ---\nImportant notes.", result)
-            self.assertIn("--- File: nested/sub/nested_text.py ---\nx = 1", result)
+            self.assertIn("--- File: workspace/main.py ---\nprint('hello')", result)
+            self.assertIn("--- File: workspace/notes.txt ---\nImportant notes.", result)
+            self.assertIn("--- File: workspace/nested/sub/nested_text.py ---\nx = 1", result)
 
-            for bname in binary_files:
-                self.assertNotIn(bname, result)
+            # Images and undecodable binaries are not inlined as text.
+            for bname in skipped:
+                self.assertNotIn(f"--- File: workspace/{bname} ---", result)
             self.assertNotIn("nested_binary.bin", result)
+            # Analysis binaries are base64-embedded with an explicit marker.
+            for bname in embedded:
+                self.assertIn(f"--- File: workspace/{bname} (base64-encoded", result)
+
+    def test_oversized_text_file_truncated_not_dropped(self) -> None:
+        """bottle.py (175KB) must not be silently dropped — fix-code-vulnerability regression."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_dir = Path(tmpdir)
+            (task_dir / "public").mkdir(parents=True)
+            (task_dir / "public" / "prompt.txt").write_text("Review the framework.", encoding="utf-8")
+            ws = task_dir / "public" / "workspace"
+            ws.mkdir()
+            (ws / "bottle.py").write_text("x = 1\n" * 20000, encoding="utf-8")  # ~120KB, was >32KB cap
+            result = live.build_task_prompt(task_dir)
+            self.assertIn("--- File: workspace/bottle.py ---", result)
+            self.assertIn("x = 1", result)
+
+    def test_non_workspace_public_dirs_are_loaded(self) -> None:
+        """multi-source-data-merger keeps sources under public/data/ — regression."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_dir = Path(tmpdir)
+            (task_dir / "public").mkdir(parents=True)
+            (task_dir / "public" / "prompt.txt").write_text("Merge the sources.", encoding="utf-8")
+            data = task_dir / "public" / "data" / "source_a"
+            data.mkdir(parents=True)
+            (data / "users.json").write_text('[{"user_id": 1}]', encoding="utf-8")
+            result = live.build_task_prompt(task_dir)
+            self.assertIn("--- File: data/source_a/users.json ---", result)
+            self.assertIn('{"user_id": 1}', result)
+
+    def test_prompt_txt_not_double_included(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_dir = Path(tmpdir)
+            (task_dir / "public").mkdir(parents=True)
+            (task_dir / "public" / "prompt.txt").write_text("UNIQUEPROMPT", encoding="utf-8")
+            result = live.build_task_prompt(task_dir)
+            self.assertEqual(result.count("UNIQUEPROMPT"), 1)
 
 
 class CallLiveModelZaiTests(unittest.TestCase):
@@ -451,7 +478,7 @@ class ImageInjectionTests(unittest.TestCase):
             (ws / "code.png").write_bytes(b"\x89PNG fake")
             (ws / "notes.txt").write_text("hello")
             images = live.collect_task_images(Path(tmp))
-            self.assertEqual([(name, len(data)) for name, data in images], [("code.png", 9)])
+            self.assertEqual([(name, len(data)) for name, data in images], [("workspace/code.png", 9)])
 
     def test_xai_image_block_included(self) -> None:
         payload = {"choices": [{"message": {"content": "ok"}}]}
@@ -749,3 +776,35 @@ class BackoffRetryTests(unittest.TestCase):
             _, _, error = live.call_live_model_with_retry(route, "p")
         self.assertTrue(error.startswith("timeout:"))
         self.assertEqual(mock_call.call_count, live.MAX_TRANSIENT_ATTEMPTS)
+
+
+class ExtractCleanJsonTests(unittest.TestCase):
+    def test_prose_then_fenced_json_extracts_fence(self) -> None:
+        raw = 'Here is my analysis.\n\n```json\n{"a": 1, "b": 2}\n```\n\nHope this helps.'
+        self.assertEqual(live.extract_clean_json_or_patch(raw), '{"a": 1, "b": 2}')
+
+    def test_bare_json_with_leading_prose(self) -> None:
+        raw = 'The answer is:\n{"schema_version": "v1", "x": 1}'
+        self.assertEqual(live.extract_clean_json_or_patch(raw), '{"schema_version": "v1", "x": 1}')
+
+    def test_multiple_fences_takes_last(self) -> None:
+        raw = '```python\nprint("draft")\n```\nActually, final:\n```json\n{"final": true}\n```'
+        self.assertEqual(live.extract_clean_json_or_patch(raw), '{"final": true}')
+
+    def test_fenced_code_source_extracted(self) -> None:
+        # cancel-async: model wraps source in a python fence; we score the source.
+        raw = '```python\nasync def run_tasks(tasks, max_concurrent):\n    pass\n```'
+        out = live.extract_clean_json_or_patch(raw)
+        self.assertIn("async def run_tasks", out)
+        self.assertNotIn("```", out)
+
+    def test_plain_json_passthrough(self) -> None:
+        raw = '{"schema_version": "x", "findings": []}'
+        self.assertEqual(live.extract_clean_json_or_patch(raw), raw)
+
+    def test_json_with_nested_braces_and_strings(self) -> None:
+        raw = 'Result: {"a": {"b": "}"}, "c": [1,2]} done'
+        self.assertEqual(live.extract_clean_json_or_patch(raw), '{"a": {"b": "}"}, "c": [1,2]}')
+
+    def test_empty_passthrough(self) -> None:
+        self.assertEqual(live.extract_clean_json_or_patch("   "), "")
