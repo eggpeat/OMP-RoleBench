@@ -1922,7 +1922,26 @@ class RoleAnchorSemanticTests(unittest.TestCase):
         )
         wider_evidence = deepcopy(valid_submission)
         wider_evidence["evidence"][0] = "change.patch:7-9"
-        self.assertFalse(is_valid(wider_evidence))
+        self.assertTrue(is_valid(wider_evidence))
+
+        plural_submission = deepcopy(valid_submission)
+        plural_submission["subject"] = (
+            "invalidate l1 entries before deleting backing-store entries"
+        )
+        plural_submission["body"][0] = (
+            "Invalidate the L1 entries before deleting from the backing store."
+        )
+        self.assertTrue(is_valid(plural_submission))
+
+        uppercase_l1_submission = deepcopy(valid_submission)
+        uppercase_l1_submission["subject"] = (
+            "invalidate L1 before backing-store deletion"
+        )
+        self.assertTrue(is_valid(uppercase_l1_submission))
+
+        out_of_range_evidence = deepcopy(valid_submission)
+        out_of_range_evidence["evidence"][0] = "change.patch:1-5"
+        self.assertFalse(is_valid(out_of_range_evidence))
         for subject in (
             "do not invalidate l1 before backing-store deletion",
             "do not ever invalidate l1 before backing-store deletion",

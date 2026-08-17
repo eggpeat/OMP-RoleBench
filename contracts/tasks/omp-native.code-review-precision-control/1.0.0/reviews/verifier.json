@@ -21,19 +21,19 @@
     }
   ],
   "report_digests_sha256": [
-    "88ec2f6c40467733202613084cbdc4c5ff8dde811a767922ea111c9d13e09497",
-    "5da1d74fa82af0a512acce5e5a51fdce7f9758bcc5b0310cb7c7bb49edc8fe64",
-    "76efd614da7b1e0ec4d7489da335946441e8e88aa5fa9d2ffdb1e50bd145d1a3",
-    "b849866967d194a889a3bc19171d1797b3ee96cd524ea6d6cfade98599b0fad8",
-    "7cd719c622245cc7687a533727ca37f5bf32e382520ce8703d272384dac12377",
-    "c98879066717e772226ef9dc0a622981f91a382a88db1df1b61dd231e1aea938"
+    "461f0128ca3fc1d43b9a999f58ab2534a169b4f6832539cd5416f22523155e20",
+    "d7ded703a4cea142e80a4c2b27b504ebe7629c99950ad99131cc8f895722ab97",
+    "8883eac8f0f0418d4e1d9d9c6aaf9a67e16f215e7fda71ce7e2bc62db9ff1dc3",
+    "61ae2c0ecc4ef51d46c9609377a0d54d59f4ea1e86ce1f6e5e3856be42826d5c",
+    "5ae08814bcf77fc2b5052e534ede92fb38951e6e4e474782895eb4328c696c23",
+    "78a7a01916e77ee9ddd5b10aa4744a4e7d7ff9c55ac0c034e19e0cf549af37e8"
   ],
   "review_type": "verifier",
   "reviewed_at": "2026-08-16T14:15:00Z",
   "reviewer": "rolebench/reviewer/verifier-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+    "public_tree_digest_sha256": "5baf101439f2b8facab22fbc88506d124d39fc665aba216961e8c1e4613279a7",
     "runner_config_digest_sha256": "f13b70a87e2cf0061ae05188c2734d2821f35af092be14180edcb2edc689cdc6",
     "runner_image": "rolebench.local/code-review-precision-runner@sha256:a5e1c35fd7cc9388704eead480464c9af0c51699e81bb047bc0af315adb467f5",
     "verifier_config_digest_sha256": "10dbd531317190808db5db4aebf9c6810841dfa1ccd4a6078f03df19d8a7b656",

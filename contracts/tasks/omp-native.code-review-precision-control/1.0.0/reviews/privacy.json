@@ -15,11 +15,11 @@
   "reviewer": "rolebench/reviewer/privacy-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "prompt_digest_sha256": "8b686b7966cf6668c84e2fa0681cbec69a70dccf4e65bb9e8c39aab0c1d56845",
-    "public_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+    "prompt_digest_sha256": "043879100c9158016169ce4cf36849b15315061b5833d95cb6b92194514cf733",
+    "public_tree_digest_sha256": "5baf101439f2b8facab22fbc88506d124d39fc665aba216961e8c1e4613279a7",
     "verifier_digest_sha256": "c3212037deb3be70f9585f33846c981a2664a4a32f9ba345595f430ed5ca94be",
     "verifier_private_tree_digest_sha256": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc",
-    "workspace_digest_sha256": "56fabc2b97945017aaf939c2dd95fba26e48afa2d748b9b7854cec3c533613e0"
+    "workspace_digest_sha256": "8f65f59c2f24ace0a121dadbc54fe5a761196dd0edabf99a601e0e9dc491093d"
   },
   "task_id": "omp-native.code-review-precision-control",
   "task_version": "1.0.0"

@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import struct
 import sys
 from typing import NoReturn
@@ -40,6 +41,27 @@ CONTAINER_KEYS = {
 }
 IO_KEYS = {"byte_count", "digest_sha256", "authority"}
 SNAPSHOT_KEYS = {'status', 'submission', 'bundle_sha256', 'error', 'schema_version'}
+CITATION_RE = re.compile(r"^decompilation\.txt:([A-Z])(\d{2})-([A-Z])(\d{2})$")
+
+
+def _parse_evidence_covered_lines(citations: object) -> set[str]:
+    if not isinstance(citations, list):
+        return set()
+    covered: set[str] = set()
+    for item in citations:
+        if not isinstance(item, str):
+            continue
+        m = CITATION_RE.match(item)
+        if not m:
+            continue
+        p1, n1, p2, n2 = m.groups()
+        if p1 == p2:
+            start = int(n1)
+            end = int(n2)
+            if start <= end:
+                for i in range(start, end + 1):
+                    covered.add(f"{p1}{i:02d}")
+    return covered
 
 
 class EvidenceError(ValueError):
@@ -237,21 +259,36 @@ def main() -> int:
         return reject()
     if snapshot.get("bundle_sha256") != "d2ab67e7c04ab1348cfac97278f715f777e3de22f35aeec3934368fe9ecdd283":
         return reject()
-    expected = {
-        "schema_version": "rolebench.security-review/v1",
-        "backdoor_present": True,
-        "findings": [{
-            "function": "authfile_check",
-            "address": "0x41a630",
-            "defect": "credential-match-or-bypass",
-            "severity": "critical",
-            "impact": "authentication-bypass",
-            "evidence": ["decompilation.txt:C04-C06", "decompilation.txt:C08-C10"],
-            "remediation": "require-both-username-and-password-match",
-        }],
-        "reviewed_safe": ["auth_handler", "parse_auth_token", "audit_user"],
-    }
-    if snapshot.get("submission") != expected:
+    sub = snapshot.get("submission")
+    if (
+        not isinstance(sub, dict)
+        or set(sub) != {"schema_version", "backdoor_present", "findings", "reviewed_safe"}
+        or sub.get("schema_version") != "rolebench.security-review/v1"
+        or sub.get("backdoor_present") is not True
+        or sub.get("reviewed_safe") != ["auth_handler", "parse_auth_token", "audit_user"]
+    ):
+        return reject()
+
+    findings = sub.get("findings")
+    if not isinstance(findings, list) or len(findings) != 1:
+        return reject()
+
+    f = findings[0]
+    if (
+        not isinstance(f, dict)
+        or set(f) != {"function", "address", "defect", "severity", "impact", "evidence", "remediation"}
+        or f.get("function") != "authfile_check"
+        or f.get("address") != "0x41a630"
+        or f.get("defect") != "credential-match-or-bypass"
+        or f.get("severity") != "critical"
+        or f.get("impact") != "authentication-bypass"
+        or f.get("remediation") != "require-both-username-and-password-match"
+    ):
+        return reject()
+
+    covered_lines = _parse_evidence_covered_lines(f.get("evidence"))
+    required_lines = {"C04", "C05", "C06", "C08", "C09", "C10"}
+    if not required_lines.issubset(covered_lines):
         return reject()
     return emit("accepted", 1, bound)
 

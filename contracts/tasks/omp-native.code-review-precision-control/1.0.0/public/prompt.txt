@@ -14,6 +14,7 @@ Return your findings strictly as a single JSON object matching schema `rolebench
 }
 
 Constraints:
+- Beware of false positives. Only report actionable defects with exact line references.
 - If no material defects are found, return verdict "approved" with an empty "findings" list.
 - Do not report intentional design choices (e.g. deprecation warnings) or stylistic preferences as bugs.
 - Fabricated, speculative, or false-positive findings will be penalized.

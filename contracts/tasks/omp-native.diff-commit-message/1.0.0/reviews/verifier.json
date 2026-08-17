@@ -25,12 +25,12 @@
     }
   ],
   "report_digests_sha256": [
-    "f416a598a7442cf259e620b82f5496d7b50f2b73b00bf5a52d9edc6924f63569",
-    "3e54deed0e93bec4acb6424429601a366063efc529a25c097ffdf8d93fcd4f8f",
-    "645a8dfe81b243abab78b37df008d646c727ba728c7abe17cf04a3152c1a4386",
-    "d12bb9322fad66cb9bc8ae0bdfa33c580fbf17cc718f95c5c503261097215639",
-    "4ab62c4009d3f44ea3ea8b2ac3e455e9c38a3d119f48796c4d7584434884134a",
-    "e643add934f57713c835e40d2bbdbcb6e28f189cba98dd56fd9bd825980ee320"
+    "d4db0a1432e6f6b6329c305e9e7138e20f9ae597b6def8647e74082231cdd150",
+    "275f1e6dfe04e778d944349f82d87947e73b0ca56dfb2460839f23ea47269a9c",
+    "4c8f49c0af36fd86054c10ea7df0d7a20a58ab553d36cceb57a430d1121c1a0f",
+    "0d9809f580fd461f630f1e661af3b1556b3982b870b90258e1b2485e9405a57c",
+    "40453bfaa6f9bec789042c3ddbfefb9132d76d36a80e78ce00245ae93b18cd32",
+    "4c5d3294e46c89ebcf2ea02ceb72c70491c34d3eb9a5531260cba7bf5cd2d139"
   ],
   "review_type": "verifier",
   "reviewed_at": "2026-08-16T01:16:48Z",
@@ -40,9 +40,9 @@
     "public_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
     "runner_config_digest_sha256": "68fb537fdd3790f5789a1a09b031c48298d3d9ab54d3d0df0211ac4399143b41",
     "runner_image": "rolebench.local/diff-commit-message-commit-runner@sha256:f8c6b9ec51c4f4fc3ea30223ed28451ca248ffbbda812bd32a2872728f225717",
-    "verifier_config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
-    "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
-    "verifier_private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090"
+    "verifier_config_digest_sha256": "041c58584ee03f6901152fa6852853bdfed593ba0f95f220f8a1b97be694495e",
+    "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:1534ba1553376468469e5c1a018b03d27f18b572a7fa16e740b56f42a2d2cf8b",
+    "verifier_private_tree_digest_sha256": "4f58e5cf42c0c2d5f3a400cbaa755da167b843a41ddf6f3cd85d9a00d77362d1"
   },
   "task_id": "omp-native.diff-commit-message",
   "task_version": "1.0.0"

@@ -19,8 +19,8 @@
   "reviewer": "rolebench/reviewer/license-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
-    "source_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+    "public_tree_digest_sha256": "5baf101439f2b8facab22fbc88506d124d39fc665aba216961e8c1e4613279a7",
+    "source_digest_sha256": "5baf101439f2b8facab22fbc88506d124d39fc665aba216961e8c1e4613279a7",
     "source_task": null,
     "verifier_private_tree_digest_sha256": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc"
   },

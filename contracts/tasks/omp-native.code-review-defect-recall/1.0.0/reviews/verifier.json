@@ -21,19 +21,19 @@
     }
   ],
   "report_digests_sha256": [
-    "908ce4f9a19b81b217d856624ac921d539ac6cadd2286c0f51ad658562062cd3",
-    "db369061ca0a06d5b1305ab5341d9a34aacd94f21851f4ebc22505b66701684d",
-    "0c5b63b36d8cd41a343a6d5249a469184d17aae6118b5f44fd0674a17c7493d7",
-    "0a342d70e83a298008ad0bc42af2e4116369971d63889532037d8b03428d8670",
-    "8282975e14c16799741f3c5d8e9f774a08fcd5378895e45701048229570a3e97",
-    "02860c78d1bfd534ccb3ebc145ab7c1a3c9026165393593a02c67535fa184411"
+    "f75f53586fb3d4490c50577d1922a16d2fd19273ef50c363343590916b26bb6a",
+    "4d5e487d19ed7ec7a3477ec05272f9b96286343becbafcbdae455561334ed21a",
+    "845cacacc196bd4307d85c0330702acf64e052de46cea82d37bb6c8490e53c14",
+    "db40bd871f61b9151c707954b85317e06d6a6a27e0d8f4c807d25f914acbffed",
+    "03bff6c3819c455370c4523c67b144a96a1ddc086eb3c2c325f2c07dc7347eb5",
+    "66ad168ea66451ab587e0c4ddbef48b991d92aba54b6c217ed66d31fea391914"
   ],
   "review_type": "verifier",
   "reviewed_at": "2026-08-16T14:15:00Z",
   "reviewer": "rolebench/reviewer/verifier-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
+    "public_tree_digest_sha256": "dc2bc71d329a10c8ad03c2943f68da4ea2d38fbce6b6b83782f451efb0d45a75",
     "runner_config_digest_sha256": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
     "runner_image": "rolebench.local/code-review-defect-recall-runner@sha256:f9c761f4c35474019a2c536e139171b3b31ff6abd7d310610631be916b7945ee",
     "verifier_config_digest_sha256": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",

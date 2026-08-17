@@ -549,8 +549,21 @@ def main() -> int:
     root = Path(__file__).resolve().parent.parent
     build_task_artifacts(root, "omp-native.code-review-defect-recall", is_precision=False)
     build_task_artifacts(root, "omp-native.code-review-precision-control", is_precision=True)
-    return 0
 
+    pack_path = root / "contracts/task-packs/reviewer-v1.json"
+    if pack_path.exists():
+        with open(pack_path, "r", encoding="utf-8") as f:
+            pack_data = json.load(f)
+        for entry in pack_data.get("entries", []):
+            task_p = root / entry["task"]["path"]
+            qual_p = root / entry["qualification"]["path"]
+            entry["task"]["digest_sha256"] = canonical_sha256(json.load(open(task_p)))
+            entry["qualification"]["digest_sha256"] = canonical_sha256(json.load(open(qual_p)))
+        with open(pack_path, "w", encoding="utf-8") as f:
+            json.dump(pack_data, f, indent=2, sort_keys=True)
+        print("Updated reviewer-v1.json")
+
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

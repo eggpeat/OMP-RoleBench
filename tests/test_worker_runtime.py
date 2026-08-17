@@ -1086,6 +1086,44 @@ class AdversarialIsolationAndHandoffTests(WorkerRuntimeFixture):
         )
         self.assertEqual(report["observation"]["verifier"]["reward"], 0.0)
 
+    def test_injected_artifact_skips_agent_and_feeds_runner(self) -> None:
+        injected = b"live-model-artifact\n"
+        report = worker.run_worker(
+            self.root,
+            Path("worker.json"),
+            docker="docker-fixture",
+            injected_artifact=injected,
+        )
+        creates = [
+            command
+            for command in self.fake.commands
+            if command[: len(DOCKER_PREFIX)] == DOCKER_PREFIX
+            and command[len(DOCKER_PREFIX)] == "create"
+        ]
+        names = [command[command.index("--name") + 1] for command in creates]
+        self.assertNotIn("rolebench-agent-fixture-1", names)
+        self.assertIn("rolebench-runner-fixture-1", names)
+        self.assertIn("rolebench-verifier-fixture-1", names)
+        self.assertEqual(self.fake.runner_input, injected)
+        self.assertTrue(report["observation"]["lifecycle"]["agent_started"])
+        self.assertTrue(report["observation"]["lifecycle"]["agent_finished"])
+        self.assertTrue(report["observation"]["lifecycle"]["artifact_frozen"])
+        self.assertEqual(
+            report["observation"]["digests"]["artifact"],
+            hashlib.sha256(injected).hexdigest(),
+        )
+        self.assertEqual(report["observation"]["verifier"]["outcome"], "accepted")
+
+    def test_injected_artifact_issues_live_on_observation(self) -> None:
+        report = worker.run_worker(
+            self.root,
+            Path("worker.json"),
+            docker="docker-fixture",
+            injected_artifact=b"live-model-artifact\n",
+        )
+        self.assertNotIn("issues", report)
+        self.assertEqual(report["observation"]["issues"], [])
+
     def test_verdict_replay_with_mismatched_nonce_rejects(self) -> None:
         self.fake.custom_verifier_payload = {
             "schema_version": VERIFIER_RESULT_SCHEMA_VERSION,

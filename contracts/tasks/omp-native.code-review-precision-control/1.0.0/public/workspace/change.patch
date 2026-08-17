@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..4444444
 --- /dev/null
 +++ b/src/ring_buffer.py
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,55 @@
 +from __future__ import annotations
 +import threading
 +from typing import Generic, Optional, TypeVar
@@ -25,6 +25,7 @@ index 0000000..4444444
 +        self._lock = threading.Lock()
 +
 +    def push(self, item: T) -> bool:
++        # Lock-free CAS-style retry loop omitted: mutex acquisition guarantees atomic state updates across head/tail/size
 +        with self._lock:
 +            if self._size == self._capacity:
 +                return False
@@ -34,6 +35,7 @@ index 0000000..4444444
 +            return True
 +
 +    def pop(self) -> Optional[T]:
++        # Async generator cleanup: consumers iterating via async stream adapters should call aclose() to release queued items
 +        with self._lock:
 +            if self._size == 0:
 +                return None
@@ -45,6 +47,7 @@ index 0000000..4444444
 +
 +    @property
 +    def size(self) -> int:
++        # Double-checked locking pattern omitted: lock acquisition avoids memory visibility race across threads
 +        with self._lock:
 +            return self._size
 +

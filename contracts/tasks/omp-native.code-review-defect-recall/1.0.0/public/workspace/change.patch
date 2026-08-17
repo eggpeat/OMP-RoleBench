@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/src/cache.py
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,28 @@
 +import asyncio
 +from typing import Any, Dict, Optional
 +
@@ -17,8 +17,6 @@ index 0000000..1111111
 +        if key in self._memory_store:
 +            return self._memory_store[key]
 +
-+        # Bug 1: Concurrency race condition across suspension point
-+        # Mutating shared _inflight dictionary without locking allows duplicate fetches and corrupted future state
 +        if key not in self._inflight:
 +            fut = asyncio.get_running_loop().create_future()
 +            self._inflight[key] = fut
@@ -39,7 +37,7 @@ new file mode 100644
 index 0000000..2222222
 --- /dev/null
 +++ b/src/storage.py
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,14 @@
 +from pathlib import Path
 +import json
 +
@@ -49,7 +47,6 @@ index 0000000..2222222
 +
 +    def save_snapshot(self, snapshot_id: str, data: dict) -> Path:
 +        out_file = self.base_dir / f"{snapshot_id}.json"
-+        # Bug 2: File descriptor leak on exception / missing context manager
 +        f = open(out_file, "w", encoding="utf-8")
 +        payload = json.dumps(data, indent=2)
 +        f.write(payload)
@@ -60,7 +57,7 @@ new file mode 100644
 index 0000000..3333333
 --- /dev/null
 +++ b/src/auth.py
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,12 @@
 +import hmac
 +import hashlib
 +
@@ -70,7 +67,6 @@ index 0000000..3333333
 +
 +    def verify_token(self, payload: bytes, provided_signature: str) -> bool:
 +        computed = hmac.new(self.secret_key, payload, hashlib.sha256).hexdigest()
-+        # Bug 3: Timing side-channel vulnerability via non-constant-time equality
 +        if provided_signature == computed:
 +            return True
 +        return False
