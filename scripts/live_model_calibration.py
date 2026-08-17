@@ -117,25 +117,49 @@ class LiveEvalResult:
     report_path: Path | None
     outcome_class: str
 
-def get_provider_credentials() -> dict[str, dict[str, Any]]:
-    """Load all active credentials from ~/.omp/agent/agent.db."""
-    conn = sqlite3.connect("/home/eggpeat/.omp/agent/agent.db")
-    rows = conn.execute(
-        "SELECT provider, data FROM auth_credentials WHERE disabled_cause IS NULL ORDER BY id DESC"
-    ).fetchall()
-    creds: dict[str, dict[str, Any]] = {}
-    for prov, data_str in rows:
-        if prov not in creds:
-            try:
-                creds[prov] = json.loads(data_str)
-            except Exception:
-                pass
-    return creds
+def _omp_selector(route: dict[str, Any]) -> str:
+    """Canonical OMP model selector for a route (provider/model)."""
+    return f"{route['provider']}/{route['model']}"
 
 
-def _mime_for(path: str) -> str:
-    suffix = path.rsplit(".", 1)[-1].lower() if "." in path else "png"
-    return {"jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif"}.get(suffix, "image/png")
+def _parse_omp_agent_end(jsonl_text: str) -> tuple[str, dict[str, Any]]:
+    """Extract final assistant text and usage from OMP --mode json output.
+
+    OMP streams JSONL events; the terminal `agent_end` (falling back to the last
+    `message_end`/`turn_end`) carries the final assistant message with content
+    blocks and usage. Returns (text, usage_dict)."""
+    final_text = ""
+    usage: dict[str, Any] = {}
+    stop_reason = ""
+    for line in jsonl_text.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            evt = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        etype = evt.get("type")
+        if etype not in ("agent_end", "message_end", "turn_end"):
+            continue
+        # agent_end carries messages[]; message_end/turn_end carry a single message.
+        messages = evt.get("messages") or ([evt["message"]] if evt.get("message") else [])
+        for msg in messages:
+            if not isinstance(msg, dict) or msg.get("role") != "assistant":
+                continue
+            texts = [
+                c.get("text", "")
+                for c in msg.get("content", [])
+                if isinstance(c, dict) and c.get("type") == "text" and c.get("text")
+            ]
+            if texts:
+                final_text = "\n".join(texts)
+            if isinstance(msg.get("usage"), dict):
+                usage = msg["usage"]
+            if msg.get("stopReason"):
+                stop_reason = msg["stopReason"]
+    usage["_stop_reason"] = stop_reason
+    return final_text.strip(), usage
 
 
 def call_live_model(
@@ -145,272 +169,65 @@ def call_live_model(
     max_tokens: int = DEFAULT_MAX_TOKENS,
     temperature: float = 0.0,
     images: list[tuple[str, bytes]] | None = None,
+    image_paths: list[str] | None = None,
 ) -> tuple[str, float]:
-    """Dispatch completion to a live model provider endpoint. Returns (response_text, latency_seconds)."""
-    route_id = route["route_id"]
-    provider = route["provider"]
-    model = route["model"]
-    creds = get_provider_credentials()
-    images = images or []
-    if images and not _route_supports_images(route):
-        names = ", ".join(name for name, _ in images)
-        prompt = (
-            prompt
-            + f"\n\n[NOTE: This task references image file(s) {names}, but this evaluation channel is text-only and the image content was not provided to you. Respond per the contract schema as best you can.]"
-        )
-        images = []
+    """Dispatch one task prompt through OMP itself.
 
+    RoleBench ranks routes FOR OMP ROLES, so the score must reflect the model
+    as OMP drives it: OMP's agent loop, prompt framing, auth, protocol
+    (including Codeium Cascade for devin), image handling, and retry. We invoke
+    `omp --no-session --mode json` and parse the final assistant message.
+
+    Images: OMP accepts image file paths on the prompt for multimodal routes;
+    text-only routes get a disclosure note instead."""
     t0 = time.monotonic()
-    sys_content = system_prompt or "You are an expert software engineering and review agent. Output ONLY the raw solution/JSON/code adhering strictly to the contract schema without conversational text."
+    selector = _omp_selector(route)
+    thinking = route.get("thinking")
+    image_paths = image_paths or []
 
-    if provider == "deepseek":
-        key = creds.get("deepseek", {}).get("key") or os.environ.get("DEEPSEEK_API_KEY")
-        if not key:
-            raise ValueError("No API key for DeepSeek")
-        url = "https://api.deepseek.com/chat/completions"
-        req_data = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": sys_content},
-                {"role": "user", "content": prompt},
-            ],
-            "max_tokens": max_tokens,
-            "temperature": 0.0,
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(req_data).encode(),
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+    full_prompt = prompt
+    if system_prompt:
+        full_prompt = f"{system_prompt}\n\n{prompt}"
+
+    if image_paths and not _route_supports_images(route):
+        names = ", ".join(image_paths)
+        full_prompt += (
+            f"\\n\\n[NOTE: This task references image file(s) {names}, but this route is "
+            "text-only and the image content was not provided. Respond per the contract "
+            "schema as best you can.]"
         )
-        with urllib.request.urlopen(req, timeout=PROVIDER_TIMEOUTS["deepseek"]) as resp:
-            data = json.loads(resp.read())
-        msg = data["choices"][0]["message"]
-        content = (msg.get("content") or "").strip()
-        if not content and msg.get("reasoning_content"):
-            content = str(msg.get("reasoning_content")).strip()
-        return content, time.monotonic() - t0
+        image_paths = []
 
-    elif provider in ("xai", "xai-oauth"):
-        cred = creds.get("xai-oauth") or creds.get("xai")
-        token = (cred.get("access") if cred else None) or (cred.get("key") if cred else None)
-        if not token:
-            raise ValueError("No OAuth token or API key for xAI")
-        url = "https://api.x.ai/v1/chat/completions"
-        if images:
-            user_content: Any = [{"type": "text", "text": prompt}]
-            for name, blob in images:
-                user_content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{_mime_for(name)};base64,{base64.b64encode(blob).decode()}"},
-                    }
-                )
-        else:
-            user_content = prompt
-        req_data = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": sys_content},
-                {"role": "user", "content": user_content},
-            ],
-            "max_tokens": max_tokens,
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(req_data).encode(),
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    cmd = [
+        "omp", "--no-session", "--auto-approve",
+        "--model", selector, "--mode", "json",
+    ]
+    if thinking and str(thinking).lower() not in ("off", "none", "auto"):
+        cmd.extend(["--thinking", str(thinking)])
+    cmd.append("--no-tools")
+    # OMP attaches images as separate @path CLI args (multimodal routes only).
+    for path in image_paths:
+        cmd.append(f"@{path}")
+    cmd.extend(["-p", full_prompt])
+
+    timeout = get_provider_timeout(str(route.get("provider", "")))
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=timeout,
+            cwd=str(discover_root(Path(__file__).resolve().parent)),
         )
-        with urllib.request.urlopen(req, timeout=PROVIDER_TIMEOUTS["xai-oauth"]) as resp:
-            data = json.loads(resp.read())
-        return data["choices"][0]["message"]["content"].strip(), time.monotonic() - t0
+    except subprocess.TimeoutExpired as exc:
+        raise TimeoutError(f"omp dispatch timed out after {timeout}s") from exc
 
-    elif provider == "alibaba-token-plan":
-        cred = creds.get("alibaba-token-plan", {})
-        key_raw = cred.get("key", "")
-        token = key_raw
-        cookie = None
-        if key_raw.startswith("{"):
-            try:
-                obj = json.loads(key_raw)
-                token = obj.get("token", token)
-                cookie = obj.get("cookie")
-            except Exception:
-                pass
-        if not token:
-            raise ValueError("No token for Alibaba Token Plan")
-        url = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions"
-        if images:
-            user_content: Any = [{"type": "text", "text": prompt}]
-            for name, blob in images:
-                user_content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{_mime_for(name)};base64,{base64.b64encode(blob).decode()}"},
-                    }
-                )
-        else:
-            user_content = prompt
-        req_data = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": sys_content},
-                {"role": "user", "content": user_content},
-            ],
-            "max_tokens": max_tokens,
-        }
-        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        if cookie:
-            headers["Cookie"] = cookie
-        req = urllib.request.Request(url, data=json.dumps(req_data).encode(), headers=headers)
-        with urllib.request.urlopen(req, timeout=PROVIDER_TIMEOUTS["alibaba-token-plan"]) as resp:
-            data = json.loads(resp.read())
-        return data["choices"][0]["message"]["content"].strip(), time.monotonic() - t0
+    stdout_text = proc.stdout.decode("utf-8", errors="replace")
+    stderr_text = proc.stderr.decode("utf-8", errors="replace")
+    if proc.returncode != 0:
+        raise RuntimeError(f"omp exited {proc.returncode}: {stderr_text.strip()[:300]}")
 
-    elif provider == "kimi-code":
-        cred = creds.get("kimi-code", {})
-        token = cred.get("access")
-        if not token:
-            raise ValueError("No OAuth token for Kimi Code")
-        url = "https://api.kimi.com/coding/v1/chat/completions"
-        if images:
-            kimi_user: Any = [{"type": "text", "text": prompt}]
-            for name, blob in images:
-                kimi_user.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{_mime_for(name)};base64,{base64.b64encode(blob).decode()}"},
-                    }
-                )
-        else:
-            kimi_user = prompt
-        req_data = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": sys_content},
-                {"role": "user", "content": kimi_user},
-            ],
-            "max_tokens": max_tokens,
-            "temperature": 1.0,
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(req_data).encode(),
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=PROVIDER_TIMEOUTS["kimi-code"]) as resp:
-            data = json.loads(resp.read())
-        msg = data["choices"][0]["message"]
-        content = (msg.get("content") or "").strip()
-        if not content and msg.get("reasoning_content"):
-            content = str(msg.get("reasoning_content")).strip()
-        return content, time.monotonic() - t0
-
-    elif provider == "zai":
-        cred = creds.get("zai", {})
-        key = cred.get("key")
-        if not key:
-            raise ValueError("No API key for ZAI")
-        url = "https://api.z.ai/api/anthropic/v1/messages"
-        if images:
-            user_content: Any = []
-            for name, blob in images:
-                user_content.append(
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": _mime_for(name),
-                            "data": base64.b64encode(blob).decode(),
-                        },
-                    }
-                )
-            user_content.append({"type": "text", "text": prompt})
-        else:
-            user_content = prompt
-        req_data = {
-            "model": model,
-            "system": sys_content,
-            "messages": [{"role": "user", "content": user_content}],
-            "max_tokens": max_tokens,
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(req_data).encode(),
-            headers={"x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=PROVIDER_TIMEOUTS["zai"]) as resp:
-            data = json.loads(resp.read())
-        texts = [
-            c["text"]
-            for c in data.get("content", [])
-            if c.get("type") == "text" and c.get("text", "").strip()
-        ]
-        if not texts:
-            thinking_blocks = [
-                c.get("thinking") or c.get("text") or ""
-                for c in data.get("content", [])
-                if c.get("type") == "thinking" and (c.get("thinking") or c.get("text"))
-            ]
-            if thinking_blocks:
-                return "\n".join(thinking_blocks).strip(), time.monotonic() - t0
-        return "\n".join(texts).strip(), time.monotonic() - t0
-
-    elif provider == "google-antigravity":
-        cred = creds.get("google", {})
-        key = cred.get("key")
-        if key:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
-            parts: list[dict[str, Any]] = [{"text": f"{sys_content}\n\n{prompt}"}]
-            for name, blob in images:
-                parts.append(
-                    {
-                        "inline_data": {
-                            "mime_type": _mime_for(name),
-                            "data": base64.b64encode(blob).decode(),
-                        }
-                    }
-                )
-            req_data = {
-                "contents": [
-                    {"parts": parts}
-                ],
-            }
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(req_data).encode(),
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=PROVIDER_TIMEOUTS["google-antigravity"]) as resp:
-                data = json.loads(resp.read())
-            # Defensive: safety-blocked or empty candidates lack content.parts.
-            candidates = data.get("candidates") or []
-            for cand in candidates:
-                for part in (cand.get("content") or {}).get("parts") or []:
-                    text = (part.get("text") or "").strip()
-                    if text:
-                        return text, time.monotonic() - t0
-            # No usable text: surface finish reason for diagnosis, treat as empty.
-            finish = candidates[0].get("finishReason") if candidates else None
-            if finish and finish not in ("STOP", "MAX_TOKENS"):
-                raise ValueError(f"gemini candidate blocked: finishReason={finish}")
-            return "", time.monotonic() - t0
-        else:
-            raise ValueError("No API key for google-antigravity (google credential missing)")
-
-    elif provider == "devin":
-        cred = creds.get("devin", {})
-        key = cred.get("key")
-        if not key:
-            raise ValueError("No API key for devin")
-        url = "https://api.devin.ai/v1/completions"
-        req_data = {"model": model, "prompt": prompt, "max_tokens": max_tokens}
-        req = urllib.request.Request(url, data=json.dumps(req_data).encode(), headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=PROVIDER_TIMEOUTS["devin"]) as resp:
-            data = json.loads(resp.read())
-        return str(data.get("content", "")).strip(), time.monotonic() - t0
-
-    else:
-        raise ValueError(f"Unsupported provider: {provider}")
+    text, _usage = _parse_omp_agent_end(stdout_text)
+    return text, time.monotonic() - t0
 
 
 IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".gif"})
@@ -430,14 +247,15 @@ def _route_supports_images(route: dict[str, Any]) -> bool:
     return False
 
 
-def collect_task_images(task_dir: Path) -> list[tuple[str, bytes]]:
-    """Collect image assets from the task public tree for vision-capable providers."""
-    images: list[tuple[str, bytes]] = []
-    public_dir = task_dir / "public"
+def collect_task_images(task_dir: Path) -> list[str]:
+    """Collect image asset absolute paths from the task public tree.
+
+    OMP accepts image file paths for multimodal routes, so we hand paths (not
+    bytes) to the dispatch."""
+    images: list[str] = []
     for fpath in _collect_workspace_files(task_dir):
-        if fpath.suffix.lower() in IMAGE_EXTENSIONS and fpath.stat().st_size <= 4 * 1024 * 1024:
-            rel = fpath.relative_to(public_dir).as_posix()
-            images.append((rel, fpath.read_bytes()))
+        if fpath.suffix.lower() in IMAGE_EXTENSIONS and fpath.stat().st_size <= 16 * 1024 * 1024:
+            images.append(str(fpath.resolve()))
     return images
 
 
@@ -668,7 +486,7 @@ def call_live_model_with_retry(
     system_prompt: str | None = None,
     max_tokens: int = DEFAULT_MAX_TOKENS,
     temperature: float = 0.0,
-    images: list[tuple[str, bytes]] | None = None,
+    image_paths: list[str] | None = None,
 ) -> tuple[str, float, str | None]:
     last_error: BaseException | None = None
     last_text = ""
@@ -678,17 +496,14 @@ def call_live_model_with_retry(
     while attempt < max_attempts:
         attempt += 1
         try:
-            if system_prompt is not None or max_tokens != DEFAULT_MAX_TOKENS or temperature != 0.0 or images:
-                text, elapsed = call_live_model(
-                    route,
-                    prompt,
-                    system_prompt=system_prompt,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    images=images,
-                )
-            else:
-                text, elapsed = call_live_model(route, prompt)
+            text, elapsed = call_live_model(
+                route,
+                prompt,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                image_paths=image_paths,
+            )
             total += elapsed
             last_text = text
             if text.strip() or attempt >= max_attempts:
@@ -815,8 +630,8 @@ def execute_live_eval(
     t_start = time.monotonic()
 
     prompt = build_task_prompt(task_dir)
-    images = collect_task_images(task_dir)
-    raw_response, gen_time, provider_error = call_live_model_with_retry(route, prompt, images=images)
+    image_paths = collect_task_images(task_dir)
+    raw_response, gen_time, provider_error = call_live_model_with_retry(route, prompt, image_paths=image_paths)
     if provider_error:
         outcome_class = "timeout" if provider_error.startswith("timeout:") else "infra-error"
         total_time = time.monotonic() - t_start

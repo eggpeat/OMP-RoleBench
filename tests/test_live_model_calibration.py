@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import socket
+import subprocess
 import sys
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest import mock
 
@@ -16,24 +19,317 @@ sys.modules[SPEC.name] = live
 SPEC.loader.exec_module(live)
 
 
-class MockHTTPResponse:
-    def __init__(self, payload: dict) -> None:
-        self._data = json.dumps(payload).encode("utf-8")
+def _make_http_error(test_case: unittest.TestCase, url: str, code: int, msg: str, headers: dict | None = None) -> urllib.error.HTTPError:
+    err = urllib.error.HTTPError(url, code, msg, headers or {}, None)
+    test_case.addCleanup(err.close)
+    return err
 
-    def read(self) -> bytes:
-        return self._data
 
-    def __enter__(self) -> MockHTTPResponse:
-        return self
+class OmpSelectorTests(unittest.TestCase):
+    def test_omp_selector_combines_provider_and_model(self) -> None:
+        route = {"provider": "xai", "model": "grok-4"}
+        self.assertEqual(live._omp_selector(route), "xai/grok-4")
 
-    def __exit__(self, *args: object) -> None:
-        pass
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "live_model_calibration.py"
-SPEC = importlib.util.spec_from_file_location("live_model_calibration", SCRIPT)
-assert SPEC is not None and SPEC.loader is not None
-live = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = live
-SPEC.loader.exec_module(live)
+    def test_omp_selector_handles_namespaced_provider(self) -> None:
+        route = {"provider": "google-antigravity", "model": "gemini-3.7-flash"}
+        self.assertEqual(live._omp_selector(route), "google-antigravity/gemini-3.7-flash")
+
+
+class ParseOmpAgentEndTests(unittest.TestCase):
+    def test_extract_text_from_agent_end(self) -> None:
+        jsonl = json.dumps(
+            {
+                "type": "agent_end",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "final assistant text"}],
+                        "usage": {"input_tokens": 10, "output_tokens": 20},
+                        "stopReason": "stop",
+                    }
+                ],
+            }
+        )
+        text, usage = live._parse_omp_agent_end(jsonl)
+        self.assertEqual(text, "final assistant text")
+        self.assertEqual(usage.get("input_tokens"), 10)
+        self.assertEqual(usage.get("output_tokens"), 20)
+        self.assertEqual(usage.get("_stop_reason"), "stop")
+
+    def test_message_end_fallback(self) -> None:
+        jsonl = json.dumps(
+            {
+                "type": "message_end",
+                "message": {
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "fallback text from message_end"}],
+                    "usage": {"total_tokens": 35},
+                    "stopReason": "end_turn",
+                },
+            }
+        )
+        text, usage = live._parse_omp_agent_end(jsonl)
+        self.assertEqual(text, "fallback text from message_end")
+        self.assertEqual(usage.get("total_tokens"), 35)
+        self.assertEqual(usage.get("_stop_reason"), "end_turn")
+
+    def test_turn_end_fallback(self) -> None:
+        jsonl = json.dumps(
+            {
+                "type": "turn_end",
+                "message": {
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "turn end output"}],
+                },
+            }
+        )
+        text, usage = live._parse_omp_agent_end(jsonl)
+        self.assertEqual(text, "turn end output")
+        self.assertEqual(usage.get("_stop_reason"), "")
+
+    def test_joins_multiple_text_blocks(self) -> None:
+        jsonl = json.dumps(
+            {
+                "type": "agent_end",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": [
+                            {"type": "text", "text": "Line 1"},
+                            {"type": "text", "text": "Line 2"},
+                        ],
+                    }
+                ],
+            }
+        )
+        text, _ = live._parse_omp_agent_end(jsonl)
+        self.assertEqual(text, "Line 1\nLine 2")
+
+    def test_returns_empty_when_no_assistant_text(self) -> None:
+        jsonl = json.dumps(
+            {
+                "type": "agent_end",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": "User question"}],
+                    }
+                ],
+            }
+        )
+        text, usage = live._parse_omp_agent_end(jsonl)
+        self.assertEqual(text, "")
+        self.assertEqual(usage.get("_stop_reason"), "")
+
+    def test_ignores_malformed_and_non_json_lines(self) -> None:
+        lines = [
+            "OMP session started",
+            "{broken json",
+            json.dumps({"type": "tool_call", "tool": "grep"}),
+            json.dumps(
+                {
+                    "type": "agent_end",
+                    "messages": [
+                        {
+                            "role": "assistant",
+                            "content": [{"type": "text", "text": "recovered text"}],
+                        }
+                    ],
+                }
+            ),
+        ]
+        text, _ = live._parse_omp_agent_end("\n".join(lines))
+        self.assertEqual(text, "recovered text")
+
+
+class RouteSupportsImagesTests(unittest.TestCase):
+    def test_route_supports_images_requires_image_modality(self) -> None:
+        self.assertTrue(live._route_supports_images({"input_modalities": ["text", "image"]}))
+        self.assertFalse(live._route_supports_images({"input_modalities": ["text"]}))
+        self.assertFalse(live._route_supports_images({}))
+        self.assertFalse(live._route_supports_images({"provider": "xai-oauth"}))
+        self.assertFalse(live._route_supports_images({"input_modalities": "image"}))
+
+
+class CollectTaskImagesTests(unittest.TestCase):
+    def test_collect_task_images_returns_absolute_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp) / "public" / "workspace"
+            ws.mkdir(parents=True)
+            png_file = ws / "code.png"
+            png_file.write_bytes(b"\x89PNG fake")
+            jpg_file = ws / "photo.jpg"
+            jpg_file.write_bytes(b"\xff\xd8 fake jpg")
+            txt_file = ws / "notes.txt"
+            txt_file.write_text("hello")
+            bin_file = ws / "tool.bin"
+            bin_file.write_bytes(b"\x00\x01")
+
+            images = live.collect_task_images(Path(tmp))
+            self.assertEqual(
+                sorted(images),
+                sorted([str(png_file.resolve()), str(jpg_file.resolve())]),
+            )
+            for path in images:
+                self.assertTrue(Path(path).is_absolute())
+
+    def test_collect_task_images_ignores_oversized_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp) / "public" / "workspace"
+            ws.mkdir(parents=True)
+            img_file = ws / "large.png"
+            img_file.write_bytes(b"x")
+            with mock.patch("pathlib.Path.stat") as mock_stat:
+                stat_result = mock.MagicMock()
+                stat_result.st_size = 17 * 1024 * 1024
+                mock_stat.return_value = stat_result
+                images = live.collect_task_images(Path(tmp))
+                self.assertEqual(images, [])
+
+
+class CallLiveModelDispatchTests(unittest.TestCase):
+    def _mock_proc(self, stdout_text: str = "", stderr_text: str = "", returncode: int = 0) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(
+            args=[],
+            returncode=returncode,
+            stdout=stdout_text.encode("utf-8"),
+            stderr=stderr_text.encode("utf-8"),
+        )
+
+    def test_call_live_model_argv_construction(self) -> None:
+        route = {"route_id": "xai/grok-4", "provider": "xai", "model": "grok-4"}
+        payload = json.dumps(
+            {
+                "type": "agent_end",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "result content"}],
+                    }
+                ],
+            }
+        )
+        with mock.patch.object(live.subprocess, "run", return_value=self._mock_proc(payload)) as mock_run:
+            text, latency = live.call_live_model(route, "solve this")
+
+        self.assertEqual(text, "result content")
+        self.assertGreaterEqual(latency, 0.0)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        self.assertEqual(
+            cmd,
+            [
+                "omp",
+                "--no-session",
+                "--auto-approve",
+                "--model",
+                "xai/grok-4",
+                "--mode",
+                "json",
+                "--no-tools",
+                "-p",
+                "solve this",
+            ],
+        )
+        self.assertEqual(mock_run.call_args[1]["timeout"], 900)
+
+    def test_call_live_model_with_system_prompt(self) -> None:
+        route = {"route_id": "xai/grok-4", "provider": "xai", "model": "grok-4"}
+        payload = json.dumps(
+            {
+                "type": "agent_end",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "ok"}],
+                    }
+                ],
+            }
+        )
+        with mock.patch.object(live.subprocess, "run", return_value=self._mock_proc(payload)) as mock_run:
+            live.call_live_model(route, "user prompt", system_prompt="system instructions")
+
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("-p", cmd)
+        p_index = cmd.index("-p")
+        self.assertEqual(cmd[p_index + 1], "system instructions\n\nuser prompt")
+
+    def test_call_live_model_thinking_flag(self) -> None:
+        route_high = {"provider": "deepseek", "model": "r1", "thinking": "high"}
+        payload = json.dumps(
+            {"type": "agent_end", "messages": [{"role": "assistant", "content": [{"type": "text", "text": "ok"}]}]}
+        )
+        with mock.patch.object(live.subprocess, "run", return_value=self._mock_proc(payload)) as mock_run:
+            live.call_live_model(route_high, "prompt")
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("--thinking", cmd)
+        thinking_idx = cmd.index("--thinking")
+        self.assertEqual(cmd[thinking_idx + 1], "high")
+
+    def test_call_live_model_thinking_off_none_auto_omitted(self) -> None:
+        payload = json.dumps(
+            {"type": "agent_end", "messages": [{"role": "assistant", "content": [{"type": "text", "text": "ok"}]}]}
+        )
+        for val in ("off", "none", "auto", "OFF", "None", "Auto"):
+            route = {"provider": "deepseek", "model": "chat", "thinking": val}
+            with mock.patch.object(live.subprocess, "run", return_value=self._mock_proc(payload)) as mock_run:
+                live.call_live_model(route, "prompt")
+            cmd = mock_run.call_args[0][0]
+            self.assertNotIn("--thinking", cmd)
+
+    def test_call_live_model_multimodal_image_args(self) -> None:
+        route = {
+            "provider": "google-antigravity",
+            "model": "gemini-3.7-flash",
+            "input_modalities": ["text", "image"],
+        }
+        payload = json.dumps(
+            {"type": "agent_end", "messages": [{"role": "assistant", "content": [{"type": "text", "text": "ok"}]}]}
+        )
+        with mock.patch.object(live.subprocess, "run", return_value=self._mock_proc(payload)) as mock_run:
+            live.call_live_model(route, "describe image", image_paths=["/tmp/diagram.png", "/tmp/chart.jpg"])
+
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("@/tmp/diagram.png", cmd)
+        self.assertIn("@/tmp/chart.jpg", cmd)
+        p_index = cmd.index("-p")
+        self.assertEqual(cmd[p_index + 1], "describe image")
+
+    def test_call_live_model_text_only_withholds_images_and_adds_note(self) -> None:
+        route = {"provider": "deepseek", "model": "deepseek-chat", "input_modalities": ["text"]}
+        payload = json.dumps(
+            {"type": "agent_end", "messages": [{"role": "assistant", "content": [{"type": "text", "text": "ok"}]}]}
+        )
+        with mock.patch.object(live.subprocess, "run", return_value=self._mock_proc(payload)) as mock_run:
+            live.call_live_model(route, "solve task", image_paths=["/tmp/schema.png"])
+
+        cmd = mock_run.call_args[0][0]
+        self.assertNotIn("@/tmp/schema.png", cmd)
+        p_index = cmd.index("-p")
+        full_prompt = cmd[p_index + 1]
+        self.assertIn("solve task", full_prompt)
+        self.assertIn("[NOTE: This task references image file(s) /tmp/schema.png", full_prompt)
+        self.assertIn("text-only", full_prompt)
+
+    def test_call_live_model_raises_timeout_error_on_subprocess_timeout(self) -> None:
+        route = {"provider": "deepseek", "model": "deepseek-chat"}
+        with mock.patch.object(
+            live.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(cmd=["omp"], timeout=600),
+        ):
+            with self.assertRaises(TimeoutError) as ctx:
+                live.call_live_model(route, "prompt")
+            self.assertIn("omp dispatch timed out after 600s", str(ctx.exception))
+
+    def test_call_live_model_raises_runtime_error_on_nonzero_exit(self) -> None:
+        route = {"provider": "xai", "model": "grok-4"}
+        proc = self._mock_proc(stderr_text="Authentication failed: invalid token", returncode=1)
+        with mock.patch.object(live.subprocess, "run", return_value=proc):
+            with self.assertRaises(RuntimeError) as ctx:
+                live.call_live_model(route, "prompt")
+            self.assertIn("omp exited 1", str(ctx.exception))
+            self.assertIn("Authentication failed", str(ctx.exception))
 
 
 class ScoreDockerInjectTests(unittest.TestCase):
@@ -97,6 +393,69 @@ class ScoreDockerInjectTests(unittest.TestCase):
             )
         self.assertEqual(outcome, "scored-fail")
         self.assertEqual(score, 0.0)
+
+    def test_infra_issues_return_infra_error(self) -> None:
+        target = live.EvalTaskTarget(
+            role="commit",
+            routing_lane=None,
+            task_id="omp-native.diff-commit-message",
+            task_path=Path("contracts/tasks/omp-native.diff-commit-message/1.0.0/task.json"),
+            qualification_path=Path("contracts/tasks/omp-native.diff-commit-message/1.0.0/qualification.json"),
+            is_private=False,
+        )
+        report = {
+            "observation": {
+                "issues": ["image-pull"],
+                "verifier": {},
+            }
+        }
+        with (
+            mock.patch.object(live, "prepare_worker_manifest"),
+            mock.patch.object(live, "run_worker", return_value=report),
+        ):
+            outcome, score, _, _ = live.score_docker_inject(Path("."), target, "run-1", b"")
+        self.assertEqual(outcome, "infra-error")
+        self.assertIsNone(score)
+
+    def test_accepted_outcome_returns_scored_pass(self) -> None:
+        target = live.EvalTaskTarget(
+            role="commit",
+            routing_lane=None,
+            task_id="omp-native.diff-commit-message",
+            task_path=Path("contracts/tasks/omp-native.diff-commit-message/1.0.0/task.json"),
+            qualification_path=Path("contracts/tasks/omp-native.diff-commit-message/1.0.0/qualification.json"),
+            is_private=False,
+        )
+        report = {
+            "observation": {
+                "issues": [],
+                "verifier": {"outcome": "accepted", "reward": 0.95},
+            }
+        }
+        with (
+            mock.patch.object(live, "prepare_worker_manifest"),
+            mock.patch.object(live, "run_worker", return_value=report),
+        ):
+            outcome, score, _, _ = live.score_docker_inject(Path("."), target, "run-1", b"")
+        self.assertEqual(outcome, "scored-pass")
+        self.assertEqual(score, 0.95)
+
+
+class ScoreFromVerifierPayloadTests(unittest.TestCase):
+    def test_verdict_pass_and_accepted(self) -> None:
+        self.assertEqual(live.score_from_verifier_payload({"verdict": "pass", "score": 1.0}), ("scored-pass", 1.0))
+        self.assertEqual(live.score_from_verifier_payload({"outcome": "accepted"}), ("scored-pass", 1.0))
+        self.assertEqual(live.score_from_verifier_payload({"verdict": "pass", "reward": 0.75}), ("scored-pass", 0.75))
+
+    def test_verdict_fail_and_rejected(self) -> None:
+        self.assertEqual(live.score_from_verifier_payload({"verdict": "fail", "score": 0.0}), ("scored-fail", 0.0))
+        self.assertEqual(live.score_from_verifier_payload({"outcome": "rejected"}), ("scored-fail", 0.0))
+        self.assertEqual(live.score_from_verifier_payload({"outcome": "fail", "reward": 0.2}), ("scored-fail", 0.2))
+
+    def test_verdict_error_and_malformed(self) -> None:
+        self.assertEqual(live.score_from_verifier_payload({"verdict": "error"}), ("infra-error", None))
+        self.assertEqual(live.score_from_verifier_payload({"verdict": "other"}), ("malformed-output", None))
+        self.assertEqual(live.score_from_verifier_payload({}), ("malformed-output", None))
 
 
 class BuildTaskPromptTests(unittest.TestCase):
@@ -175,164 +534,6 @@ class BuildTaskPromptTests(unittest.TestCase):
             result = live.build_task_prompt(task_dir)
             self.assertEqual(result.count("UNIQUEPROMPT"), 1)
 
-
-class CallLiveModelZaiTests(unittest.TestCase):
-    def test_zai_text_block_used_when_present(self) -> None:
-        route = {"route_id": "zai/glm-5.2", "provider": "zai", "model": "glm-5.2"}
-        payload = {
-            "content": [
-                {"type": "thinking", "thinking": "Internal thoughts..."},
-                {"type": "text", "text": "def solution(): return 42"},
-            ]
-        }
-        with (
-            mock.patch.object(
-                live,
-                "get_provider_credentials",
-                return_value={"zai": {"key": "test-key"}},
-            ),
-            mock.patch.object(
-                live.urllib.request,
-                "urlopen",
-                return_value=MockHTTPResponse(payload),
-            ),
-        ):
-            text, latency = live.call_live_model(route, "Write solution")
-            self.assertEqual(text, "def solution(): return 42")
-            self.assertGreaterEqual(latency, 0.0)
-
-    def test_zai_thinking_fallback_when_no_text_blocks(self) -> None:
-        route = {"route_id": "zai/glm-5.2", "provider": "zai", "model": "glm-5.2"}
-        payload = {
-            "content": [
-                {"type": "thinking", "thinking": "Exhausted tokens while thinking: output = 100"},
-            ]
-        }
-        with (
-            mock.patch.object(
-                live,
-                "get_provider_credentials",
-                return_value={"zai": {"key": "test-key"}},
-            ),
-            mock.patch.object(
-                live.urllib.request,
-                "urlopen",
-                return_value=MockHTTPResponse(payload),
-            ),
-        ):
-            text, latency = live.call_live_model(route, "Write solution")
-            self.assertEqual(text, "Exhausted tokens while thinking: output = 100")
-            self.assertGreaterEqual(latency, 0.0)
-
-    def test_zai_thinking_fallback_when_text_block_is_empty(self) -> None:
-        route = {"route_id": "zai/glm-5.2", "provider": "zai", "model": "glm-5.2"}
-        payload = {
-            "content": [
-                {"type": "thinking", "thinking": "Thinking fallback text"},
-                {"type": "text", "text": "   "},
-            ]
-        }
-        with (
-            mock.patch.object(
-                live,
-                "get_provider_credentials",
-                return_value={"zai": {"key": "test-key"}},
-            ),
-            mock.patch.object(
-                live.urllib.request,
-                "urlopen",
-                return_value=MockHTTPResponse(payload),
-            ),
-        ):
-            text, latency = live.call_live_model(route, "Write solution")
-            self.assertEqual(text, "Thinking fallback text")
-            self.assertGreaterEqual(latency, 0.0)
-
-
-class CallLiveModelKimiTests(unittest.TestCase):
-    def test_kimi_content_used_when_present(self) -> None:
-        route = {"route_id": "kimi-code/k3:max", "provider": "kimi-code", "model": "k3"}
-        payload = {
-            "choices": [
-                {
-                    "message": {
-                        "content": "Kimi final answer",
-                        "reasoning_content": "Kimi reasoning step",
-                    }
-                }
-            ]
-        }
-        with (
-            mock.patch.object(
-                live,
-                "get_provider_credentials",
-                return_value={"kimi-code": {"access": "test-token"}},
-            ),
-            mock.patch.object(
-                live.urllib.request,
-                "urlopen",
-                return_value=MockHTTPResponse(payload),
-            ),
-        ):
-            text, latency = live.call_live_model(route, "Solve this")
-            self.assertEqual(text, "Kimi final answer")
-            self.assertGreaterEqual(latency, 0.0)
-
-    def test_kimi_reasoning_content_fallback_when_content_empty(self) -> None:
-        route = {"route_id": "kimi-code/k3:max", "provider": "kimi-code", "model": "k3"}
-        payload = {
-            "choices": [
-                {
-                    "message": {
-                        "content": "",
-                        "reasoning_content": "Kimi reasoning fallback output",
-                    }
-                }
-            ]
-        }
-        with (
-            mock.patch.object(
-                live,
-                "get_provider_credentials",
-                return_value={"kimi-code": {"access": "test-token"}},
-            ),
-            mock.patch.object(
-                live.urllib.request,
-                "urlopen",
-                return_value=MockHTTPResponse(payload),
-            ),
-        ):
-            text, latency = live.call_live_model(route, "Solve this")
-            self.assertEqual(text, "Kimi reasoning fallback output")
-            self.assertGreaterEqual(latency, 0.0)
-
-    def test_kimi_reasoning_content_fallback_when_content_none(self) -> None:
-        route = {"route_id": "kimi-code/k3:max", "provider": "kimi-code", "model": "k3"}
-        payload = {
-            "choices": [
-                {
-                    "message": {
-                        "content": None,
-                        "reasoning_content": "Kimi reasoning fallback from None",
-                    }
-                }
-            ]
-        }
-        with (
-            mock.patch.object(
-                live,
-                "get_provider_credentials",
-                return_value={"kimi-code": {"access": "test-token"}},
-            ),
-            mock.patch.object(
-                live.urllib.request,
-                "urlopen",
-                return_value=MockHTTPResponse(payload),
-            ),
-        ):
-            text, latency = live.call_live_model(route, "Solve this")
-            self.assertEqual(text, "Kimi reasoning fallback from None")
-            self.assertGreaterEqual(latency, 0.0)
 
 class ProviderTimeoutLookupTests(unittest.TestCase):
     def test_provider_timeouts_dict(self) -> None:
@@ -444,246 +645,40 @@ class CallLiveModelWithRetryTests(unittest.TestCase):
             self.assertIsNone(error)
             self.assertEqual(mock_call.call_count, 2)
 
-if __name__ == "__main__":
-    unittest.main()
-
-
-class ImageInjectionTests(unittest.TestCase):
-    def _route(self, provider: str, model: str = "m", modalities: list | None = None) -> dict:
-        route = {"route_id": f"{provider}/{model}", "provider": provider, "model": model}
-        if modalities is not None:
-            route["input_modalities"] = modalities
-        return route
-
-    def _creds(self) -> dict:
-        return {
-            "deepseek": {"key": "k"},
-            "xai-oauth": {"access": "t"},
-            "alibaba-token-plan": {"key": "t"},
-            "kimi-code": {"access": "t"},
-            "zai": {"key": "k"},
-            "google": {"key": "k"},
-        }
-
-    def test_route_supports_images_requires_image_modality(self) -> None:
-        self.assertTrue(live._route_supports_images({"input_modalities": ["text", "image"]}))
-        self.assertFalse(live._route_supports_images({"input_modalities": ["text"]}))
-        self.assertFalse(live._route_supports_images({}))  # missing = text-only
-        self.assertFalse(live._route_supports_images({"provider": "xai-oauth"}))  # no provider heuristic
-
-    def test_collect_task_images_finds_png(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            ws = Path(tmp) / "public" / "workspace"
-            ws.mkdir(parents=True)
-            (ws / "code.png").write_bytes(b"\x89PNG fake")
-            (ws / "notes.txt").write_text("hello")
-            images = live.collect_task_images(Path(tmp))
-            self.assertEqual([(name, len(data)) for name, data in images], [("workspace/code.png", 9)])
-
-    def test_xai_image_block_included(self) -> None:
-        payload = {"choices": [{"message": {"content": "ok"}}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            text, _ = live.call_live_model(
-                self._route("xai-oauth", "grok-4.6", ["text", "image"]), "p", images=[("code.png", b"PNG")]
+    def test_retry_passes_image_paths_to_call_live_model(self) -> None:
+        route = {"route_id": "xai/grok-vision", "provider": "xai", "model": "grok-vision"}
+        with mock.patch.object(
+            live,
+            "call_live_model",
+            return_value=("output", 2.0),
+        ) as mock_call:
+            text, total, error = live.call_live_model_with_retry(
+                route,
+                "prompt",
+                image_paths=["/path/to/img.png"],
             )
-        self.assertEqual(text, "ok")
-        user = captured["data"]["messages"][1]["content"]
-        self.assertEqual(user[0]["type"], "text")
-        self.assertEqual(user[1]["type"], "image_url")
-        self.assertTrue(user[1]["image_url"]["url"].startswith("data:image/png;base64,"))
-
-    def test_gemini_inline_data_included(self) -> None:
-        payload = {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            text, _ = live.call_live_model(
-                self._route("google-antigravity", "gemini-3.7-flash", ["text", "image"]),
-                "p",
-                images=[("schematic.png", b"PNG")],
+            self.assertEqual(text, "output")
+            self.assertIsNone(error)
+            mock_call.assert_called_once_with(
+                route,
+                "prompt",
+                system_prompt=None,
+                max_tokens=live.DEFAULT_MAX_TOKENS,
+                temperature=0.0,
+                image_paths=["/path/to/img.png"],
             )
-        self.assertEqual(text, "ok")
-        parts = captured["data"]["contents"][0]["parts"]
-        self.assertIn("text", parts[0])
-        self.assertEqual(parts[1]["inline_data"]["mime_type"], "image/png")
-
-    def test_zai_text_only_gets_note_not_image(self) -> None:
-        payload = {"content": [{"type": "text", "text": "ok"}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            text, _ = live.call_live_model(
-                self._route("zai", "glm-5.3", ["text"]), "p", images=[("code.png", b"PNG")]
-            )
-        self.assertEqual(text, "ok")
-        # glm-5.3 is text-only: image withheld, disclosure note appended, plain string content.
-        content = captured["data"]["messages"][0]["content"]
-        self.assertIsInstance(content, str)
-        self.assertIn("text-only", content)
-        self.assertIn("code.png", content)
-
-    def test_kimi_multimodal_gets_image_block(self) -> None:
-        payload = {"choices": [{"message": {"content": "ok"}}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            text, _ = live.call_live_model(
-                self._route("kimi-code", "k3", ["text", "image"]), "p", images=[("code.png", b"PNG")]
-            )
-        self.assertEqual(text, "ok")
-        user = captured["data"]["messages"][1]["content"]
-        self.assertEqual(user[0]["type"], "text")
-        self.assertEqual(user[1]["type"], "image_url")
-
-    def test_alibaba_image_block_included(self) -> None:
-        payload = {"choices": [{"message": {"content": "ok"}}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            text, _ = live.call_live_model(
-                self._route("alibaba-token-plan", "qwen3.8-max", ["text", "image"]),
-                "p",
-                images=[("code.png", b"PNG")],
-            )
-        self.assertEqual(text, "ok")
-        user = captured["data"]["messages"][1]["content"]
-        self.assertEqual(user[1]["type"], "image_url")
-
-    def test_text_only_provider_gets_note_not_image(self) -> None:
-        payload = {"choices": [{"message": {"content": "ok"}}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            text, _ = live.call_live_model(
-                self._route("deepseek", "deepseek-v4-flash"),
-                "p",
-                images=[("code.png", b"PNG")],
-            )
-        self.assertEqual(text, "ok")
-        user = captured["data"]["messages"][1]["content"]
-        self.assertIsInstance(user, str)
-        self.assertIn("text-only", user)
-        self.assertIn("code.png", user)
-
-    def test_deepseek_uses_route_model_not_hardcoded(self) -> None:
-        payload = {"choices": [{"message": {"content": "ok"}}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            live.call_live_model(self._route("deepseek", "deepseek-v4-flash"), "p")
-        self.assertEqual(captured["data"]["model"], "deepseek-v4-flash")
-
-    def test_retry_passes_images(self) -> None:
-        payload = {"choices": [{"message": {"content": "ok"}}]}
-        captured = {}
-
-        def fake_urlopen(req, timeout=0):
-            captured["data"] = json.loads(req.data.decode())
-            return MockHTTPResponse(payload)
-
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
-            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
-        ):
-            text, _, err = live.call_live_model_with_retry(
-                self._route("xai-oauth", "grok-4.6", ["text", "image"]), "p", images=[("code.png", b"PNG")]
-            )
-        self.assertIsNone(err)
-        self.assertEqual(text, "ok")
-        user = captured["data"]["messages"][1]["content"]
-        self.assertEqual(user[1]["type"], "image_url")
-
-
-class DeepseekReasoningFallbackTests(unittest.TestCase):
-    def test_deepseek_reasoning_content_fallback(self) -> None:
-        payload = {"choices": [{"message": {"content": "", "reasoning_content": "deep think answer"}}]}
-        route = {"route_id": "deepseek/deepseek-v4-flash:max", "provider": "deepseek", "model": "deepseek-v4-flash"}
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value={"deepseek": {"key": "k"}}),
-            mock.patch.object(live.urllib.request, "urlopen", return_value=MockHTTPResponse(payload)),
-        ):
-            text, _ = live.call_live_model(route, "p")
-        self.assertEqual(text, "deep think answer")
-
-    def test_deepseek_content_preferred_over_reasoning(self) -> None:
-        payload = {"choices": [{"message": {"content": "final", "reasoning_content": "trace"}}]}
-        route = {"route_id": "deepseek/deepseek-v4-flash:max", "provider": "deepseek", "model": "deepseek-v4-flash"}
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value={"deepseek": {"key": "k"}}),
-            mock.patch.object(live.urllib.request, "urlopen", return_value=MockHTTPResponse(payload)),
-        ):
-            text, _ = live.call_live_model(route, "p")
-        self.assertEqual(text, "final")
-
-    def test_deepseek_null_content_does_not_crash(self) -> None:
-        payload = {"choices": [{"message": {"content": None}}]}
-        route = {"route_id": "deepseek/deepseek-v4-flash:max", "provider": "deepseek", "model": "deepseek-v4-flash"}
-        with (
-            mock.patch.object(live, "get_provider_credentials", return_value={"deepseek": {"key": "k"}}),
-            mock.patch.object(live.urllib.request, "urlopen", return_value=MockHTTPResponse(payload)),
-        ):
-            text, _ = live.call_live_model(route, "p")
-        self.assertEqual(text, "")
 
 
 class TransientNetworkRetryTests(unittest.TestCase):
     def test_dns_failure_retries_then_succeeds(self) -> None:
         route = {"route_id": "kimi-code/k3:max", "provider": "kimi-code", "model": "k3"}
-        dns_error = live.urllib.error.URLError("[Errno -3] Temporary failure in name resolution")
-        with mock.patch.object(
-            live, "call_live_model", side_effect=[dns_error, ("recovered", 3.0)]
-        ) as mock_call:
+        dns_error = urllib.error.URLError("[Errno -3] Temporary failure in name resolution")
+        with (
+            mock.patch.object(
+                live, "call_live_model", side_effect=[dns_error, ("recovered", 3.0)]
+            ) as mock_call,
+            mock.patch.object(live.time, "sleep"),
+        ):
             text, total, error = live.call_live_model_with_retry(route, "p")
         self.assertEqual(text, "recovered")
         self.assertIsNone(error)
@@ -691,7 +686,7 @@ class TransientNetworkRetryTests(unittest.TestCase):
 
     def test_persistent_dns_failure_is_infra_error(self) -> None:
         route = {"route_id": "kimi-code/k3:max", "provider": "kimi-code", "model": "k3"}
-        dns_error = live.urllib.error.URLError("[Errno -3] Temporary failure in name resolution")
+        dns_error = urllib.error.URLError("[Errno -3] Temporary failure in name resolution")
         with (
             mock.patch.object(live, "call_live_model", side_effect=dns_error) as mock_call,
             mock.patch.object(live.time, "sleep"),
@@ -710,21 +705,34 @@ class TransientNetworkRetryTests(unittest.TestCase):
         self.assertTrue(error.startswith("infra-error:"))
         self.assertEqual(mock_call.call_count, 1)
 
+    def test_connection_reset_retries(self) -> None:
+        route = {"route_id": "deepseek/x", "provider": "deepseek", "model": "x"}
+        conn_error = ConnectionResetError("Connection reset by peer")
+        with (
+            mock.patch.object(live, "call_live_model", side_effect=[conn_error, ("recovered", 2.0)]) as mock_call,
+            mock.patch.object(live.time, "sleep"),
+        ):
+            text, _, error = live.call_live_model_with_retry(route, "p")
+        self.assertEqual(text, "recovered")
+        self.assertIsNone(error)
+        self.assertEqual(mock_call.call_count, 2)
+
 
 class RateLimitRetryTests(unittest.TestCase):
     def test_429_retries_then_succeeds(self) -> None:
         route = {"route_id": "kimi-code/k3:max", "provider": "kimi-code", "model": "k3"}
-        rate_limit = live.urllib.error.HTTPError("https://x", 429, "Too Many Requests", {}, None)
-        with mock.patch.object(
-            live, "call_live_model", side_effect=[rate_limit, ("ok", 2.0)]
-        ) as mock_call:
+        rate_limit = _make_http_error(self, "https://x", 429, "Too Many Requests")
+        with (
+            mock.patch.object(live, "call_live_model", side_effect=[rate_limit, ("ok", 2.0)]) as mock_call,
+            mock.patch.object(live.time, "sleep"),
+        ):
             text, _, error = live.call_live_model_with_retry(route, "p")
         self.assertEqual((text, error), ("ok", None))
         self.assertEqual(mock_call.call_count, 2)
 
     def test_401_never_retried(self) -> None:
         route = {"route_id": "kimi-code/k3:max", "provider": "kimi-code", "model": "k3"}
-        auth = live.urllib.error.HTTPError("https://x", 401, "Unauthorized", {}, None)
+        auth = _make_http_error(self, "https://x", 401, "Unauthorized")
         with mock.patch.object(live, "call_live_model", side_effect=auth) as mock_call:
             _, _, error = live.call_live_model_with_retry(route, "p")
         self.assertTrue(error.startswith("infra-error:"))
@@ -734,7 +742,7 @@ class RateLimitRetryTests(unittest.TestCase):
 class BackoffRetryTests(unittest.TestCase):
     def test_529_retries_with_backoff_then_succeeds(self) -> None:
         route = {"route_id": "zai/glm-5.2", "provider": "zai", "model": "glm-5.2"}
-        overload = live.urllib.error.HTTPError("https://x", 529, "Server Error", {}, None)
+        overload = _make_http_error(self, "https://x", 529, "Server Error")
         with (
             mock.patch.object(live, "call_live_model", side_effect=[overload, overload, ("ok", 2.0)]) as mock_call,
             mock.patch.object(live.time, "sleep") as sleep_mock,
@@ -746,7 +754,7 @@ class BackoffRetryTests(unittest.TestCase):
 
     def test_529_persistent_gives_up_after_max_attempts(self) -> None:
         route = {"route_id": "zai/glm-5.2", "provider": "zai", "model": "glm-5.2"}
-        overload = live.urllib.error.HTTPError("https://x", 529, "Server Error", {}, None)
+        overload = _make_http_error(self, "https://x", 529, "Server Error")
         with (
             mock.patch.object(live, "call_live_model", side_effect=overload) as mock_call,
             mock.patch.object(live.time, "sleep"),
@@ -759,7 +767,7 @@ class BackoffRetryTests(unittest.TestCase):
     def test_retry_after_header_respected(self) -> None:
         route = {"route_id": "zai/glm-5.2", "provider": "zai", "model": "glm-5.2"}
         headers = {"Retry-After": "7"}
-        overload = live.urllib.error.HTTPError("https://x", 429, "Too Many", headers, None)
+        overload = _make_http_error(self, "https://x", 429, "Too Many", headers)
         with (
             mock.patch.object(live, "call_live_model", side_effect=[overload, ("ok", 1.0)]),
             mock.patch.object(live.time, "sleep") as sleep_mock,
@@ -776,6 +784,31 @@ class BackoffRetryTests(unittest.TestCase):
             _, _, error = live.call_live_model_with_retry(route, "p")
         self.assertTrue(error.startswith("timeout:"))
         self.assertEqual(mock_call.call_count, live.MAX_TRANSIENT_ATTEMPTS)
+
+
+class ErrorClassificationTests(unittest.TestCase):
+    def test_is_timeout_error(self) -> None:
+        self.assertTrue(live.is_timeout_error(TimeoutError("request timed out")))
+        self.assertTrue(live.is_timeout_error(socket.timeout("timed out")))
+        self.assertTrue(live.is_timeout_error(urllib.error.URLError(socket.timeout())))
+        self.assertTrue(live.is_timeout_error(RuntimeError("Task timeout reached")))
+        self.assertFalse(live.is_timeout_error(ValueError("invalid format")))
+
+    def test_is_transient_network_error(self) -> None:
+        e429 = _make_http_error(self, "url", 429, "Rate limit")
+        e503 = _make_http_error(self, "url", 503, "Unavailable")
+        e529 = _make_http_error(self, "url", 529, "Overloaded")
+        e401 = _make_http_error(self, "url", 401, "Unauthorized")
+        e404 = _make_http_error(self, "url", 404, "Not Found")
+        self.assertTrue(live.is_transient_network_error(e429))
+        self.assertTrue(live.is_transient_network_error(e503))
+        self.assertTrue(live.is_transient_network_error(e529))
+        self.assertTrue(live.is_transient_network_error(urllib.error.URLError("Connection reset by peer")))
+        self.assertTrue(live.is_transient_network_error(ConnectionResetError()))
+        self.assertTrue(live.is_transient_network_error(socket.gaierror()))
+        self.assertFalse(live.is_transient_network_error(e401))
+        self.assertFalse(live.is_transient_network_error(e404))
+        self.assertFalse(live.is_transient_network_error(ValueError("Bad payload")))
 
 
 class ExtractCleanJsonTests(unittest.TestCase):
@@ -808,3 +841,7 @@ class ExtractCleanJsonTests(unittest.TestCase):
 
     def test_empty_passthrough(self) -> None:
         self.assertEqual(live.extract_clean_json_or_patch("   "), "")
+
+
+if __name__ == "__main__":
+    unittest.main()
