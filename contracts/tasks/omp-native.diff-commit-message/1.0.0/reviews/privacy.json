@@ -22,8 +22,8 @@
   "scope": {
     "prompt_digest_sha256": "b880139370dd97c719330548f8ebf93d8b44e40dd91ae3f618d58c919475b065",
     "public_tree_digest_sha256": "93cbacecbbd1cadac94576f710e7bd3d11a999d27b7a225c8e954c0802e3f8de",
-    "verifier_digest_sha256": "3a2296ce1a2aff6dc9370080bbb0d35312d9ac7a46575ec7cc839ac6eec14c2e",
-    "verifier_private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+    "verifier_digest_sha256": "426e07642a5ce6978bfdbb282f1601088006203d7286c67ad419de351ded17fe",
+    "verifier_private_tree_digest_sha256": "4f58e5cf42c0c2d5f3a400cbaa755da167b843a41ddf6f3cd85d9a00d77362d1",
     "workspace_digest_sha256": "877248bc085b5b0df27cf0df10f8c672493df1280e76b134465c718a33cb8dec"
   },
   "task_id": "omp-native.diff-commit-message",

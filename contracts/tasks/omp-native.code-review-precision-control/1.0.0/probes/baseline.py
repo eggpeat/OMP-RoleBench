@@ -9,8 +9,8 @@ submission = {
     "findings": [
         {
             "file": "src/ring_buffer.py",
-            "line_start": 47,
-            "line_end": 52,
+            "line_start": 107,
+            "line_end": 116,
             "severity": "medium",
             "category": "correctness",
             "description": "False positive: DeprecationWarning in LegacyBuffer should be removed.",

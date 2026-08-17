@@ -69,10 +69,10 @@
       }
     },
     "verifier_private": {
-      "digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+      "digest_sha256": "4f58e5cf42c0c2d5f3a400cbaa755da167b843a41ddf6f3cd85d9a00d77362d1",
       "root": "contracts/tasks/omp-native.diff-commit-message/1.0.0/verifier-private",
       "verifier": {
-        "digest_sha256": "3a2296ce1a2aff6dc9370080bbb0d35312d9ac7a46575ec7cc839ac6eec14c2e",
+        "digest_sha256": "426e07642a5ce6978bfdbb282f1601088006203d7286c67ad419de351ded17fe",
         "kind": "file",
         "path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/verifier-private/verifier.py"
       }
@@ -87,7 +87,7 @@
     "commit-convention-adherence",
     "evidence-bounded-generation"
   ],
-  "content_digest_sha256": "abc4a61ccb1ccc5770dc9fa6d494d302f80ed63775c3359a85a9a3365003acab",
+  "content_digest_sha256": "6d36753f38b6410ef752d5923ab828d7f2cb2aaa730363968009ee4e6a0a6aa3",
   "difficulty": "easy",
   "family": {
     "family_id": "omp-native.diff-commit-message",
@@ -121,7 +121,7 @@
   "reviews": {
     "license": {
       "decision": "approved",
-      "evidence_digest_sha256": "11f4183ecd5cbb79874e8d34ecccb5d3edde0b1390902af0c3515b9276971cb4",
+      "evidence_digest_sha256": "83974ea63620333e33bcb1c936507e77fcdcf3dac0ab1449132b545852a5c4a5",
       "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/license.json",
       "expression": "MIT",
       "redistribution": "permitted",
@@ -130,7 +130,7 @@
     },
     "privacy": {
       "decision": "approved",
-      "evidence_digest_sha256": "47bd33d93745119b10720dcd9c775473786c64bc5b87088d5a0efb22493d5b49",
+      "evidence_digest_sha256": "76049ee29bc4f013f8970b6feeda9f1728a5de4f7866730a1cee6de9c4a87538",
       "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/privacy.json",
       "reviewed_at": "2026-08-16T01:16:48Z",
       "reviewer": "rolebench/reviewer/privacy-gate-v1"
@@ -148,9 +148,9 @@
     },
     "verifier": {
       "decision": "approved",
-      "evidence_digest_sha256": "ac9bf3f2a3c3e0a503f5c916537510599388cbcb2d152844c32d8f60051f4543",
+      "evidence_digest_sha256": "88b64da48c88c9a5711cf28dcf167d649d7e331ecebac8f5b143cea05449fe2d",
       "evidence_path": "contracts/tasks/omp-native.diff-commit-message/1.0.0/reviews/verifier.json",
-      "private_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
+      "private_tree_digest_sha256": "4f58e5cf42c0c2d5f3a400cbaa755da167b843a41ddf6f3cd85d9a00d77362d1",
       "reviewed_at": "2026-08-16T01:16:48Z",
       "reviewer": "rolebench/reviewer/verifier-gate-v1",
       "runner_config_digest_sha256": "68fb537fdd3790f5789a1a09b031c48298d3d9ab54d3d0df0211ac4399143b41",
@@ -160,8 +160,8 @@
         "os": "linux",
         "variant": null
       },
-      "verifier_config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
-      "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
+      "verifier_config_digest_sha256": "041c58584ee03f6901152fa6852853bdfed593ba0f95f220f8a1b97be694495e",
+      "verifier_image": "rolebench.local/diff-commit-message-commit-verifier@sha256:1534ba1553376468469e5c1a018b03d27f18b572a7fa16e740b56f42a2d2cf8b",
       "verifier_platform": {
         "architecture": "amd64",
         "os": "linux",
@@ -214,9 +214,9 @@
     "argv": [
       "--rolebench-run"
     ],
-    "asset_tree_digest_sha256": "7beaaffd34f7b34e1694737c48315ca99aa809a59945cfdbd2c810c9c36c6090",
-    "config_digest_sha256": "f98266a0236de5de0c36e809a09f9080daf81b105bfc07c053981e8639c7851b",
-    "image": "rolebench.local/diff-commit-message-commit-verifier@sha256:cea89a515605e313de9da62c24a6be0b558de773983928bf9fc3831e63b1b659",
+    "asset_tree_digest_sha256": "4f58e5cf42c0c2d5f3a400cbaa755da167b843a41ddf6f3cd85d9a00d77362d1",
+    "config_digest_sha256": "041c58584ee03f6901152fa6852853bdfed593ba0f95f220f8a1b97be694495e",
+    "image": "rolebench.local/diff-commit-message-commit-verifier@sha256:1534ba1553376468469e5c1a018b03d27f18b572a7fa16e740b56f42a2d2cf8b",
     "platform": {
       "architecture": "amd64",
       "os": "linux",

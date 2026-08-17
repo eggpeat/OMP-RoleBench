@@ -14,7 +14,12 @@ Return your findings strictly as a single JSON object matching schema `rolebench
 }
 
 Constraints:
+- Beware of false positives. Only report actionable defects with exact line references.
 - If no material defects are found, return verdict "approved" with an empty "findings" list.
-- Do not report intentional design choices (e.g. deprecation warnings) or stylistic preferences as bugs.
+- Do not report intentional design choices or safe idioms as bugs. Specific distractor categories in this codebase that are valid and intentional include:
+  1. Double-checked locking fast-path checks with subsequent lock acquisition.
+  2. Deprecation warnings (e.g. DeprecationWarning in legacy compatibility wrappers).
+  3. Non-blocking lock-acquisition retry loops with exponential backoff.
+  4. Intentional broad exception handling (e.g. catching Exception to isolate user callbacks during cleanup).
 - Fabricated, speculative, or false-positive findings will be penalized.
 - Severity must be "high", "medium", or "low".

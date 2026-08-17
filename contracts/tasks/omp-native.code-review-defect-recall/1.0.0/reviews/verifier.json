@@ -21,24 +21,24 @@
     }
   ],
   "report_digests_sha256": [
-    "908ce4f9a19b81b217d856624ac921d539ac6cadd2286c0f51ad658562062cd3",
-    "db369061ca0a06d5b1305ab5341d9a34aacd94f21851f4ebc22505b66701684d",
-    "0c5b63b36d8cd41a343a6d5249a469184d17aae6118b5f44fd0674a17c7493d7",
-    "0a342d70e83a298008ad0bc42af2e4116369971d63889532037d8b03428d8670",
-    "8282975e14c16799741f3c5d8e9f774a08fcd5378895e45701048229570a3e97",
-    "02860c78d1bfd534ccb3ebc145ab7c1a3c9026165393593a02c67535fa184411"
+    "5b7ae1fa07282dec8f32050bf9b8c38ee6b0bc174a393d3b9ee2fb4ceb0cb8d1",
+    "24984bda8afde5f39c1e9ae1465484313af15034fd964cf4672f0c7d1967f914",
+    "46ffc8d67c17787c24088934ba9d1c19b8237dcb11bf428915db01e61deeb323",
+    "f6cf6ff0492df2b1dfb7e6232f729da34c111734595c2f7d28b63b0bf663d98f",
+    "87b54c7981069384a9f02ae11308dbffe6fa122f6591b26827bb42db64d3c0a9",
+    "a7b71b868e53149b5905d75e3bbaadce5b6bc9f97d48ab40af6d0c5558d4662d"
   ],
   "review_type": "verifier",
   "reviewed_at": "2026-08-16T14:15:00Z",
   "reviewer": "rolebench/reviewer/verifier-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "50e1e6bcc51f9abc22a1b6a8f8ac9ab23188e57ecaed997d98bda37b395c7080",
-    "runner_config_digest_sha256": "fa9afe8d8dc57348b9204ee376ac03159d8141e5761c2c06677f4b098bb2441d",
-    "runner_image": "rolebench.local/code-review-defect-recall-runner@sha256:f9c761f4c35474019a2c536e139171b3b31ff6abd7d310610631be916b7945ee",
-    "verifier_config_digest_sha256": "5c43c8bb9c716ddcea582dc9d6a6bf2fcc85fb6e8df1ccee8cd79e3c184f99e4",
-    "verifier_image": "rolebench.local/code-review-defect-recall-verifier@sha256:acab283eb5536180eae4f03c7e58b1198febabd84f38bda2773b2bd2147e4bd5",
-    "verifier_private_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145"
+    "public_tree_digest_sha256": "9444593766a7f04dcc1253a1eca0c0b47801f08dcb8442ad53f08bc00e51b33b",
+    "runner_config_digest_sha256": "e9310f353abad747edc18f47c5fe439e1d81f6b5293b0d6a69019d8f91b4a209",
+    "runner_image": "rolebench.local/code-review-defect-recall-runner@sha256:2a5ebb5b775449de98863f19d8fc6374ce2ac62a123c62b041923edcad101887",
+    "verifier_config_digest_sha256": "dbb98a0982184880a45b52f74e19e8fd3cfe3434bb0fca940e10e3ccdd0f2ba5",
+    "verifier_image": "rolebench.local/code-review-defect-recall-verifier@sha256:a3f504bea4d8cdf772f0962857cc2c69646214d116e95b581d1d8588d1656299",
+    "verifier_private_tree_digest_sha256": "d814c4a2799b28d92a79bb9d566163ee0d38ee299a3e5c59637217219aab2d1b"
   },
   "task_id": "omp-native.code-review-defect-recall",
   "task_version": "1.0.0"

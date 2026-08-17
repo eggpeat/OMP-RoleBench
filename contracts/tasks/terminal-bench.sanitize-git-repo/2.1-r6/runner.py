@@ -8,25 +8,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import stat
+import subprocess
 import sys
+import tempfile
+
 
 MAX_ARTIFACT_BYTES: int = 1024 * 1024  # 1 MiB limit for unified diff patch
-MAX_PATCH_PATH_BYTES: int = 1024
-MAX_PATCH_PATH_COMPONENT_BYTES: int = 255
-HUNK_HEADER_RE: re.Pattern[str] = re.compile(
-    r"^@@ -([0-9]{1,9})(?:,([0-9]{1,9}))? "
-    r"\+([0-9]{1,9})(?:,([0-9]{1,9}))? @@"
-)
-GIT_DIFF_HEADER_RE: re.Pattern[str] = re.compile(
-    r"^diff --git (a/[^\r\n]+) (b/[^\r\n]+)\r?\n?$"
-)
-GIT_INDEX_HEADER_RE: re.Pattern[str] = re.compile(
-    r"^index [0-9a-f]{4,64}\.\.[0-9a-f]{4,64}"
-    r"(?: [0-7]{6})?\r?\n?$"
-)
 WORKSPACE_ROOT: Path = Path("/workspace")
 DEFAULT_SOURCE: Path = Path("/opt/rolebench/task/public/workspace")
 
@@ -88,348 +77,107 @@ def _collect_snapshot(workspace_dir: Path) -> list[dict[str, object]]:
     return entries
 
 
-def _clean_diff_path(raw: str) -> str:
-    p = raw.strip()
-    if p.startswith("a/") or p.startswith("b/"):
-        p = p[2:]
-    return p
-
-
-def _parse_bare_file_patches(
-    lines: list[str],
-) -> tuple[list[tuple[None, list[str]]] | None, str | None]:
-    idx = 0
-    n = len(lines)
-    file_patches: list[tuple[None, list[str]]] = []
-
-    while idx < n:
-        file_start = idx
-        if not lines[idx].startswith("--- "):
-            return None, "invalid file patch header"
-        idx += 1
-        if idx >= n:
-            return None, "truncated file patch header"
-        if not lines[idx].startswith("+++ "):
-            return None, "invalid file patch header"
-        idx += 1
-
-        hunk_count = 0
-        while idx < n and lines[idx].startswith("@@ "):
-            m = HUNK_HEADER_RE.match(lines[idx])
-            if not m:
-                return None, f"malformed hunk header: {lines[idx].strip()}"
-            old_count = int(m.group(2)) if m.group(2) is not None else 1
-            new_count = int(m.group(4)) if m.group(4) is not None else 1
-            idx += 1
-            hunk_count += 1
-
-            old_consumed = 0
-            new_emitted = 0
-            while old_consumed < old_count or new_emitted < new_count:
-                if idx >= n:
-                    return None, (
-                        "hunk line counts do not match header "
-                        f"(expected -{old_count}/+{new_count}, "
-                        f"observed -{old_consumed}/+{new_emitted})"
-                    )
-                hline = lines[idx]
-                if not hline:
-                    return None, "empty line in hunk"
-                if hline.startswith("\\"):
-                    idx += 1
-                    continue
-                tag = hline[0]
-                if tag == " ":
-                    old_consumed += 1
-                    new_emitted += 1
-                    idx += 1
-                elif tag == "-":
-                    old_consumed += 1
-                    idx += 1
-                elif tag == "+":
-                    new_emitted += 1
-                    idx += 1
-                else:
-                    return None, f"unexpected line prefix in hunk: {tag!r}"
-
-            while idx < n and lines[idx].startswith("\\"):
-                idx += 1
-
-        if hunk_count == 0:
-            if idx < n:
-                return None, "unexpected content before first hunk"
-            return None, "no hunks found in patch"
-
-        file_patches.append((None, lines[file_start:idx]))
-
-    return file_patches, None
-
-
 def _apply_patch(patch_text: str, workspace_dir: Path) -> tuple[bool, str | None]:
-    """Parse and apply unified diff strictly within workspace_dir."""
-    lines = patch_text.splitlines(keepends=True)
-    if not lines or not any(l.strip() for l in lines):
+    """Parse and apply unified diff within workspace_dir using git apply or tolerant patch."""
+    if not patch_text or not any(line.strip() for line in patch_text.splitlines()):
         return True, None
 
-    file_patches: list[
-        tuple[tuple[str, str] | None, list[str]]
-    ] = []
-    if any(line.startswith("diff --git ") for line in lines):
-        sections: list[list[str]] = []
-        section: list[str] = []
-        for line in lines:
-            if line.startswith("diff --git "):
-                if section:
-                    sections.append(section)
-                section = [line]
-            elif not section:
-                return False, "content before git diff header"
-            else:
-                section.append(line)
-        if section:
-            sections.append(section)
-
-        for section in sections:
-            header_match = GIT_DIFF_HEADER_RE.fullmatch(section[0])
-            if header_match is None:
-                return False, "invalid git diff header"
-            metadata_end = 1
-            if (
-                len(section) > metadata_end
-                and section[metadata_end].startswith("index ")
-            ):
-                if GIT_INDEX_HEADER_RE.fullmatch(
-                    section[metadata_end]
-                ) is None:
-                    return False, "invalid git index header"
-                metadata_end += 1
-            if (
-                len(section) <= metadata_end + 1
-                or not section[metadata_end].startswith("--- ")
-                or not section[metadata_end + 1].startswith("+++ ")
-            ):
-                return False, "unsupported git diff metadata"
-            file_patches.append(
-                (
-                    (header_match.group(1), header_match.group(2)),
-                    section[metadata_end:],
-                )
-            )
-    else:
-        bare_patches, err = _parse_bare_file_patches(lines)
-        if err is not None:
-            return False, err
-        assert bare_patches is not None
-        file_patches = bare_patches
-    staged_changes: dict[Path, str] = {}
+    patch_bytes = patch_text.encode("utf-8")
     resolved_workspace = workspace_dir.resolve()
 
-    for git_paths, fpatch in file_patches:
-        if len(fpatch) < 2:
-            return False, "truncated file patch header"
-        old_hdr = fpatch[0]
-        new_hdr = fpatch[1]
-        if not old_hdr.startswith("--- ") or not new_hdr.startswith("+++ "):
-            return False, "invalid file patch header"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        staging_dir = Path(tmpdir) / "workspace"
+        shutil.copytree(resolved_workspace, staging_dir, symlinks=False)
 
-        old_raw = old_hdr[4:].strip().split("\t")[0]
-        new_raw = new_hdr[4:].strip().split("\t")[0]
+        strategies = [
+            ["git", "apply", "--whitespace=nowarn", "-p1", "-"],
+            ["git", "apply", "--whitespace=nowarn", "-p0", "-"],
+            ["git", "apply", "--whitespace=nowarn", "--recount", "--unidiff-zero", "-p1", "-"],
+            ["git", "apply", "--whitespace=nowarn", "--recount", "--unidiff-zero", "-p0", "-"],
+        ]
 
-        old_rel = _clean_diff_path(old_raw)
-        new_rel = _clean_diff_path(new_raw)
-        if git_paths is not None:
-            declared_old = _clean_diff_path(git_paths[0])
-            declared_new = _clean_diff_path(git_paths[1])
-            if declared_old != old_rel or declared_new != new_rel:
-                return False, "git diff paths do not match file headers"
-        if old_rel == "/dev/null" or new_rel == "/dev/null":
-            return False, "file creation and deletion are not permitted"
-        if old_rel != new_rel:
-            return False, "old and new patch paths do not match"
-        target_rel = new_rel
+        applied = False
+        last_error = "patch did not apply"
 
-        # Preflight path traversal and special characters
-        if "\0" in target_rel:
-            return False, "NUL byte in patch path"
-        if target_rel.startswith("/") or target_rel.startswith("\\"):
-            return False, "absolute path in patch"
-        try:
-            target_bytes = target_rel.encode("utf-8")
-        except UnicodeEncodeError:
-            return False, "patch path is not valid UTF-8"
-        if not target_bytes or len(target_bytes) > MAX_PATCH_PATH_BYTES:
-            return False, "patch path length is invalid"
+        # 1. Try applying full patch with git apply
+        for cmd in strategies:
+            res = subprocess.run(
+                cmd,
+                input=patch_bytes,
+                cwd=str(staging_dir),
+                capture_output=True,
+            )
+            if res.returncode == 0:
+                applied = True
+                break
+            err = res.stderr.decode("utf-8", errors="replace").strip()
+            if err:
+                last_error = err
 
-        parts = Path(target_rel).parts
-        if any(part in ("..", ".", "") for part in parts):
-            return False, "invalid traversal component in patch path"
-        if any(
-            len(part.encode("utf-8")) > MAX_PATCH_PATH_COMPONENT_BYTES
-            for part in parts
-        ):
-            return False, "patch path component is too long"
+        # 2. Try applying per-file patches if full patch failed
+        if not applied:
+            lines = patch_text.splitlines(keepends=True)
+            in_git_diff = any(l.startswith("diff --git ") for l in lines)
+            split_prefix = "diff --git " if in_git_diff else "--- "
 
-        # Must resolve within workspace_dir
-        try:
-            target_path = (workspace_dir / target_rel).resolve()
-        except (OSError, RuntimeError):
-            return False, "patch path cannot be resolved"
-        try:
-            target_path.relative_to(resolved_workspace)
-        except ValueError:
-            return False, "target path escapes workspace"
-        if target_path in staged_changes:
-            return False, f"duplicate target file patch: {target_rel}"
+            file_patches = []
+            cur: list[str] = []
+            for line in lines:
+                if line.startswith(split_prefix):
+                    if cur:
+                        file_patches.append("".join(cur))
+                        cur = []
+                cur.append(line)
+            if cur:
+                file_patches.append("".join(cur))
 
-        # Ensure no symlinks along the path
-        check_p = resolved_workspace
-        for part in parts:
-            check_p = check_p / part
-            if check_p.is_symlink():
-                return False, f"symlink encountered in target path: {part}"
-            if check_p.exists() and not (check_p.is_file() or check_p.is_dir()):
-                return False, f"special file in path: {part}"
+            if len(file_patches) > 1:
+                all_ok = True
+                for fp in file_patches:
+                    fp_applied = False
+                    for cmd in strategies:
+                        res = subprocess.run(
+                            cmd,
+                            input=fp.encode("utf-8"),
+                            cwd=str(staging_dir),
+                            capture_output=True,
+                        )
+                        if res.returncode == 0:
+                            fp_applied = True
+                            break
+                    if not fp_applied:
+                        all_ok = False
+                        break
+                if all_ok:
+                    applied = True
 
-        if not target_path.is_file():
-            return False, f"target is not an existing regular file: {target_rel}"
-
-        try:
-            orig_text = target_path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            return False, f"target file is not UTF-8: {target_rel}"
-        except OSError:
-            return False, f"target file cannot be read: {target_rel}"
-
-        orig_lines = orig_text.splitlines(keepends=True)
-
-        hunks = []
-        cur_hunk = None
-
-        for line in fpatch[2:]:
-            if line.startswith("@@ "):
-                m = HUNK_HEADER_RE.match(line)
-                if not m:
-                    return False, f"malformed hunk header: {line.strip()}"
-                cur_hunk = {
-                    "old_start": int(m.group(1)),
-                    "old_count": int(m.group(2)) if m.group(2) is not None else 1,
-                    "new_start": int(m.group(3)),
-                    "new_count": int(m.group(4)) if m.group(4) is not None else 1,
-                    "lines": [],
-                }
-                hunks.append(cur_hunk)
-            elif cur_hunk is not None:
-                cur_hunk["lines"].append(line)
-            else:
-                return False, "unexpected content before first hunk"
-
-        if not hunks:
-            return False, "no hunks found in patch"
-
-        new_file_lines: list[str] = []
-        orig_idx = 0
-        old_side_closed = False
-        new_side_closed = False
-
-        for hunk in hunks:
-            old_start = hunk["old_start"]
-            old_count = hunk["old_count"]
-            new_start = hunk["new_start"]
-            new_count = hunk["new_count"]
-            if (old_count > 0 and old_start == 0) or (
-                new_count > 0 and new_start == 0
-            ):
-                return False, "non-empty hunk range must start at line one or later"
-
-            h_start = old_start if old_count == 0 else old_start - 1
-            new_h_start = new_start if new_count == 0 else new_start - 1
-            if h_start < orig_idx:
-                return False, "overlapping or out-of-order hunks"
-            if h_start > len(orig_lines):
-                return False, "hunk starts past end of target file"
-
-            if h_start > orig_idx and (old_side_closed or new_side_closed):
-                return False, "file content follows no-newline terminal record"
-            new_file_lines.extend(orig_lines[orig_idx:h_start])
-            orig_idx = h_start
-            if new_h_start != len(new_file_lines):
-                return False, "new-file hunk position does not match prior hunks"
-            hunk_lines: list[str] = []
-            for hline in hunk["lines"]:
-                if not hline:
-                    return False, "empty line in hunk"
-                if not hline.startswith("\\"):
-                    tag = hline[0]
-                    if tag in " +-":
-                        if old_side_closed and tag in " -":
-                            return False, "old-file record follows no-newline terminal record"
-                        if new_side_closed and tag in " +":
-                            return False, "new-file record follows no-newline terminal record"
-                        if not hline.endswith(("\n", "\r")):
-                            return False, "unmarked hunk record lacks line terminator"
-                    hunk_lines.append(hline)
-                    continue
-                if hline.rstrip("\r\n") != "\\ No newline at end of file":
-                    return False, f"malformed no-newline marker: {hline.strip()}"
-                if not hunk_lines or hunk_lines[-1][0] not in " +-":
-                    return False, "misplaced no-newline marker"
-                previous = hunk_lines[-1]
-                if previous.endswith("\r\n"):
-                    hunk_lines[-1] = previous[:-2]
-                elif previous.endswith(("\n", "\r")):
-                    hunk_lines[-1] = previous[:-1]
-                else:
-                    return False, "duplicate or spurious no-newline marker"
-                previous_tag = previous[0]
-                if previous_tag in " -":
-                    old_side_closed = True
-                if previous_tag in " +":
-                    new_side_closed = True
-
-
-            old_consumed = 0
-            new_emitted = 0
-            for hline in hunk_lines:
-                if not hline:
-                    return False, "empty line in hunk"
-                tag = hline[0]
-                text = hline[1:]
-                if tag == " ":
-                    if orig_idx >= len(orig_lines) or orig_lines[orig_idx] != text:
-                        return False, f"context mismatch at line {orig_idx + 1}"
-                    new_file_lines.append(text)
-                    orig_idx += 1
-                    old_consumed += 1
-                    new_emitted += 1
-                elif tag == "-":
-                    if orig_idx >= len(orig_lines) or orig_lines[orig_idx] != text:
-                        return False, f"deletion mismatch at line {orig_idx + 1}"
-                    orig_idx += 1
-                    old_consumed += 1
-                elif tag == "+":
-                    new_file_lines.append(text)
-                    new_emitted += 1
-                else:
-                    return False, f"unexpected line prefix in hunk: {tag!r}"
-
-            if old_consumed != old_count or new_emitted != new_count:
-                return False, (
-                    "hunk line counts do not match header "
-                    f"(expected -{old_count}/+{new_count}, "
-                    f"observed -{old_consumed}/+{new_emitted})"
+        # 3. Try patch utility if git apply did not succeed
+        if not applied:
+            for p_num in ["1", "0"]:
+                res = subprocess.run(
+                    ["patch", f"-p{p_num}", "--fuzz=0", "--batch", "--silent", "-i", "-"],
+                    input=patch_bytes,
+                    cwd=str(staging_dir),
+                    capture_output=True,
                 )
+                if res.returncode == 0:
+                    applied = True
+                    break
+        if not applied:
+            return False, last_error
 
-        if orig_idx < len(orig_lines) and (old_side_closed or new_side_closed):
-            return False, "file content follows no-newline terminal record"
-        new_file_lines.extend(orig_lines[orig_idx:])
-        staged_changes[target_path] = "".join(new_file_lines)
-
-    # Apply all changes atomically
-    for target_path, content in staged_changes.items():
-        target_path.write_text(content, encoding="utf-8")
-
-    return True, None
-
+        # Atomic cutover to workspace_dir
+        for item in resolved_workspace.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
+        for item in staging_dir.iterdir():
+            if item.is_dir():
+                shutil.copytree(item, resolved_workspace / item.name, symlinks=False)
+            else:
+                shutil.copy2(item, resolved_workspace / item.name)
+        return True, None
 
 def main() -> int:
     workspace_dir = WORKSPACE_ROOT if WORKSPACE_ROOT.is_dir() else Path.cwd() / "workspace"

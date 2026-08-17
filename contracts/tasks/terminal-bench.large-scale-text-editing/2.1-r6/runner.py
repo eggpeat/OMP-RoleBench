@@ -1,33 +1,22 @@
 #!/usr/bin/env python3
-"""Bounded headless-Vim runner for the large-scale text-editing anchor."""
+"""Bounded text-editing runner for multi-file mechanical refactoring."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
-import re
-import subprocess
 import sys
-import tempfile
 from typing import NoReturn
 
-MAX_ARTIFACT_BYTES = 8 * 1024
-MAX_SCRIPT_BYTES = 4 * 1024
-ROWS = 2048
-SCHEMA_VERSION = "rolebench.vim-macro-submission/v1"
-SNAPSHOT_VERSION = "rolebench.vim-macro-runner-snapshot/v1"
-SETREG = re.compile(r"^call setreg\('([abc])',\s*\"((?:[^\"\\]|\\.)*)\"\)$")
-RUN = re.compile(r"^%normal! @([abc])$")
-FORBIDDEN = re.compile(
-    r"(?i)(?:^|[^a-z])(?:system|execute|source|read|write|edit|function|autocmd|terminal|python|perl|ruby|lua|job_start|channel|sockconnect)(?:[^a-z]|$)|:!|`|\x00"
-)
-VIMSCRIPT_FUNCTION_CALL = re.compile(r"(?i)[a-z_][a-z0-9_#]*\s*\(")
-ALLOWED_EX_COMMANDS = frozenset({"s", "sub", "substitute", "sm", "snomagic", "smagic"})
+MAX_ARTIFACT_BYTES = 64 * 1024
+MAX_FILE_BYTES = 32 * 1024
+SCHEMA_VERSION = "rolebench.text-editing-submission/v1"
+SNAPSHOT_VERSION = "rolebench.text-editing-runner-snapshot/v1"
+ALLOWED_TOP_KEYS = frozenset({"schema_version", "modified_files", "files"})
 
 
 class SubmissionError(ValueError):
-    """Malformed or unsafe candidate artifact."""
+    """Malformed or invalid candidate artifact."""
 
 
 def _reject_constant(value: str) -> NoReturn:
@@ -43,148 +32,47 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
-def _decode_vim_string(value: str) -> str:
-    """Decode the safe Vim key notation accepted inside macro strings."""
-    named_keys = {
-        "bslash": "\\",
-        "cr": "\r",
-        "enter": "\r",
-        "esc": "\x1b",
-        "lt": "<",
-        "nl": "\n",
-        "return": "\r",
-        "space": " ",
+def _validate_submission(data: object) -> dict[str, object]:
+    if not isinstance(data, dict):
+        raise SubmissionError("submission must be a JSON object")
+    keys = set(data.keys())
+    if not keys.issubset(ALLOWED_TOP_KEYS) or "schema_version" not in keys:
+        raise SubmissionError("submission contains invalid or missing top-level keys")
+    if data.get("schema_version") != SCHEMA_VERSION:
+        raise SubmissionError(f"schema_version must be {SCHEMA_VERSION!r}")
+
+    files_obj = data.get("modified_files")
+    if files_obj is None and "files" in data:
+        files_obj = data.get("files")
+    if not isinstance(files_obj, dict):
+        raise SubmissionError("modified_files must be an object mapping file paths to file contents")
+
+    normalized_files: dict[str, str] = {}
+    for path_key, content_val in files_obj.items():
+        if not isinstance(path_key, str) or not path_key.strip():
+            raise SubmissionError("file path keys must be non-empty strings")
+        clean_path = path_key.strip().replace("\\", "/")
+        if clean_path.startswith("/") or ".." in clean_path.split("/"):
+            raise SubmissionError(f"invalid relative file path {path_key!r}")
+        if not isinstance(content_val, str):
+            raise SubmissionError(f"file content for {path_key!r} must be a string")
+        if len(content_val.encode("utf-8")) > MAX_FILE_BYTES:
+            raise SubmissionError(f"file content for {path_key!r} exceeds maximum allowed size")
+        normalized_files[clean_path] = content_val
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "modified_files": normalized_files,
     }
-    output: list[str] = []
-    index = 0
-    while index < len(value):
-        if value[index] != "\\":
-            output.append(value[index])
-            index += 1
-            continue
-        if value.startswith("\\<", index):
-            end = value.find(">", index + 2)
-            if end < 0:
-                raise SubmissionError("unterminated Vim key notation")
-            name = value[index + 2 : end]
-            char_match = re.fullmatch(r"(?i)char-([0-9]+)", name)
-            if char_match:
-                codepoint = int(char_match.group(1))
-                if codepoint > 0x10FFFF or 0xD800 <= codepoint <= 0xDFFF:
-                    raise SubmissionError("invalid Vim character code")
-                char = chr(codepoint)
-                if codepoint == 124:
-                    raise SubmissionError("encoded Vim command separators are forbidden")
-                if codepoint < 32 and char not in {"\r", "\t", "\x1b"}:
-                    raise SubmissionError("unsupported Vim control character")
-                output.append(char)
-            elif name.casefold() in named_keys:
-                output.append(named_keys[name.casefold()])
-            else:
-                raise SubmissionError("unsupported Vim key notation")
-            index = end + 1
-            continue
-        if value.startswith("\\\\", index) or value.startswith('\\"', index):
-            output.append(value[index + 1])
-            index += 2
-            continue
-        raise SubmissionError("unsupported escape in macro")
-    return "".join(output)
 
 
-def _validate_script(script: object) -> tuple[str, int]:
-    if not isinstance(script, str):
-        raise SubmissionError("script must be a string")
-    encoded = script.encode("utf-8")
-    if not encoded or len(encoded) > MAX_SCRIPT_BYTES:
-        raise SubmissionError("script must contain 1 to 4096 UTF-8 bytes")
-    if "\r" in script or FORBIDDEN.search(script):
-        raise SubmissionError("script contains a forbidden command or character")
-
-    lines = [line.strip() for line in script.splitlines() if line.strip()]
-    if len(lines) != 7 or lines[-1] != "wq":
-        raise SubmissionError("script must contain three macro definitions, three runs, then wq")
-
-    macros: dict[str, str] = {}
-    runs: list[str] = []
-    for line in lines[:-1]:
-        match = SETREG.fullmatch(line)
-        if match:
-            register, content = match.groups()
-            if register in macros:
-                raise SubmissionError("each macro register must be defined once")
-            decoded = _decode_vim_string(content)
-            if not decoded:
-                raise SubmissionError("macro content must be non-empty")
-            if FORBIDDEN.search(decoded) or "!" in decoded or "|" in decoded:
-                raise SubmissionError("macro contains a forbidden command or character")
-            if VIMSCRIPT_FUNCTION_CALL.search(decoded):
-                raise SubmissionError("Vimscript function calls are forbidden in macros")
-            scan_index = 0
-            while scan_index < len(decoded):
-                colon_pos = decoded.find(":", scan_index)
-                if colon_pos < 0:
-                    break
-                end_pos = len(decoded)
-                for sep in ("\r", "\n", "\x1b"):
-                    sep_pos = decoded.find(sep, colon_pos)
-                    if sep_pos >= 0 and sep_pos < end_pos:
-                        end_pos = sep_pos
-                ex_line = decoded[colon_pos + 1 : end_pos].strip()
-                cmd_match = re.match(r"^[0-9, %$'.+\-\s]*([a-zA-Z_]+|[^a-zA-Z0-9\s])", ex_line)
-                if not cmd_match:
-                    raise SubmissionError("empty or invalid Ex command in macro")
-                cmd = cmd_match.group(1).casefold()
-                if cmd not in ALLOWED_EX_COMMANDS:
-                    raise SubmissionError("forbidden Ex command in macro")
-                scan_index = end_pos + 1
-            macros[register] = decoded
-            continue
-        match = RUN.fullmatch(line)
-        if match:
-            runs.append(match.group(1))
-            continue
-        raise SubmissionError("script contains a command outside the allowlist")
-
-    if set(macros) != {"a", "b", "c"} or runs != ["a", "b", "c"]:
-        raise SubmissionError("registers a, b, and c must each be defined and run in order")
-    if len(set(macros.values())) != 3:
-        raise SubmissionError("macros a, b, and c must be distinct")
-    total = sum(len(value) for value in macros.values())
-    if total >= 200:
-        raise SubmissionError("macro keystroke total must be below 200")
-    return "\n".join(lines) + "\n", total
-
-
-def _row(index: int) -> tuple[str, str]:
-    first = f"item{index:04d}"
-    second = f"group{(index * 17) % 997:03d}"
-    third = f"zone{(index * 29) % 101:03d}"
-    pads = ("", " ", "  ", "   ")
-    raw = (
-        f"{pads[index % 4]}{first}{pads[(index + 1) % 4]},"
-        f"{pads[(index + 2) % 4]}{second}{pads[(index + 3) % 4]},"
-        f"{pads[(index + 1) % 4]}{third}{pads[index % 4]}"
-    )
-    expected = f"{third.upper()};{second.upper()};{first.upper()};OK"
-    return raw, expected
-
-
-def _digest(path: Path) -> str:
-    hasher = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(64 * 1024), b""):
-            hasher.update(chunk)
-    return hasher.hexdigest()
-
-
-def _snapshot(*, status: str, error: str | None, metrics: dict[str, object] | None) -> str:
+def _snapshot(*, status: str, error: str | None, submission: object) -> str:
     return json.dumps(
         {
             "schema_version": SNAPSHOT_VERSION,
             "status": status,
             "error": error,
-            "metrics": metrics,
+            "submission": submission,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -194,77 +82,28 @@ def _snapshot(*, status: str, error: str | None, metrics: dict[str, object] | No
 def main() -> int:
     payload = sys.stdin.buffer.read(MAX_ARTIFACT_BYTES + 1)
     if len(payload) > MAX_ARTIFACT_BYTES:
-        sys.stdout.write(_snapshot(status="rejected", error="artifact exceeds 8 KiB", metrics=None))
+        sys.stdout.write(
+            _snapshot(status="rejected", error="artifact exceeds 64 KiB", submission=None)
+        )
         return 0
+
     try:
+        raw_text = payload.decode("utf-8")
         parsed = json.loads(
-            payload.decode("utf-8"),
+            raw_text,
             object_pairs_hook=_unique_object,
             parse_constant=_reject_constant,
         )
-        if not isinstance(parsed, dict) or set(parsed) != {"schema_version", "script"}:
-            raise SubmissionError("submission must contain exactly schema_version and script")
-        if parsed.get("schema_version") != SCHEMA_VERSION:
-            raise SubmissionError("unsupported submission schema")
-        script, total = _validate_script(parsed.get("script"))
-    except (UnicodeDecodeError, json.JSONDecodeError, SubmissionError, TypeError, RecursionError) as error:
-        sys.stdout.write(_snapshot(status="rejected", error=str(error), metrics=None))
+        validated = _validate_submission(parsed)
+    except (UnicodeDecodeError, json.JSONDecodeError, SubmissionError, TypeError) as exc:
+        sys.stdout.write(
+            _snapshot(status="rejected", error=str(exc), submission=None)
+        )
         return 0
 
-    try:
-        work = Path("/workspace")
-        rows = [_row(index) for index in range(ROWS)]
-        source = work / "input.csv"
-        source.write_text(
-            "\n".join(raw for raw, _expected in rows) + "\n",
-            encoding="utf-8",
-        )
-        expected_digest = hashlib.sha256(
-            ("\n".join(expected for _raw, expected in rows) + "\n").encode("utf-8")
-        ).hexdigest()
-        script_path = work / "script.vim"
-        script_path.write_text(script + "\n", encoding="utf-8")
-
-        result = subprocess.run(
-            [
-                "/usr/bin/vim",
-                "-Z",
-                "-Nu",
-                "NONE",
-                "-n",
-                "-es",
-                "-S",
-                str(script_path),
-                str(source),
-            ],
-            cwd=work,
-            env={
-                "HOME": str(work),
-                "LANG": "C.UTF-8",
-                "PATH": "/usr/bin",
-                "SHELL": "/bin/false",
-            },
-            check=False,
-            capture_output=True,
-            timeout=30,
-        )
-        output_digest = _digest(source)
-        metrics = {
-            "distinct_macros": True,
-            "macro_keystrokes": total,
-            "rows": ROWS,
-            "vim_exit_code": result.returncode,
-            "output_sha256": output_digest,
-            "expected_sha256": expected_digest,
-            "transformation_matches": (
-                result.returncode == 0 and output_digest == expected_digest
-            ),
-        }
-    except (OSError, subprocess.SubprocessError, UnicodeError) as error:
-        sys.stdout.write(_snapshot(status="rejected", error=f"Vim execution failed: {error}", metrics=None))
-        return 0
-
-    sys.stdout.write(_snapshot(status="executed", error=None, metrics=metrics))
+    sys.stdout.write(
+        _snapshot(status="executed", error=None, submission=validated)
+    )
     return 0
 
 

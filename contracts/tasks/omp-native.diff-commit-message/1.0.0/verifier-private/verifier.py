@@ -38,9 +38,9 @@ DELETION_WORD = r"\bdelet(?:e|es|ed|ing|ion|ions)\b"
 L1_INVALIDATION = (
     rf"(?:"
     rf"{INVALIDATION_WORD}\s+(?:the\s+)?\bl1\b"
-    rf"(?:\s+(?:cache(?:\s+entry)?|entry))?"
+    rf"(?:\s+(?:cache(?:\s+(?:entry|entries))?|entry|entries))?"
     rf"|"
-    rf"\bl1\b(?:\s+(?:cache(?:\s+entry)?|entry))?"
+    rf"\bl1\b(?:\s+(?:cache(?:\s+(?:entry|entries))?|entry|entries))?"
     rf"\s+{INVALIDATION_WORD}"
     rf")"
 )
@@ -48,13 +48,13 @@ BACKING_STORE = r"\bbacking(?:[\s-]+)store\b"
 BACKING_STORE_DELETION = (
     rf"(?:"
     rf"{DELETION_WORD}\s+"
-    rf"(?:(?:the\s+)?(?:(?:cache\s+)?(?:entry|item|record|value)|cache)"
+    rf"(?:(?:the\s+)?(?:(?:cache\s+)?(?:entry|entries|item|items|record|records|value|values)|cache)"
     rf"\s+(?:from|of)\s+)?"
     rf"(?:(?:from|of)\s+)?(?:the\s+)?{BACKING_STORE}"
-    rf"(?:\s+(?:entry|item|record|value))?"
+    rf"(?:\s+(?:entry|entries|item|items|record|records|value|values))?"
     rf"|"
     rf"{BACKING_STORE}"
-    rf"(?:\s+(?:(?:cache\s+)?(?:entry|item|record|value)|cache))?"
+    rf"(?:\s+(?:(?:cache\s+)?(?:entry|entries|item|items|record|records|value|values)|cache))?"
     rf"\s+{DELETION_WORD}"
     rf")"
 )
@@ -189,14 +189,10 @@ def _states_invalidation_before_deletion(
         normalized is not None
         and (
             not require_imperative
-            or (
-                text == text.casefold()
-                and re.match(r"(?:delete|invalidate)\b", normalized) is not None
-            )
+            or re.match(r"(?:delete|invalidate)\b", normalized) is not None
         )
         and ORDERED_CLAIM.fullmatch(normalized) is not None
     )
-
 
 def _states_outcome_recording(text: str) -> bool:
     normalized = _normalize_claim(text, require_period=True)
@@ -228,6 +224,26 @@ def _emit_result(
     sys.stdout.write(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
     return 0
 
+def _evidence_range_overlaps(citation: object, start: int, end: int) -> bool:
+    if not isinstance(citation, str):
+        return False
+    m = re.fullmatch(r"change\.patch:([1-9][0-9]*)-([1-9][0-9]*)", citation)
+    if not m:
+        return False
+    c_start, c_end = int(m.group(1)), int(m.group(2))
+    if c_start > c_end:
+        return False
+    return max(c_start, start) <= min(c_end, end)
+
+
+def _valid_evidence(evidence: object) -> bool:
+    if not isinstance(evidence, list) or len(evidence) != 2:
+        return False
+    return (
+        _evidence_range_overlaps(evidence[0], 6, 9)
+        and _evidence_range_overlaps(evidence[1], 9, 12)
+    )
+
 
 def _valid_submission(submission: object) -> bool:
     if not isinstance(submission, dict):
@@ -248,8 +264,7 @@ def _valid_submission(submission: object) -> bool:
         or submission.get("schema_version") != "rolebench.commit-message/v1"
         or submission.get("type") != "fix"
         or submission.get("scope") != "cache"
-        or submission.get("evidence")
-        != ["change.patch:8-9", "change.patch:10-11"]
+        or not _valid_evidence(submission.get("evidence"))
         or submission.get("breaking") is not False
         or not isinstance(subject, str)
         or not isinstance(body, list)

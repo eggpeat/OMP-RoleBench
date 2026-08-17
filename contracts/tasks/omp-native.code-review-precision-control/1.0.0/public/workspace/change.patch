@@ -3,13 +3,16 @@ new file mode 100644
 index 0000000..4444444
 --- /dev/null
 +++ b/src/ring_buffer.py
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,116 @@
 +from __future__ import annotations
++
 +import threading
-+from typing import Generic, Optional, TypeVar
++import time
++from typing import Callable, Generic, Optional, TypeVar
 +import warnings
 +
 +T = TypeVar("T")
++
 +
 +class ConcurrentRingBuffer(Generic[T]):
 +    """Thread-safe bounded circular buffer with reentrant locking."""
@@ -33,20 +36,79 @@ index 0000000..4444444
 +            self._size += 1
 +            return True
 +
++    def try_push(self, item: T, retries: int = 3) -> bool:
++        """Attempt non-blocking push with exponential backoff retry loop."""
++        for attempt in range(retries):
++            # Non-blocking lock acquisition retry loop to avoid thread suspension under light contention
++            if self._lock.acquire(blocking=False):
++                try:
++                    if self._size == self._capacity:
++                        return False
++                    self._buffer[self._tail] = item
++                    self._tail = (self._tail + 1) % self._capacity
++                    self._size += 1
++                    return True
++                finally:
++                    self._lock.release()
++            time.sleep(0.001 * (2 ** attempt))
++        return False
++
 +    def pop(self) -> Optional[T]:
 +        with self._lock:
 +            if self._size == 0:
 +                return None
 +            item = self._buffer[self._head]
-+            self._buffer[self._head] = None
++            self._buffer[self._head] = None  # Clear reference to allow prompt garbage collection
 +            self._head = (self._head + 1) % self._capacity
 +            self._size -= 1
 +            return item
++
++    def drain(self, max_items: Optional[int] = None) -> list[T]:
++        """Drain items from buffer; uses double-checked pattern for empty fast-path."""
++        # Double-checked locking fast-path: unsynchronized pre-check avoids mutex overhead on idle queues; safe because locked section re-verifies
++        if self._size == 0:
++            return []
++        with self._lock:
++            if self._size == 0:
++                return []
++            limit = self._size if max_items is None else min(max_items, self._size)
++            drained: list[T] = []
++            for _ in range(limit):
++                item = self._buffer[self._head]
++                self._buffer[self._head] = None
++                self._head = (self._head + 1) % self._capacity
++                self._size -= 1
++                if item is not None:
++                    drained.append(item)
++            return drained
++
++    def clear(self, on_evict: Optional[Callable[[T], None]] = None) -> int:
++        """Clear all items and invoke eviction callback safely."""
++        with self._lock:
++            count = 0
++            while self._size > 0:
++                item = self._buffer[self._head]
++                self._buffer[self._head] = None
++                self._head = (self._head + 1) % self._capacity
++                self._size -= 1
++                count += 1
++                if on_evict is not None and item is not None:
++                    try:
++                        on_evict(item)
++                    except Exception:
++                        # Intentional broad except: callback errors must not interrupt buffer cleanup or leave mutex locked
++                        pass
++            return count
 +
 +    @property
 +    def size(self) -> int:
 +        with self._lock:
 +            return self._size
++
++    @property
++    def capacity(self) -> int:
++        return self._capacity
++
 +
 +class LegacyBuffer(ConcurrentRingBuffer[T]):
 +    """Deprecated alias for backwards compatibility."""

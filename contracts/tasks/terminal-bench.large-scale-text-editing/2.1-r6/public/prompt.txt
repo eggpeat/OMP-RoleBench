@@ -1,14 +1,44 @@
-Create a headless Vim script that transforms a large CSV efficiently.
+Perform a multi-file mechanical refactoring across the codebase in `src/` to migrate from the deprecated `legacy_telemetry` module to `core.telemetry`.
 
-Each input row has three comma-separated fields with irregular spaces. Your script must:
-1. remove leading/trailing whitespace from each field,
-2. reverse field order,
-3. uppercase all letters,
-4. replace commas with semicolons, and
-5. append `;OK`.
+Migrate all occurrences in the workspace according to these rules:
 
-The script must define three distinct, non-empty macros in registers `a`, `b`, and `c`; use each macro across the whole file; and use fewer than 200 total macro keystrokes. Only `call setreg(...)`, `%normal! @a`, `%normal! @b`, `%normal! @c`, and `wq` commands are allowed. Vimscript functions, shell escapes, external commands, file reads, and scripting-language integration are forbidden.
+1. Import Migration:
+   - Replace any import of `log_event` and/or `record_metric` from `legacy_telemetry` with corresponding imports of `emit_event` and `record_stat` from `core.telemetry`.
+     - `from legacy_telemetry import log_event` -> `from core.telemetry import emit_event`
+     - `from legacy_telemetry import record_metric` -> `from core.telemetry import record_stat`
+     - `from legacy_telemetry import log_event, record_metric` -> `from core.telemetry import emit_event, record_stat` (or `record_stat, emit_event` matching existing import order)
+     - `import legacy_telemetry` -> `import core.telemetry as telemetry`
 
-Return exactly one UTF-8 JSON object and no markdown or commentary:
+2. Function Call Migration & Argument Normalization:
+   - Standalone `log_event(...)` calls become `emit_event(...)`:
+     - Positional call `log_event(event_name, payload)` -> `emit_event(event_name, data=payload)`
+     - Positional call with priority `log_event(event_name, payload, priority)` -> `emit_event(event_name, data=payload, level=priority.lower())`
+     - Keyword `payload=...` becomes `data=...`
+     - Keyword `priority=...` becomes `level=...` (with priority string values lowercased, e.g. `"HIGH"` -> `"high"`, `"NORMAL"` -> `"normal"`, `"LOW"` -> `"low"`)
+   - Standalone `record_metric(...)` calls become `record_stat(...)`:
+     - Keyword `value=...` becomes `count=...`
+     - Positional call `record_metric(metric_name, value)` -> `record_stat(metric_name, count=value)`
+     - Positional call `record_metric(metric_name, value, unit, tags)` -> `record_stat(metric_name, count=value, unit=unit, tags=tags)`
+     - Preserve other keyword arguments (`unit`, `tags`) unchanged.
+   - Module-qualified calls:
+     - `legacy_telemetry.log_event(...)` becomes `telemetry.emit_event(...)` following the same argument rules.
+     - `legacy_telemetry.record_metric(...)` becomes `telemetry.record_stat(...)` following the same argument rules.
 
-{"schema_version":"rolebench.vim-macro-submission/v1","script":"<complete Vim script>"}
+3. Precision & Negative Constraints:
+   - Do NOT modify method calls on objects or classes (e.g. `audit_logger.log_event(...)`, `self.dispatcher.log_event(...)`, `payment_gateway.record_metric(...)`, `metrics_collector.record_metric(...)`, `status_monitor.log_event(...)`).
+   - Do NOT modify docstrings, comments, or string literals containing "log_event" or "record_metric" that are not function calls.
+   - Do NOT modify unrelated telemetry functions (such as `record_gauge(...)`).
+   - Do NOT modify `src/health.py` or any file that requires no changes.
+   - Do NOT make unnecessary formatting or collateral changes to untouched lines.
+
+Return exactly one UTF-8 JSON object (no Markdown, no extra text):
+
+{
+  "schema_version": "rolebench.text-editing-submission/v1",
+  "modified_files": {
+    "src/auth.py": "<full transformed content of src/auth.py>",
+    "src/billing.py": "<full transformed content of src/billing.py>",
+    "src/notifications.py": "<full transformed content of src/notifications.py>",
+    "src/orders.py": "<full transformed content of src/orders.py>"
+  }
+}

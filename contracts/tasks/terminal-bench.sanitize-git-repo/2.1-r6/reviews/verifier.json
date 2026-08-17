@@ -1,1 +1,59 @@
-{"checks":{"baseline_rejected":"pass","determinism":"pass","evidence_bindings":"pass","external_provider_calls_zero":"pass","passive_verifier":"pass","reference_accepted":"pass","reward_mapping":"pass","tamper_rejected":"pass","traversal_rejected":"pass"},"decision":"approved","findings":[],"remediation":[{"finding":"Generated reference and tamper probes lacked executable shebangs.","resolution":"Restored shebangs, rebuilt images, and reran exact evidence."},{"finding":"Unified-diff hunk header counts and new-file positions were not enforced.","resolution":"Added strict old/new count and new-position validation, rebuilt the runner image, and reran exact evidence."},{"finding":"No-newline markers were syntax-checked but ignored when comparing and applying hunk records.","resolution":"Bound markers to the immediately preceding record, enforced placement, removed the marked line terminator, rebuilt the runner image, and reran exact evidence."},{"finding":"Patch headers and paths admitted ambiguous or resource-amplifying forms.","resolution":"Required matching normalized existing-file paths, rejected creation, deletion, duplicate targets, pre-hunk content, invalid path bounds, and oversized hunk coordinates, then rebuilt the runner image and reran exact evidence."},{"finding":"Standard Git-generated patches include diff and index preambles that were rejected before the file headers.","resolution":"Accepted a strict text-diff preamble subset, bound its paths to the file headers, rebuilt the runner image, and reran exact evidence."}],"report_digests_sha256":["2b6c7ef7546929c616646b48dc5df8a4b534e633646852809b82a0852385a9ce","9f98f936d0b1c3fb4cf4b4cdcb86c440f124040eb76d7266352b3c202c7825a9","4d0511ec2ec4f8e9527e2e5e8245bbc918bfc1ef27b88b5705fae1a688ee2d81","108e60cd23531f8a41cf6d49c34481aeeb7bf70819fbfe2338be44199df9005a","356c971edec68dca5ce51c2421b208aa0e55f94a08b85b6b7034c3d4e5225c57","d83b2e99654639c7633e0ea8e808bd13f52994a5163de49c8918d57bd5a41479"],"review_type":"verifier","reviewed_at":"2026-08-15T00:45:58Z","reviewer":"rolebench/reviewer/verifier-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"8ec5ca848187328046ed9c0617092fdb3c6ece7c16cff88555d655487551f389","runner_config_digest_sha256":"f29ff2f73ce2e0fe15c262c4a65b3b0830cdd14b37b240ef32954e531e8e6662","runner_image":"rolebench.local/sanitize-default-runner@sha256:53247443b9ae20a0d76334a285e3a85e1e34ada1077bf996ffc6c1916750b054","verifier_config_digest_sha256":"5348735f1423d7f48972a765d3d3c45b58a41f40fc59caba4c065f027568d289","verifier_image":"rolebench.local/sanitize-default-verifier@sha256:08f44e93798433f5eb0acf61c566c9af8c9806f7d73b3d6d150d2242b397fe00","verifier_private_tree_digest_sha256":"bba4905d65622fbd093b035f1d171c113250f35a5bd8f646dcbb8e13a37cefa1"},"task_id":"terminal-bench.sanitize-git-repo","task_version":"2.1-r6"}
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "tamper_rejected": "pass",
+    "traversal_rejected": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Generated reference and tamper probes lacked executable shebangs.",
+      "resolution": "Restored shebangs, rebuilt images, and reran exact evidence."
+    },
+    {
+      "finding": "Unified-diff hunk header counts and new-file positions were not enforced.",
+      "resolution": "Added strict old/new count and new-position validation, rebuilt the runner image, and reran exact evidence."
+    },
+    {
+      "finding": "No-newline markers were syntax-checked but ignored when comparing and applying hunk records.",
+      "resolution": "Bound markers to the immediately preceding record, enforced placement, removed the marked line terminator, rebuilt the runner image, and reran exact evidence."
+    },
+    {
+      "finding": "Patch headers and paths admitted ambiguous or resource-amplifying forms.",
+      "resolution": "Required matching normalized existing-file paths, rejected creation, deletion, duplicate targets, pre-hunk content, invalid path bounds, and oversized hunk coordinates, then rebuilt the runner image and reran exact evidence."
+    },
+    {
+      "finding": "Standard Git-generated patches include diff and index preambles that were rejected before the file headers.",
+      "resolution": "Accepted a strict text-diff preamble subset, bound its paths to the file headers, rebuilt the runner image, and reran exact evidence."
+    }
+  ],
+  "report_digests_sha256": [
+    "87a0e380051ab54563c7ac7bd126dcbe9b96010c8c99aa02202fb24a9ee330b7",
+    "acfa28975907a23f0c7d588bdda3ba5905d22fc871adc46bd1ee6a8ffff29a22",
+    "635f3f024e8a429ffb2bb333e736c0754de4a0313b83e179e88365c08f05b38b",
+    "6635f1e080a215c39fe5315d6b4985f99de8e6e93ea81f0d977f96dbae13eda5",
+    "c3084fdd031cc91e65f09a3710a64f36eeba004d4b4e1b655f3cdc0c0e86267a",
+    "31004eef034891bce7fa14ca1808d1e8d809a116fb3b6fface8c81e21142e742"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-15T00:45:58Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "5101e9f9a6fe4f72d2b17878019ae7c6895fd75474a3a789c998babbbc64ea93",
+    "runner_config_digest_sha256": "4976c2bd931f1a2d4cf892f3dba97ecfb60441c86ee76abefbccbda75597e529",
+    "runner_image": "rolebench.local/sanitize-default-runner@sha256:a40c65dfe5bca0cb735dda34eacb422d30ca3c7bb66d16fcf97bedd29a2c63b6",
+    "verifier_config_digest_sha256": "6a9e43f225470cdf2e18113079ee21af2d2cc44f3cac9e88a208d49b63470043",
+    "verifier_image": "rolebench.local/sanitize-default-verifier@sha256:534b033e864481087312a71515359d0dbbe35bc7eddc4ce64b57e7adc6778947",
+    "verifier_private_tree_digest_sha256": "0f7be27cd2b87746e993eb539318f26aedd22705fbf11b025dfdb54ae7e08c4c"
+  },
+  "task_id": "terminal-bench.sanitize-git-repo",
+  "task_version": "2.1-r6"
+}

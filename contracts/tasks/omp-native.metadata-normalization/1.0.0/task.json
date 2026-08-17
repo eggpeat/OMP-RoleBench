@@ -1,1 +1,227 @@
-{"admission_agents":{"baseline":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","config_digest_sha256":"29eac34f5e4f927458e41ec41b14ae8331187561e3fc78689010e1f406f5e5e9","image":"rolebench.local/metadata-normalization-tiny-baseline@sha256:9282fd2eb2f27def721f6e9050757295c2c171618fb90b8356edfc056f35d26b","platform":{"architecture":"amd64","os":"linux","variant":null}},"reference":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","config_digest_sha256":"1fc26e4aa996a3165b2e7224e0486864457445e316703dff5980fd18a1def0c5","image":"rolebench.local/metadata-normalization-tiny-reference@sha256:3a03607d0e9983a8dcd79906ea9502ef07569ac041bc8b5920d9ad4530eff481","platform":{"architecture":"amd64","os":"linux","variant":null}},"tamper":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","config_digest_sha256":"8986815482739fac049ed3250f9b24a41228553b776bd24528b86cd16a6d056e","image":"rolebench.local/metadata-normalization-tiny-tamper@sha256:6fbfe2c84dc6797044801029a4c1f155571a7e93f168ba8f0083ee96b2f6956e","platform":{"architecture":"amd64","os":"linux","variant":null}}},"agent":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","config_digest_sha256":"26d89d1b4be7f99e2337a92242e47c2ac8e9b1511388dff49661a05aac7c4327","image":"rolebench.local/metadata-normalization-tiny-candidate@sha256:c5ac63742712c3f5ddf5e7e653480829b493c0ab50050fd204bfc2d6ce54077c","platform":{"architecture":"amd64","os":"linux","variant":null}},"assets":{"public":{"digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","prompt":{"digest_sha256":"ab9698988d9b084265302b65e7da8927958c51e0df73d1b836751789aa555de2","kind":"file","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/public/prompt.txt"},"root":"contracts/tasks/omp-native.metadata-normalization/1.0.0/public","workspace":{"digest_sha256":"49d23ebdcb29148dd9a7edf08e48940249c1d6cb9e626b8a556f6ba8c35b25c6","kind":"tree","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/public/workspace"}},"verifier_private":{"digest_sha256":"5b3bd527c12e87bf7246d16da916aa370e425543e75416919f62089e0e18c6d5","root":"contracts/tasks/omp-native.metadata-normalization/1.0.0/verifier-private","verifier":{"digest_sha256":"775bc96b9b17215a8e4ce0a9e70b2b15c616689046b57154e104d843f37ca21a","kind":"file","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/verifier-private/verifier.py"}}},"authorship":{"author":"rolebench/curator/metadata-normalization-tiny-v1"},"capability_tags":["structured-output","exact-format-following","metadata-transformation","classification","minimal-output"],"content_digest_sha256":"9eb688128b75119424c18e5490e08fe0082d885817be423ac62997b61bb30e9f","difficulty":"easy","family":{"family_id":"omp-native.metadata-normalization","variant_id":"1.0.0-metadata-normalization-tiny-v1"},"license":{"expression":"MIT","redistribution":"permitted"},"objective":{"criteria":["Parse the supplied routing header fixture without external state.","Normalize run ID, outcome, role, retryability, and latency bucket exactly as specified.","Lowercase labels, remove duplicates, and preserve first-occurrence order.","Preserve the required key order in the strict output schema.","Return exactly one compact UTF-8 JSON object with no surrounding text."],"mode":"exact-match-check","observation":{"artifact_kind":"executable","authority":"source-separated-service","runner_output_trust":"untrusted"},"scoring":"binary"},"partition":"anchor","policy":{"digest_sha256":"dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70","path":"contracts/scored-worker-policy-v2.json"},"reviews":{"license":{"decision":"approved","evidence_digest_sha256":"fd1c38503a08ad2f2fec43d2a0a93321232cb1475bf7468409c0c5a06291d947","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/license.json","expression":"MIT","redistribution":"permitted","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/license-gate-v1"},"privacy":{"decision":"approved","evidence_digest_sha256":"b425f9fb7e526425954039a39015d4d3cb533ffafcd02e072ab6cb95a6308197","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/privacy.json","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/privacy-gate-v1"},"split":{"assignment_method":"author-assigned","confidentiality":"public","decision":"approved","evidence_digest_sha256":"c7e945aa52f8d068b4b2d99df375090b74c531a9b9a9b92c0415550634d32171","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/split.json","family_id":"omp-native.metadata-normalization","partition":"anchor","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/role-fit-gate-v1"},"verifier":{"decision":"approved","evidence_digest_sha256":"7e8592c529bc26dacadff7f4fe803a20375491744793403978eeed3bcb3ad0dd","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/verifier.json","private_tree_digest_sha256":"5b3bd527c12e87bf7246d16da916aa370e425543e75416919f62089e0e18c6d5","reviewed_at":"2026-08-15T20:19:16Z","reviewer":"rolebench/reviewer/verifier-gate-v1","runner_config_digest_sha256":"abe30578a642628936d04a3199e36e0df54a47691fe5d91dfe3b681610abfbda","runner_image":"rolebench.local/metadata-normalization-tiny-runner@sha256:3203ba71cf1d1017e323ff8e0144f7c85a36bf38ba701b9fa840988d7fe74449","runner_platform":{"architecture":"amd64","os":"linux","variant":null},"verifier_config_digest_sha256":"b48ef0078cd378789f93e28895a7cca89f2e994f900bcb9742aa12825b8280e8","verifier_image":"rolebench.local/metadata-normalization-tiny-verifier@sha256:2b9249c40e0f657bee9636b306780407a8ade8c7dad2583f771af06ba8d547b1","verifier_platform":{"architecture":"amd64","os":"linux","variant":null}}},"role":"tiny","role_contract":{"contract_id":"role-contract/tiny/v1","digest_sha256":"1dc4d1f96cb93e7bab22f3334e1310dd3ab8acfeba98466a2c1523b3d6426941"},"routing_eligible":false,"runner":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","config_digest_sha256":"abe30578a642628936d04a3199e36e0df54a47691fe5d91dfe3b681610abfbda","image":"rolebench.local/metadata-normalization-tiny-runner@sha256:3203ba71cf1d1017e323ff8e0144f7c85a36bf38ba701b9fa840988d7fe74449","platform":{"architecture":"amd64","os":"linux","variant":null}},"schema_version":"omp.diagnostic-task/v2","source":{"digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","kind":"authored","version":"omp-native/metadata-normalization@1"},"split":{"assignment_method":"author-assigned","author_id":"rolebench/curator/metadata-normalization-tiny-v1","confidentiality":"public","provenance_digest_sha256":"c7e945aa52f8d068b4b2d99df375090b74c531a9b9a9b92c0415550634d32171","reviewer_id":"rolebench/reviewer/role-fit-gate-v1"},"task_id":"omp-native.metadata-normalization","task_mix":"tiny-v1","task_version":"1.0.0","unscored_failures":["infrastructure","provider","runner","verifier"],"verifier":{"argv":["--rolebench-run"],"asset_tree_digest_sha256":"5b3bd527c12e87bf7246d16da916aa370e425543e75416919f62089e0e18c6d5","config_digest_sha256":"b48ef0078cd378789f93e28895a7cca89f2e994f900bcb9742aa12825b8280e8","image":"rolebench.local/metadata-normalization-tiny-verifier@sha256:2b9249c40e0f657bee9636b306780407a8ade8c7dad2583f771af06ba8d547b1","platform":{"architecture":"amd64","os":"linux","variant":null}}}
+{
+  "admission_agents": {
+    "baseline": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+      "config_digest_sha256": "69efbc884ad9c479474460857c8ffd11b61030b49f970e6e476a8cb8da553079",
+      "image": "rolebench.local/metadata-normalization-tiny-baseline@sha256:687fcba2b377574712607110c3587466fc9139b4657d1054bf0782303f064146",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "reference": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+      "config_digest_sha256": "f15217962161b22c0b17dc76e00265c43749ea0bb6fbadd62cd6c6fe8a267bdf",
+      "image": "rolebench.local/metadata-normalization-tiny-reference@sha256:7ca865b60063bfbc5761b0c1478536e46e442ad00ac44bcd0b908752b0d148bb",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    },
+    "tamper": {
+      "argv": [
+        "--rolebench-run"
+      ],
+      "asset_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+      "config_digest_sha256": "f1d83bb10c1900235683dd888d4bb0cf52ca4789b4e72cc6b56a92ecfe31bd7c",
+      "image": "rolebench.local/metadata-normalization-tiny-tamper@sha256:3697d77d4d7b3559dc99520def621f37966f5fe9f5bdec2584dabe8f8ee3ba51",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "agent": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+    "config_digest_sha256": "23150f989129fb8e77001beee179581260057d140e6399d68a6c2215f2e94f46",
+    "image": "rolebench.local/metadata-normalization-tiny-candidate@sha256:5f10bd5058fe058eff5fabba0996e2f20e7ea3abd49f8dc82e78a77d1fc23378",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "assets": {
+    "public": {
+      "digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+      "prompt": {
+        "digest_sha256": "ad4a670594e263d5eee3685015651caef563d84d6ad0b2410932344a86efe9a9",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/public/prompt.txt"
+      },
+      "root": "contracts/tasks/omp-native.metadata-normalization/1.0.0/public",
+      "workspace": {
+        "digest_sha256": "2703feee5350a6bf2b2eedd1c25ed5f0b6c80854c40f922b3aaf0ba0a1a3081b",
+        "kind": "tree",
+        "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/public/workspace"
+      }
+    },
+    "verifier_private": {
+      "digest_sha256": "2f92b983a8cfd0fdf0ad08aadd4ee654f348fe32c923d749d1ffe6a999a05b43",
+      "root": "contracts/tasks/omp-native.metadata-normalization/1.0.0/verifier-private",
+      "verifier": {
+        "digest_sha256": "8e62b209a061247ff96919430576771e4c0721163bf1d5f2aea93b792873b3af",
+        "kind": "file",
+        "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/verifier-private/verifier.py"
+      }
+    }
+  },
+  "authorship": {
+    "author": "rolebench/curator/metadata-normalization-tiny-v1"
+  },
+  "capability_tags": [
+    "structured-output",
+    "exact-format-following",
+    "metadata-transformation",
+    "classification",
+    "minimal-output"
+  ],
+  "content_digest_sha256": "e7f32b36c9be2ea5d44068cca4b9a6f449fecf12b15bea7f49f6d3050b4eccc7",
+  "difficulty": "easy",
+  "family": {
+    "family_id": "omp-native.metadata-normalization",
+    "variant_id": "1.0.0-metadata-normalization-tiny-v1"
+  },
+  "license": {
+    "expression": "MIT",
+    "redistribution": "permitted"
+  },
+  "objective": {
+    "criteria": [
+      "Parse the supplied routing header fixture without external state.",
+      "Normalize run ID, outcome, role, retryability, and latency bucket exactly as specified.",
+      "Lowercase labels, remove duplicates, and preserve first-occurrence order.",
+      "Preserve the required key order in the strict output schema.",
+      "Return exactly one compact UTF-8 JSON object with no surrounding text."
+    ],
+    "mode": "exact-match-check",
+    "observation": {
+      "artifact_kind": "executable",
+      "authority": "source-separated-service",
+      "runner_output_trust": "untrusted"
+    },
+    "scoring": "binary"
+  },
+  "partition": "anchor",
+  "policy": {
+    "digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
+    "path": "contracts/scored-worker-policy-v2.json"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "a5cf0215ab451d3f4f0f130d6e6f382a6635d96fb47da0fa745df50cef2aa929",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-15T18:30:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "cbecc815a81e5e3b001741101bad968001150193e676caec7dfb3dadab4a0ffe",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-15T18:30:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "c7e945aa52f8d068b4b2d99df375090b74c531a9b9a9b92c0415550634d32171",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/split.json",
+      "family_id": "omp-native.metadata-normalization",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-15T18:30:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "12ae1897afc5b665337247b2f9e2a85be7d896697a53a1428e6cb37b0c288bba",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "2f92b983a8cfd0fdf0ad08aadd4ee654f348fe32c923d749d1ffe6a999a05b43",
+      "reviewed_at": "2026-08-15T20:19:16Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "745925347c03b63a6cca7f2dc20ce9f2eb21a7fe60c9cf0417c78f9a0b7181f1",
+      "runner_image": "rolebench.local/metadata-normalization-tiny-runner@sha256:ef35c984295b7e20fda20cc219fc3ebd9dba51c4af26a11241d580f00018f778",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "c63dc3fab93f700b70271821d761b38c0bf1418d4ef90caf88266606e7a13702",
+      "verifier_image": "rolebench.local/metadata-normalization-tiny-verifier@sha256:8f7b5fde9a8ad5f0a03919a053e2564af914dcd464509ce6b835cd947d04bd00",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "role": "tiny",
+  "role_contract": {
+    "contract_id": "role-contract/tiny/v1",
+    "digest_sha256": "1dc4d1f96cb93e7bab22f3334e1310dd3ab8acfeba98466a2c1523b3d6426941"
+  },
+  "routing_eligible": false,
+  "runner": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+    "config_digest_sha256": "745925347c03b63a6cca7f2dc20ce9f2eb21a7fe60c9cf0417c78f9a0b7181f1",
+    "image": "rolebench.local/metadata-normalization-tiny-runner@sha256:ef35c984295b7e20fda20cc219fc3ebd9dba51c4af26a11241d580f00018f778",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "schema_version": "omp.diagnostic-task/v2",
+  "source": {
+    "digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+    "kind": "authored",
+    "version": "omp-native/metadata-normalization@1"
+  },
+  "split": {
+    "assignment_method": "author-assigned",
+    "author_id": "rolebench/curator/metadata-normalization-tiny-v1",
+    "confidentiality": "public",
+    "provenance_digest_sha256": "c7e945aa52f8d068b4b2d99df375090b74c531a9b9a9b92c0415550634d32171",
+    "reviewer_id": "rolebench/reviewer/role-fit-gate-v1"
+  },
+  "task_id": "omp-native.metadata-normalization",
+  "task_mix": "tiny-v1",
+  "task_version": "1.0.0",
+  "unscored_failures": [
+    "infrastructure",
+    "provider",
+    "runner",
+    "verifier"
+  ],
+  "verifier": {
+    "argv": [
+      "--rolebench-run"
+    ],
+    "asset_tree_digest_sha256": "2f92b983a8cfd0fdf0ad08aadd4ee654f348fe32c923d749d1ffe6a999a05b43",
+    "config_digest_sha256": "c63dc3fab93f700b70271821d761b38c0bf1418d4ef90caf88266606e7a13702",
+    "image": "rolebench.local/metadata-normalization-tiny-verifier@sha256:8f7b5fde9a8ad5f0a03919a053e2564af914dcd464509ce6b835cd947d04bd00",
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  }
+}

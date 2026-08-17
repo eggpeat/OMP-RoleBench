@@ -2,21 +2,21 @@
   "entries": [
     {
       "qualification": {
-        "digest_sha256": "ec0e5ba4254b318c503e3a8e80809b1d20296ae46dface6ccad7c55bb5b50f16",
+        "digest_sha256": "8f0a2de575dfd750d282e0580ae4c5f04b571799a3508ecb06ad99897ec9dfba",
         "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/qualification.json"
       },
       "task": {
-        "digest_sha256": "d6ace492bac98a02604bd6181577565ea167176b45bac449891cecf8b296ca3f",
+        "digest_sha256": "87b0073cf11ca33cfa7101e520e4e1a961c6572efc121877a155ce5563429a3e",
         "path": "contracts/tasks/omp-native.code-review-defect-recall/1.0.0/task.json"
       }
     },
     {
       "qualification": {
-        "digest_sha256": "91c1571226646eef8733454716062dee5f9cd84d42a3d539e9028f8d6c0fc705",
+        "digest_sha256": "0c093847b4fb232d7420d1cc51ccfff6a21754d71ed678fcdeb1429508038c80",
         "path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/qualification.json"
       },
       "task": {
-        "digest_sha256": "d003240566d47c464c8c123088d2d746058e0182787d6918621f6bcded2dbbd6",
+        "digest_sha256": "19dd9290040719698919582b53ebd3a4b510ca4786357dab9bfa57c8f83fabe5",
         "path": "contracts/tasks/omp-native.code-review-precision-control/1.0.0/task.json"
       }
     }

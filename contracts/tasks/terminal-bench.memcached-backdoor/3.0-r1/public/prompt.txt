@@ -1,4 +1,4 @@
-Review `/opt/rolebench/task/public/workspace/decompilation.txt` for an intentionally inserted authentication backdoor. Report every material security defect and no false positives. Cite the narrowest line ranges that independently prove the defect, classify impact and severity, prescribe the semantic remediation, and name every reviewed function that is not defective.
+Review `/opt/rolebench/task/public/workspace/decompilation.txt` for an intentionally inserted authentication backdoor. Report every material security defect and no false positives. Cite the ranges covering both defect regions, classify impact and severity, prescribe the semantic remediation, and name every reviewed function that is not defective.
 
 Return exactly one UTF-8 JSON object and no markdown or commentary. Arrays must use source order.
 

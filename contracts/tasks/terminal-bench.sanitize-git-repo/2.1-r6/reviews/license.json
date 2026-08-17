@@ -33,10 +33,10 @@
   "reviewer": "rolebench/reviewer/license-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "8ec5ca848187328046ed9c0617092fdb3c6ece7c16cff88555d655487551f389",
+    "public_tree_digest_sha256": "5101e9f9a6fe4f72d2b17878019ae7c6895fd75474a3a789c998babbbc64ea93",
     "source_digest_sha256": "6e86297715fae62cd499fbdd27013e11a38d05d7e05b7f661cb50b4ecead128f",
     "source_task": "terminal-bench/sanitize-git-repo",
-    "verifier_private_tree_digest_sha256": "bba4905d65622fbd093b035f1d171c113250f35a5bd8f646dcbb8e13a37cefa1"
+    "verifier_private_tree_digest_sha256": "0f7be27cd2b87746e993eb539318f26aedd22705fbf11b025dfdb54ae7e08c4c"
   },
   "task_id": "terminal-bench.sanitize-git-repo",
   "task_version": "2.1-r6"

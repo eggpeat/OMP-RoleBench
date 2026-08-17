@@ -1,12 +1,40 @@
-Normalize `/opt/rolebench/task/public/workspace/route_header.txt` into one compact routing record.
+Normalize `/opt/rolebench/task/public/workspace/route_header.txt` into a compact batch of normalized routing records.
 
-Rules:
-- lowercase `RUN-ID` and `ROLE-HINT`;
-- map `SUCCESS` to `passed` and `FAILURE` to `failed`;
-- map `yes`/`no` to JSON booleans;
-- map latency below 100 ms to `under-100ms`, 100 through 999 ms to `100-999ms`, and 1000 ms or more to `at-least-1000ms`;
-- lowercase labels, remove duplicates, and preserve first occurrence order.
+The input file contains multiple record blocks separated by `---` lines. Each block contains key-value lines formatted as `KEY: VALUE`.
 
-Return exactly one UTF-8 JSON object and no whitespace outside it, markdown, or commentary. Use this exact key order:
+Normalize each record in appearance order according to these rules:
+1. `run_id`:
+   - Read from `RUN-ID` (or `run_id`).
+   - Strip leading and trailing whitespace and lowercase all characters.
+   - If missing, empty, `null`, or `none`, default to `"unknown-run"`.
+2. `outcome`:
+   - Read from `STATUS` or `OUTCOME`.
+   - Strip whitespace.
+   - If the value is `SUCCESS`, `passed`, `OK`, or `true` (case-insensitive), map to `"passed"`.
+   - If missing, `FAILURE`, `failed`, `ERROR`, `null`, or any other value, map to `"failed"`.
+3. `role`:
+   - Read from `ROLE-HINT` or `role`.
+   - Strip leading and trailing whitespace and lowercase all characters.
+   - If missing, empty, `null`, or `none`, default to `"default"`.
+4. `retryable`:
+   - Read from `RETRYABLE`.
+   - Strip whitespace.
+   - If the value is `yes`, `true`, or `1` (case-insensitive), map to JSON boolean `true`.
+   - If missing, `no`, `false`, `0`, `null`, or any other value, map to JSON boolean `false`.
+5. `latency_bucket`:
+   - Read from `LATENCY-MS` or `LATENCY`.
+   - Strip whitespace and optional trailing `ms` / `MS` unit suffix.
+   - Parse the remaining numeric value as a float representing milliseconds.
+   - If latency is strictly less than 100.0 ms (`latency < 100.0`), map to `"under-100ms"`.
+   - If latency is 100.0 ms or greater and strictly less than 1000.0 ms (`100.0 <= latency < 1000.0`), map to `"100-999ms"`.
+   - If latency is 1000.0 ms or greater (`latency >= 1000.0`), map to `"at-least-1000ms"`.
+   - If missing, empty, `null`, `N/A`, or non-numeric/unparseable, default to `"at-least-1000ms"`.
+6. `labels`:
+   - Read from `LABELS`.
+   - If missing, empty, `none`, `null`, or `-`, map to `[]`.
+   - Otherwise, split on commas (`,`). For each item, strip leading/trailing whitespace and lowercase all characters. Discard any empty items.
+   - Deduplicate the resulting labels, preserving the order of their first appearance.
 
-{"schema_version":"rolebench.metadata-normalization/v1","run_id":"<value>","outcome":"<passed|failed>","role":"<value>","retryable":<boolean>,"latency_bucket":"<value>","labels":["<value>"]}
+Return exactly one UTF-8 JSON object and no whitespace outside it, markdown code blocks, or commentary. Use this exact schema and key order:
+
+{"schema_version":"rolebench.metadata-normalization/v1","records":[{"run_id":"<value>","outcome":"<passed|failed>","role":"<value>","retryable":<boolean>,"latency_bucket":"<value>","labels":["<value>"]}]}

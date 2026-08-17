@@ -19,10 +19,10 @@
   "reviewer": "rolebench/reviewer/license-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
-    "source_digest_sha256": "f7b23e2d9bedcfe632764c0490a0ccf9c8193de93f8af82befef3975ad55bf73",
+    "public_tree_digest_sha256": "cdeda3eb90b4285ca20a6afb3c278210397321a4d68dd315ef7e4b636d93aa01",
+    "source_digest_sha256": "cdeda3eb90b4285ca20a6afb3c278210397321a4d68dd315ef7e4b636d93aa01",
     "source_task": null,
-    "verifier_private_tree_digest_sha256": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc"
+    "verifier_private_tree_digest_sha256": "b379a495df9bb47b9bcfa9778dd8c6ddf0fb3536155af20573cda2ef2eb07fa3"
   },
   "task_id": "omp-native.code-review-precision-control",
   "task_version": "1.0.0"

@@ -1,1 +1,45 @@
-{"checks":{"baseline_rejected":"pass","determinism":"pass","evidence_bindings":"pass","external_provider_calls_zero":"pass","passive_verifier":"pass","reference_accepted":"pass","reward_mapping":"pass","source_separated_observer":"pass","source_validation":"pass","tamper_rejected":"pass","verifier_private_digest_matches":"pass"},"decision":"approved","findings":[],"remediation":[{"finding":"Verifier must remain passive and independent from candidate execution.","resolution":"Candidate behavior executes only in runner.py; verifier.py consumes bounded structured evidence and exact source-separated expectations."}],"report_digests_sha256":["0340b7ea384acaf55418e7dc65262298863fe0d17182ef930c20ba8fd134a708","d01ed36690bc01cdf0df14a1b8b1ecb75eff48cf9a0718c3cd2fa2ec836d7c33","9e8b3cf99b0f632daa79a4e41c865c765c2169f0fe4c57a0a85e00e4f825e82f","d10fcae5525d83d47b62ab2ba3065a5eb9c26cee052832bdff46afefdc75dbcd","38840185fb2c36927ffed5233bd5d2e02b041a5f73fdadc24efe6573d058d7cd","fc72d9bae8cd6ee06d1d109a16c6a89324bdd6049dbc8c5676a4967cef248bf1"],"review_type":"verifier","reviewed_at":"2026-08-15T20:19:16Z","reviewer":"rolebench/reviewer/verifier-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"26e9c6ea6cf7095d9a12499ecc44bb98a5995410d12f05aaab2d8e0cf05401cc","runner_config_digest_sha256":"848102bd77c72b2caa15374814d9f3508e2fe749b84aca17527d02678d5cf065","runner_image":"rolebench.local/code-from-image-vision-runner@sha256:61e8563334b4e2d745ffad04389feedeeca0421bc5f3a4adf40a205d71f8ee70","verifier_config_digest_sha256":"1b432f97e6c399c08d285686d53aa00913173593d02e53021fe31ab64fa023d0","verifier_image":"rolebench.local/code-from-image-vision-verifier@sha256:54ba589e3cd0e7d25da386fd075fd6672a5d4165878a5e05dd797beea56e56b5","verifier_private_tree_digest_sha256":"43769de939c5a897a8221ced67b35189bc6354cf06d1d29a82f6458a49434767"},"task_id":"terminal-bench.code-from-image","task_version":"2.1-r6"}
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Verifier must remain passive and independent from candidate execution.",
+      "resolution": "Candidate behavior executes only in runner.py; verifier.py consumes bounded structured evidence and exact source-separated expectations."
+    }
+  ],
+  "report_digests_sha256": [
+    "44f52a0092763ea1ea080f44fcf3754d8ca77d31057ef9bd2b94ee988db3ea6c",
+    "6d45ebea78a53180df8287945a12802c30842b5887d890cbf16101810a7b5aac",
+    "b0c98ff1a1090125dc63925c13bd869ed480b42d0993291f4ca75919723bc8aa",
+    "bd807788a76d22145181da4b8e188bb0c6509dac234a990477cc3b1a049a4221",
+    "c5621bd040fa8866dcb383d0c0c958c93c8d1b5301ef3b4d89f0d0da8a2ac4d8",
+    "c6d6c59abf3f02cd27c1380a7e8cbf8be39a3e4bbbd9e77a6ab4ab0595f3040e"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-17T00:00:00Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "ab615db74af973133977ccadb2b88df0e5b8fccf31a0036841a23fc28dc1c977",
+    "runner_config_digest_sha256": "a37e8bf715a4d04f614ea454df3c784649abb8e2dfd57d7bd14385fa5c5d1a21",
+    "runner_image": "rolebench.local/code-from-image-vision-runner@sha256:0da086d6d7c50cc1a7c0f9f28cb0ee6c050f20002be90d13f5a0d342ccdf0968",
+    "verifier_config_digest_sha256": "d336bfbd83f22ab78d31c11643cc22ee2aed8b51cb56b8b858b39ba696b40750",
+    "verifier_image": "rolebench.local/code-from-image-vision-verifier@sha256:cbb8fa253ce577a9e9c1b4af54b466a78e24cf58ae40336cbf66fea47b9451f5",
+    "verifier_private_tree_digest_sha256": "35aed8c40ed45391b52822be43da91b94676853e553639bfc42305b630e16c82"
+  },
+  "task_id": "terminal-bench.code-from-image",
+  "task_version": "2.1-r6"
+}

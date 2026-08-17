@@ -1312,9 +1312,17 @@ def _creation_issue(stderr: bytes) -> str:
 
 
 def run_worker(
-    root: Path, manifest_path: Path, *, docker: str = "docker"
+    root: Path,
+    manifest_path: Path,
+    *,
+    docker: str = "docker",
+    injected_artifact: bytes | None = None,
 ) -> JSONObject:
-    """Execute one supported provider-disabled worker manifest."""
+    """Execute one supported provider-disabled worker manifest.
+
+    When ``injected_artifact`` is provided, skip the agent container and feed
+    those sealed bytes into the existing runner and verifier stages.
+    """
     root = Path(root).resolve()
     manifest_path = Path(manifest_path)
     captured_manifest = _capture_object(
@@ -1324,6 +1332,10 @@ def run_worker(
     )
     manifest_probe = captured_manifest[0]
     if manifest_probe.get("schema_version") == "omp.worker-run-manifest/v1":
+        if injected_artifact is not None:
+            raise WorkerError(
+                "injected artifacts require omp.worker-run-manifest/v2"
+            )
         from . import worker_v1
 
         adapter_factory = (
@@ -1561,8 +1573,32 @@ def run_worker(
                 )
                 runner_readiness = "failed"
 
-            # Step 2: Agent Execution
-            if not issues:
+            # Step 2: Agent Execution, or sealed live-artifact injection.
+            if not issues and injected_artifact is not None:
+                artifact_limit = min(
+                    int(resources["artifact_bytes_limit"]),
+                    output_limit,
+                )
+                if len(injected_artifact) > artifact_limit:
+                    fail(
+                        "artifact-collection",
+                        "artifact-size-limit-exceeded",
+                        new_stage="artifact",
+                    )
+                else:
+                    artifact = _sealed_memfd_from_bytes(
+                        injected_artifact,
+                        "rolebench-injected-artifact",
+                    )
+                    artifact_digest = hashlib.sha256(injected_artifact).hexdigest()
+                    lifecycle["agent_started"] = True
+                    lifecycle["agent_finished"] = True
+                    lifecycle["artifact_frozen"] = True
+                    isolation["artifact_frozen_after_agent_exit"] = True
+                    isolation["agent"] = {}
+                    exit_code = 0
+                    stage = "artifact"
+            elif not issues:
                 agent_id: str | None = None
                 agent_create_uncertain = False
                 try:

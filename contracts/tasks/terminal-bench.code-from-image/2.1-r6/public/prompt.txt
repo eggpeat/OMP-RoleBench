@@ -1,5 +1,17 @@
-Inspect `/opt/rolebench/task/public/workspace/code.png` and execute the depicted pseudocode exactly. The file bytes used by the pseudocode are the bytes of that same PNG. In the image, `||` means byte concatenation and Python-style slice bounds are start-inclusive and end-exclusive.
+Inspect `/opt/rolebench/task/public/workspace/flowchart.png` and extract the depicted request processing flowchart into a structured control-flow graph JSON representation.
+
+Ground every lane, node, and edge in the visual diagram:
+- Extract all 4 lanes in left-to-right visual order.
+- Extract all nodes. Each node must include:
+  - `id`: lowercase snake_case identifier matching the box header name.
+  - `kind`: one of `"start"`, `"decision"`, `"process"`, `"terminal"`.
+  - `lane`: the name of the swimlane column containing the node (`"ingress"`, `"auth_guard"`, `"rate_policy"`, `"execution"`).
+  - `label`: exact statement text rendered inside the node body.
+- Extract all directed edges. Each edge must include:
+  - `source`: identifier of the source node.
+  - `target`: identifier of the destination node.
+  - `condition`: the branch condition label written on or beside the edge arrow (`"unconditional"`, `"valid"`, `"invalid"`, `"enterprise"`, `"standard"`, `"allowed"`, `"throttled"`).
 
 Return exactly one UTF-8 JSON object and no markdown or commentary:
 
-{"schema_version":"rolebench.image-code-answer/v1","salt":"<transcribed ASCII salt without b-prefix or quotes>","slice_start":<integer>,"slice_end":<integer>,"digest_sha256":"<64 lowercase hexadecimal characters>"}
+{"schema_version":"rolebench.code-flowchart-graph/v1","pipeline_name":"request-routing-pipeline","lanes":["<lane_1>",...],"nodes":[{"id":"<node_id>","kind":"<start|decision|process|terminal>","lane":"<lane>","label":"<code_statement>"}],"edges":[{"source":"<source_node_id>","target":"<target_node_id>","condition":"<condition_label>"}]}

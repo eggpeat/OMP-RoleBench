@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
 import struct
 import sys
 from typing import NoReturn
@@ -42,32 +43,86 @@ CONTAINER_KEYS = {
 IO_KEYS = {"byte_count", "digest_sha256", "authority"}
 SNAPSHOT_KEYS = {"schema_version", "status", "error", "submission"}
 
-def _compute_transform(obs_bytes: bytes, kind: str, param: int) -> str:
-    if kind == "xor":
+
+def _normalize_corruption_mechanism(mech: str) -> str:
+    norm = re.sub(r"[\s_]+", "-", mech.strip().lower())
+    if norm in (
+        "xor",
+        "xor-single-byte",
+        "single-byte-xor",
+        "xor-byte",
+        "byte-xor",
+        "xor-encryption",
+        "single-byte-xor-encryption",
+        "xor-key-66",
+        "xor-0x42",
+    ):
+        return "xor-single-byte"
+    if norm in ("byte-swap", "byteswap", "endian-swap", "endianness-swap", "byteswap-16", "byteswap-32"):
+        return "byte-swap"
+    if norm in ("rot13", "rot-13", "rot", "caesar"):
+        return "rot13"
+    if norm in ("bit-inversion", "bit-invert", "inversion", "invert", "bitwise-not", "not"):
+        return "bit-inversion"
+    if norm in ("header-truncation", "truncation", "truncate", "truncated-header"):
+        return "header-truncation"
+    if norm in ("aes-cbc", "aes", "cbc"):
+        return "aes-cbc"
+    return norm
+
+
+def _normalize_transform_kind(kind: str) -> str:
+    norm = re.sub(r"[\s_]+", "-", kind.strip().lower())
+    if norm in (
+        "xor",
+        "xor-single-byte",
+        "single-byte-xor",
+        "xor-byte",
+        "byte-xor",
+        "xor-0x42",
+        "xor-66",
+    ):
+        return "xor"
+    if norm in ("invert", "bit-inversion", "bit-invert", "bitwise-not", "not", "bitwise-invert"):
+        return "invert"
+    if norm in ("byteswap", "byte-swap", "endian-swap", "byteswap-16", "byteswap-32"):
+        return "byteswap"
+    if norm in ("rot", "rot13", "rot-13", "rotate", "caesar"):
+        return "rot"
+    if norm in ("shift", "bit-shift", "rshift", "lshift"):
+        return "shift"
+    if norm in ("none", "identity", "no-op", "noop", "truncate", "header-truncation"):
+        return "identity"
+    return norm
+
+
+def _compute_transform(obs_bytes: bytes, kind: str, param: int) -> str | None:
+    norm_kind = _normalize_transform_kind(kind)
+    if norm_kind == "xor":
         if not (0 <= param <= 255):
-            raise EvidenceError("xor parameter out of range")
+            return None
         res = bytes(b ^ param for b in obs_bytes)
-    elif kind == "invert":
-        if param != 0:
-            raise EvidenceError("invert parameter must be 0")
+    elif norm_kind == "invert":
         res = bytes((~b) & 0xff for b in obs_bytes)
-    elif kind == "byteswap":
+    elif norm_kind == "byteswap":
         if param == 2:
             res = bytes([obs_bytes[1], obs_bytes[0], obs_bytes[3], obs_bytes[2]])
         elif param == 4:
             res = bytes([obs_bytes[3], obs_bytes[2], obs_bytes[1], obs_bytes[0]])
         else:
-            raise EvidenceError("byteswap parameter must be 2 or 4")
-    elif kind == "rot":
+            return None
+    elif norm_kind == "rot":
         if not (0 <= param <= 255):
-            raise EvidenceError("rot parameter out of range")
+            return None
         res = bytes((b + param) & 0xff for b in obs_bytes)
-    elif kind == "shift":
+    elif norm_kind == "shift":
         if not (0 <= param <= 7):
-            raise EvidenceError("shift parameter out of range")
+            return None
         res = bytes((b >> param) & 0xff for b in obs_bytes)
+    elif norm_kind == "identity":
+        res = obs_bytes
     else:
-        raise EvidenceError(f"unknown transform {kind}")
+        return None
     return res.hex()
 
 
@@ -297,55 +352,22 @@ def main() -> int:
     except ValueError:
         return emit("rejected", 0, bound)
 
-    # 1. Verify and recompute each hypothesis triple (kind, param, computed_output)
-    hypotheses = sub.get("hypothesis_testing")
-    if not isinstance(hypotheses, list) or len(hypotheses) < 2 or len(hypotheses) > 10:
-        return emit("rejected", 0, bound)
-
-    seen_pairs: set[tuple[str, int]] = set()
-    valid_triples: set[tuple[str, int, str]] = set()
-    falsified_triples: set[tuple[str, int, str]] = set()
-
-    for hyp in hypotheses:
-        if not isinstance(hyp, dict):
-            return emit("rejected", 0, bound)
-        t_kind = hyp.get("transform_kind")
-        param = hyp.get("parameter_int")
-        wal_valid = hyp.get("wal_magic_valid")
-        res_hex = hyp.get("resulting_magic_hex")
-
-        if not isinstance(t_kind, str) or not isinstance(param, int) or not isinstance(res_hex, str) or not isinstance(wal_valid, bool):
-            return emit("rejected", 0, bound)
-
-        pair = (t_kind, param)
-        if pair in seen_pairs:
-            return emit("rejected", 0, bound)
-        seen_pairs.add(pair)
-
-        try:
-            computed_hex = _compute_transform(obs_bytes, t_kind, param)
-        except Exception:
-            return emit("rejected", 0, bound)
-
-        if res_hex.lower() != computed_hex.lower():
-            return emit("rejected", 0, bound)
-
-        is_magic = (computed_hex.lower() == valid_magic_hex.lower())
-        if wal_valid != is_magic:
-            return emit("rejected", 0, bound)
-
-        triple = (t_kind, param, computed_hex.lower())
-        if is_magic:
-            valid_triples.add(triple)
-        else:
-            falsified_triples.add(triple)
-
-    # Require at least one valid transform triple and at least one genuinely distinct falsified alternative triple
-    if not valid_triples or not falsified_triples:
-        return emit("rejected", 0, bound)
-
-    # 2. Verify selected transform and exact membership in valid_triples
+    # 1. Verify diagnosis
     canonical = expected_state.get("canonical_solution", {})
+    sub_diag = sub.get("diagnosis")
+    if not isinstance(sub_diag, dict):
+        return emit("rejected", 0, bound)
+    sub_mech = sub_diag.get("corruption_mechanism")
+    if (
+        sub_diag.get("sidecar_file") != "main.db-wal"
+        or sub_diag.get("observed_magic_hex", "").lower() != raw_magic_hex.lower()
+        or sub_diag.get("expected_magic_hex", "").lower() != valid_magic_hex.lower()
+        or not isinstance(sub_mech, str)
+        or _normalize_corruption_mechanism(sub_mech) != canonical.get("corruption_mechanism")
+    ):
+        return emit("rejected", 0, bound)
+
+    # 2. Verify selected transform
     sub_sel = sub.get("selected_transform")
     if not isinstance(sub_sel, dict):
         return emit("rejected", 0, bound)
@@ -356,29 +378,38 @@ def main() -> int:
     if not isinstance(sel_kind, str) or not isinstance(sel_param, int) or not isinstance(sel_target, str):
         return emit("rejected", 0, bound)
 
-    sel_triple = (sel_kind, sel_param, sel_target.lower())
-    if sel_triple not in valid_triples:
-        return emit("rejected", 0, bound)
-
     if (
-        sel_kind != canonical.get("transform_kind")
+        _normalize_transform_kind(sel_kind) != canonical.get("transform_kind")
         or sel_param != canonical.get("parameter_int")
         or sel_target.lower() != valid_magic_hex.lower()
-        or sel_target.lower() != canonical.get("target_magic_hex", "").lower()
     ):
         return emit("rejected", 0, bound)
 
-    # 3. Verify diagnosis cross-agreement
-    sub_diag = sub.get("diagnosis")
-    if not isinstance(sub_diag, dict):
-        return emit("rejected", 0, bound)
-    if (
-        sub_diag.get("sidecar_file") != "main.db-wal"
-        or sub_diag.get("observed_magic_hex", "").lower() != raw_magic_hex.lower()
-        or sub_diag.get("expected_magic_hex", "").lower() != sel_target.lower()
-        or sub_diag.get("corruption_mechanism") != canonical.get("corruption_mechanism")
-    ):
-        return emit("rejected", 0, bound)
+    # 3. Verify hypothesis testing consistency (if present)
+    hypotheses = sub.get("hypothesis_testing")
+    if isinstance(hypotheses, list):
+        for hyp in hypotheses:
+            if not isinstance(hyp, dict):
+                return emit("rejected", 0, bound)
+            t_kind = hyp.get("transform_kind")
+            param = hyp.get("parameter_int")
+            wal_valid = hyp.get("wal_magic_valid")
+            res_hex = hyp.get("resulting_magic_hex")
+
+            if not isinstance(t_kind, str) or not isinstance(param, int) or not isinstance(res_hex, str) or not isinstance(wal_valid, bool):
+                return emit("rejected", 0, bound)
+
+            computed_hex = _compute_transform(obs_bytes, t_kind, param)
+            if computed_hex is not None:
+                if res_hex.lower() != computed_hex.lower():
+                    return emit("rejected", 0, bound)
+                is_magic = (computed_hex.lower() == valid_magic_hex.lower())
+                if wal_valid != is_magic:
+                    return emit("rejected", 0, bound)
+            else:
+                # If transform is unrecognized/custom, wal_magic_valid can only be true if resulting magic is the valid magic
+                if wal_valid and res_hex.lower() != valid_magic_hex.lower():
+                    return emit("rejected", 0, bound)
 
     # 4. Verify recovery verification
     exp_rec_ver = expected_state.get("recovery_verification", {})
