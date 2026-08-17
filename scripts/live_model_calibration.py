@@ -151,12 +151,13 @@ def call_live_model(
     model = route["model"]
     creds = get_provider_credentials()
     images = images or []
-    if images and provider not in VISION_CAPABLE_PROVIDERS:
+    if images and not _route_supports_images(route):
         names = ", ".join(name for name, _ in images)
         prompt = (
             prompt
             + f"\n\n[NOTE: This task references image file(s) {names}, but this evaluation channel is text-only and the image content was not provided to you. Respond per the contract schema as best you can.]"
         )
+        images = []
 
     t0 = time.monotonic()
     sys_content = system_prompt or "You are an expert software engineering and review agent. Output ONLY the raw solution/JSON/code adhering strictly to the contract schema without conversational text."
@@ -270,11 +271,22 @@ def call_live_model(
         if not token:
             raise ValueError("No OAuth token for Kimi Code")
         url = "https://api.kimi.com/coding/v1/chat/completions"
+        if images:
+            kimi_user: Any = [{"type": "text", "text": prompt}]
+            for name, blob in images:
+                kimi_user.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{_mime_for(name)};base64,{base64.b64encode(blob).decode()}"},
+                    }
+                )
+        else:
+            kimi_user = prompt
         req_data = {
             "model": model,
             "messages": [
                 {"role": "system", "content": sys_content},
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": kimi_user},
             ],
             "max_tokens": max_tokens,
             "temperature": 1.0,
@@ -401,7 +413,20 @@ def call_live_model(
 
 
 IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".gif"})
-VISION_CAPABLE_PROVIDERS = frozenset({"google-antigravity", "xai", "xai-oauth", "alibaba-token-plan", "zai"})
+
+
+def _route_supports_images(route: dict[str, Any]) -> bool:
+    """True only when the route explicitly declares image input.
+
+    Reads the route's input_modalities (default text-only). This is the
+    single source of truth for whether a vision task's image is injected,
+    replacing the old provider-name heuristic that mis-served glm (sent
+    images to a text-only model) and kimi/devin (withheld images from
+    multimodal models)."""
+    modalities = route.get("input_modalities")
+    if isinstance(modalities, list):
+        return "image" in modalities
+    return False
 
 
 def collect_task_images(task_dir: Path) -> list[tuple[str, bytes]]:

@@ -422,8 +422,11 @@ if __name__ == "__main__":
 
 
 class ImageInjectionTests(unittest.TestCase):
-    def _route(self, provider: str, model: str = "m") -> dict:
-        return {"route_id": f"{provider}/{model}", "provider": provider, "model": model}
+    def _route(self, provider: str, model: str = "m", modalities: list | None = None) -> dict:
+        route = {"route_id": f"{provider}/{model}", "provider": provider, "model": model}
+        if modalities is not None:
+            route["input_modalities"] = modalities
+        return route
 
     def _creds(self) -> dict:
         return {
@@ -434,6 +437,12 @@ class ImageInjectionTests(unittest.TestCase):
             "zai": {"key": "k"},
             "google": {"key": "k"},
         }
+
+    def test_route_supports_images_requires_image_modality(self) -> None:
+        self.assertTrue(live._route_supports_images({"input_modalities": ["text", "image"]}))
+        self.assertFalse(live._route_supports_images({"input_modalities": ["text"]}))
+        self.assertFalse(live._route_supports_images({}))  # missing = text-only
+        self.assertFalse(live._route_supports_images({"provider": "xai-oauth"}))  # no provider heuristic
 
     def test_collect_task_images_finds_png(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -457,7 +466,7 @@ class ImageInjectionTests(unittest.TestCase):
             mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
         ):
             text, _ = live.call_live_model(
-                self._route("xai-oauth", "grok-4.6"), "p", images=[("code.png", b"PNG")]
+                self._route("xai-oauth", "grok-4.6", ["text", "image"]), "p", images=[("code.png", b"PNG")]
             )
         self.assertEqual(text, "ok")
         user = captured["data"]["messages"][1]["content"]
@@ -478,7 +487,7 @@ class ImageInjectionTests(unittest.TestCase):
             mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
         ):
             text, _ = live.call_live_model(
-                self._route("google-antigravity", "gemini-3.7-flash"),
+                self._route("google-antigravity", "gemini-3.7-flash", ["text", "image"]),
                 "p",
                 images=[("schematic.png", b"PNG")],
             )
@@ -487,7 +496,7 @@ class ImageInjectionTests(unittest.TestCase):
         self.assertIn("text", parts[0])
         self.assertEqual(parts[1]["inline_data"]["mime_type"], "image/png")
 
-    def test_zai_anthropic_image_block(self) -> None:
+    def test_zai_text_only_gets_note_not_image(self) -> None:
         payload = {"content": [{"type": "text", "text": "ok"}]}
         captured = {}
 
@@ -500,13 +509,34 @@ class ImageInjectionTests(unittest.TestCase):
             mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
         ):
             text, _ = live.call_live_model(
-                self._route("zai", "glm-5.2"), "p", images=[("code.png", b"PNG")]
+                self._route("zai", "glm-5.3", ["text"]), "p", images=[("code.png", b"PNG")]
             )
         self.assertEqual(text, "ok")
+        # glm-5.3 is text-only: image withheld, disclosure note appended, plain string content.
         content = captured["data"]["messages"][0]["content"]
-        self.assertEqual(content[0]["type"], "image")
-        self.assertEqual(content[0]["source"]["type"], "base64")
-        self.assertEqual(content[-1]["type"], "text")
+        self.assertIsInstance(content, str)
+        self.assertIn("text-only", content)
+        self.assertIn("code.png", content)
+
+    def test_kimi_multimodal_gets_image_block(self) -> None:
+        payload = {"choices": [{"message": {"content": "ok"}}]}
+        captured = {}
+
+        def fake_urlopen(req, timeout=0):
+            captured["data"] = json.loads(req.data.decode())
+            return MockHTTPResponse(payload)
+
+        with (
+            mock.patch.object(live, "get_provider_credentials", return_value=self._creds()),
+            mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
+        ):
+            text, _ = live.call_live_model(
+                self._route("kimi-code", "k3", ["text", "image"]), "p", images=[("code.png", b"PNG")]
+            )
+        self.assertEqual(text, "ok")
+        user = captured["data"]["messages"][1]["content"]
+        self.assertEqual(user[0]["type"], "text")
+        self.assertEqual(user[1]["type"], "image_url")
 
     def test_alibaba_image_block_included(self) -> None:
         payload = {"choices": [{"message": {"content": "ok"}}]}
@@ -521,7 +551,7 @@ class ImageInjectionTests(unittest.TestCase):
             mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
         ):
             text, _ = live.call_live_model(
-                self._route("alibaba-token-plan", "qwen3.8-max"),
+                self._route("alibaba-token-plan", "qwen3.8-max", ["text", "image"]),
                 "p",
                 images=[("code.png", b"PNG")],
             )
@@ -580,7 +610,7 @@ class ImageInjectionTests(unittest.TestCase):
             mock.patch.object(live.urllib.request, "urlopen", side_effect=fake_urlopen),
         ):
             text, _, err = live.call_live_model_with_retry(
-                self._route("xai-oauth", "grok-4.6"), "p", images=[("code.png", b"PNG")]
+                self._route("xai-oauth", "grok-4.6", ["text", "image"]), "p", images=[("code.png", b"PNG")]
             )
         self.assertIsNone(err)
         self.assertEqual(text, "ok")
