@@ -235,9 +235,9 @@ def main() -> int:
         or snapshot.get("error") is not None
     ):
         return reject()
-    if snapshot.get("fixture_sha256") != "20eeaceba09eaf7213a514327f8d3a6b130b0e6e02a1d57d94d6646df26eabea":
+    if snapshot.get("fixture_sha256") != "8256c1e4e8dfe9d6d748012bb12393d308bdd71e9e9b92dcedf2864e63257bb7":
         return reject()
-    expected = json.loads('{"schema_version":"rolebench.metadata-normalization/v1","run_id":"rb-041","outcome":"passed","role":"tiny","retryable":false,"latency_bucket":"under-100ms","labels":["blue","fast"]}')
+    expected = json.loads('{"schema_version":"rolebench.metadata-normalization/v1","records":[{"run_id":"rb-041-alpha","outcome":"passed","role":"tiny","retryable":false,"latency_bucket":"under-100ms","labels":["blue","fast"]},{"run_id":"rb-042-edge","outcome":"failed","role":"plan","retryable":true,"latency_bucket":"under-100ms","labels":["triage","urgent","queue-1"]},{"run_id":"rb-043-boundary","outcome":"passed","role":"advisor","retryable":true,"latency_bucket":"100-999ms","labels":["cache","hit"]},{"run_id":"rb-044-high","outcome":"passed","role":"reviewer","retryable":true,"latency_bucket":"100-999ms","labels":["security","audit","p0"]},{"run_id":"rb-045-thousand","outcome":"failed","role":"commit","retryable":false,"latency_bucket":"at-least-1000ms","labels":[]},{"run_id":"unknown-run","outcome":"failed","role":"default","retryable":false,"latency_bucket":"at-least-1000ms","labels":[]},{"run_id":"rb-047-slow-run","outcome":"passed","role":"designer","retryable":false,"latency_bucket":"at-least-1000ms","labels":["ui","frontend","css"]}]}')
     if snapshot.get("submission") != expected:
         return reject()
     return emit("accepted", 1, bound)

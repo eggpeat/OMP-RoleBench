@@ -11,5 +11,5 @@ dist/
 .coverage
 htmlcov/
 .rolebench/
-workspace/
+/workspace/
 .rolebench/runs/

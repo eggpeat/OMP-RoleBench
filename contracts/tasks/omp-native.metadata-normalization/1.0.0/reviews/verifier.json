@@ -1,1 +1,45 @@
-{"checks":{"baseline_rejected":"pass","determinism":"pass","evidence_bindings":"pass","external_provider_calls_zero":"pass","passive_verifier":"pass","reference_accepted":"pass","reward_mapping":"pass","source_separated_observer":"pass","source_validation":"pass","tamper_rejected":"pass","verifier_private_digest_matches":"pass"},"decision":"approved","findings":[],"remediation":[{"finding":"Verifier must remain passive and independent from candidate execution.","resolution":"Candidate behavior executes only in runner.py; verifier.py consumes bounded structured evidence and exact source-separated expectations."}],"report_digests_sha256":["47dfc7ef15df8b9b4e6b3ec3e8773416035907b570e9a3e149ff2f119fdbe83b","921cdb6d476de19adc39dfc19acbbc36a12b9d458eacab04403df803230e3da0","0d978156713dab625cd861607c5eb1602dc9571b5a0f3b769cfb9b8c67e07b5c","8499c8ac2306670a921761dae8774edd12c35eb8b30c62da5fcadb68468d6194","1f41f2df9cfc4ada59ee0f5159fc89fc53d194861892be70b61ad3788e27869d","5f1c6877b45b05778b7656fdef368834438a83682ebbd3c688c72df6df4c9d26"],"review_type":"verifier","reviewed_at":"2026-08-15T20:19:16Z","reviewer":"rolebench/reviewer/verifier-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","runner_config_digest_sha256":"abe30578a642628936d04a3199e36e0df54a47691fe5d91dfe3b681610abfbda","runner_image":"rolebench.local/metadata-normalization-tiny-runner@sha256:3203ba71cf1d1017e323ff8e0144f7c85a36bf38ba701b9fa840988d7fe74449","verifier_config_digest_sha256":"b48ef0078cd378789f93e28895a7cca89f2e994f900bcb9742aa12825b8280e8","verifier_image":"rolebench.local/metadata-normalization-tiny-verifier@sha256:2b9249c40e0f657bee9636b306780407a8ade8c7dad2583f771af06ba8d547b1","verifier_private_tree_digest_sha256":"5b3bd527c12e87bf7246d16da916aa370e425543e75416919f62089e0e18c6d5"},"task_id":"omp-native.metadata-normalization","task_version":"1.0.0"}
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "source_separated_observer": "pass",
+    "source_validation": "pass",
+    "tamper_rejected": "pass",
+    "verifier_private_digest_matches": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Verifier must remain passive and independent from candidate execution.",
+      "resolution": "Candidate behavior executes only in runner.py; verifier.py consumes bounded structured evidence and exact source-separated expectations."
+    }
+  ],
+  "report_digests_sha256": [
+    "9340e7673e2a7606f4294f679fa90fa5aa84c2365616a66a9547ee2ab88d27c8",
+    "a3737bcc797c1af69d882b42766909e7e740874a14d1add80fe838bd7f3e8ae9",
+    "5b9d0aaf5a554f7c4a8cb5b315d82bb51a104abb51c2710debac9d32503f8866",
+    "40c259a27762cba01018f57ae23c91328d50d028f0e515513fda5acf087c3e3a",
+    "02ee20f4ff694ccfdd786d0602d61957eda048b7ba5603845d497c5dca1e7018",
+    "92a081c44a7e1a1bd08fc9535021953b083834319f15696a782614f3a7ecf5ac"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-15T20:19:16Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+    "runner_config_digest_sha256": "745925347c03b63a6cca7f2dc20ce9f2eb21a7fe60c9cf0417c78f9a0b7181f1",
+    "runner_image": "rolebench.local/metadata-normalization-tiny-runner@sha256:ef35c984295b7e20fda20cc219fc3ebd9dba51c4af26a11241d580f00018f778",
+    "verifier_config_digest_sha256": "c63dc3fab93f700b70271821d761b38c0bf1418d4ef90caf88266606e7a13702",
+    "verifier_image": "rolebench.local/metadata-normalization-tiny-verifier@sha256:8f7b5fde9a8ad5f0a03919a053e2564af914dcd464509ce6b835cd947d04bd00",
+    "verifier_private_tree_digest_sha256": "2f92b983a8cfd0fdf0ad08aadd4ee654f348fe32c923d749d1ffe6a999a05b43"
+  },
+  "task_id": "omp-native.metadata-normalization",
+  "task_version": "1.0.0"
+}

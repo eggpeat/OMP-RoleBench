@@ -1,0 +1,11 @@
+{
+  "name": "rolebench-synthetic-tokenized-dataset",
+  "description": "Synthetic fixture; credential-shaped values are not live credentials.",
+  "provenance": {
+    "source": "rolebench-security-fixture",
+    "revision": "0000000000000000000000000000000000000000"
+  },
+  "dcnlp_diff": "diff --git a/example.py b/example.py\n--- a/example.py\n+++ b/example.py\n@@ -1 +1 @@\n-token = \\\"safe-placeholder\\\"\n+token = \\\"<your-huggingface-token>\\\"\n",
+  "data_key": "synthetic.json.gz",
+  "sampling_yaml": null
+}

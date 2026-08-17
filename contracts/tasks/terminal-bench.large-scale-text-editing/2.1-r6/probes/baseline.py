@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""Deliberately incomplete baseline probe for the Vim macro task."""
+"""Deliberately no-op baseline probe for the mechanical refactoring task."""
 
 import json
 
-print(json.dumps({"schema_version": "rolebench.vim-macro-submission/v1", "script": "wq\n"}, sort_keys=True, separators=(",", ":")))
+SUBMISSION = {
+    "schema_version": "rolebench.text-editing-submission/v1",
+    "modified_files": {},
+}
+
+if __name__ == "__main__":
+    print(json.dumps(SUBMISSION, sort_keys=True, separators=(",", ":")))

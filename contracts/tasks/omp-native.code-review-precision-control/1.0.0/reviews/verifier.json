@@ -21,24 +21,24 @@
     }
   ],
   "report_digests_sha256": [
-    "461f0128ca3fc1d43b9a999f58ab2534a169b4f6832539cd5416f22523155e20",
-    "d7ded703a4cea142e80a4c2b27b504ebe7629c99950ad99131cc8f895722ab97",
-    "8883eac8f0f0418d4e1d9d9c6aaf9a67e16f215e7fda71ce7e2bc62db9ff1dc3",
-    "61ae2c0ecc4ef51d46c9609377a0d54d59f4ea1e86ce1f6e5e3856be42826d5c",
-    "5ae08814bcf77fc2b5052e534ede92fb38951e6e4e474782895eb4328c696c23",
-    "78a7a01916e77ee9ddd5b10aa4744a4e7d7ff9c55ac0c034e19e0cf549af37e8"
+    "3573c98b8f49b8fed8678d317d85d8244c21a19022aa8be985c890700e8eaf57",
+    "dd088dd17215f0bceec8c9e0ac6384cfaa2b111bc3aa9f9263e7745877b0f00f",
+    "aed778e8dabe23403816b7c0f9da63d8cd3d1857cc5cd6c7c9c36ff3a13faa41",
+    "f4d13423ad8a1be5054f56269acddc43e8c0b44b6fad9cac74b4a6991cc9ebe2",
+    "c75726518eddad18950c200a0b226e9541e969689b16bd5d230eb07a50824111",
+    "6335b84671afad836f145176dfbd4924dc5863b7a66ff3fb3b682516d5ea5367"
   ],
   "review_type": "verifier",
   "reviewed_at": "2026-08-16T14:15:00Z",
   "reviewer": "rolebench/reviewer/verifier-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "5baf101439f2b8facab22fbc88506d124d39fc665aba216961e8c1e4613279a7",
+    "public_tree_digest_sha256": "cdeda3eb90b4285ca20a6afb3c278210397321a4d68dd315ef7e4b636d93aa01",
     "runner_config_digest_sha256": "f13b70a87e2cf0061ae05188c2734d2821f35af092be14180edcb2edc689cdc6",
     "runner_image": "rolebench.local/code-review-precision-runner@sha256:a5e1c35fd7cc9388704eead480464c9af0c51699e81bb047bc0af315adb467f5",
     "verifier_config_digest_sha256": "10dbd531317190808db5db4aebf9c6810841dfa1ccd4a6078f03df19d8a7b656",
     "verifier_image": "rolebench.local/code-review-precision-verifier@sha256:204ece2ab143c639e0ce418de3d2ca34e65f1a802760627007f4f9cbc58c1950",
-    "verifier_private_tree_digest_sha256": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc"
+    "verifier_private_tree_digest_sha256": "b379a495df9bb47b9bcfa9778dd8c6ddf0fb3536155af20573cda2ef2eb07fa3"
   },
   "task_id": "omp-native.code-review-precision-control",
   "task_version": "1.0.0"

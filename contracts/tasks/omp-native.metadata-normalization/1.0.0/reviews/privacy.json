@@ -1,1 +1,31 @@
-{"checks":{"credentials":"pass","host_paths":"pass","personal_identifiers":"pass","private_repository_content":"pass","session_or_model_content":"pass","synthetic_values_explicit":"pass"},"decision":"approved","findings":[],"remediation":[{"finding":"Public prompt must not disclose private expected values or verifier thresholds.","resolution":"Kept expected submissions and exact acceptance logic in the verifier-private tree; public assets expose only task inputs and output schema."}],"review_type":"privacy","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/privacy-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"prompt_digest_sha256":"ab9698988d9b084265302b65e7da8927958c51e0df73d1b836751789aa555de2","public_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","verifier_digest_sha256":"775bc96b9b17215a8e4ce0a9e70b2b15c616689046b57154e104d843f37ca21a","verifier_private_tree_digest_sha256":"5b3bd527c12e87bf7246d16da916aa370e425543e75416919f62089e0e18c6d5","workspace_digest_sha256":"49d23ebdcb29148dd9a7edf08e48940249c1d6cb9e626b8a556f6ba8c35b25c6"},"task_id":"omp-native.metadata-normalization","task_version":"1.0.0"}
+{
+  "checks": {
+    "credentials": "pass",
+    "host_paths": "pass",
+    "personal_identifiers": "pass",
+    "private_repository_content": "pass",
+    "session_or_model_content": "pass",
+    "synthetic_values_explicit": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "Public prompt must not disclose private expected values or verifier thresholds.",
+      "resolution": "Kept expected submissions and exact acceptance logic in the verifier-private tree; public assets expose only task inputs and output schema."
+    }
+  ],
+  "review_type": "privacy",
+  "reviewed_at": "2026-08-15T18:30:00Z",
+  "reviewer": "rolebench/reviewer/privacy-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "prompt_digest_sha256": "ad4a670594e263d5eee3685015651caef563d84d6ad0b2410932344a86efe9a9",
+    "public_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+    "verifier_digest_sha256": "8e62b209a061247ff96919430576771e4c0721163bf1d5f2aea93b792873b3af",
+    "verifier_private_tree_digest_sha256": "2f92b983a8cfd0fdf0ad08aadd4ee654f348fe32c923d749d1ffe6a999a05b43",
+    "workspace_digest_sha256": "2703feee5350a6bf2b2eedd1c25ed5f0b6c80854c40f922b3aaf0ba0a1a3081b"
+  },
+  "task_id": "omp-native.metadata-normalization",
+  "task_version": "1.0.0"
+}

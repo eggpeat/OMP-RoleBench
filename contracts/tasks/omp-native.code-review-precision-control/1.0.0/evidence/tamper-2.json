@@ -1,5 +1,5 @@
 {
-  "artifact_digest_sha256": "f437323aae132b9fbfd0b053e097f4241f9dc6d1649ef66cb622114569164620",
+  "artifact_digest_sha256": "97b9121f31a5ac5c4e1c27bef1ed0da0af93209575630260d7c4e27eb1ad8b16",
   "diagnostics": [],
   "doctor": {
     "cgroup_v2": true,
@@ -148,18 +148,18 @@
     "digests": {
       "agent_image": "addc86b6c9482e3ff1a89993c9c4375b5239361d30e1c2e54b756aaaa4dcf054",
       "agent_image_config": "e2bc22cbf7ff30a4c5b7884e01c654eb697b53e2c456f7e0108d4c054175ddae",
-      "artifact": "f437323aae132b9fbfd0b053e097f4241f9dc6d1649ef66cb622114569164620",
+      "artifact": "97b9121f31a5ac5c4e1c27bef1ed0da0af93209575630260d7c4e27eb1ad8b16",
       "config": "e24fff23c3ae37dbcb600b14f03970f528846f2445123c967d4b73ed325c20f9",
-      "runner_evidence": "04e427ed6a13c0075eecf4d81d0e7d6c90bc3d8e33ccd7892c08bb5c9c095685",
+      "runner_evidence": "01c5361d3eb0335022763effcdce081ae07ea3b2aac9bcebd42baf8bee023800",
       "runner_image": "a5e1c35fd7cc9388704eead480464c9af0c51699e81bb047bc0af315adb467f5",
       "runner_image_config": "f13b70a87e2cf0061ae05188c2734d2821f35af092be14180edcb2edc689cdc6",
       "runtime_policy": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
-      "task": "664ba34e78850b8ad0a94a3047e24b44bc00516b3b5e1fb32f2732d4d35583b2",
-      "task_public_tree": "5baf101439f2b8facab22fbc88506d124d39fc665aba216961e8c1e4613279a7",
+      "task": "a44cfd045afedf4f5513bb16802f0234ca67139655ca0e2a3391ab7481069c8e",
+      "task_public_tree": "cdeda3eb90b4285ca20a6afb3c278210397321a4d68dd315ef7e4b636d93aa01",
       "trajectory": "80737689d65316fa033470deaa3dbfa83f0886b450cce00e8b98f62eb135616e",
       "verifier_image": "204ece2ab143c639e0ce418de3d2ca34e65f1a802760627007f4f9cbc58c1950",
       "verifier_image_config": "10dbd531317190808db5db4aebf9c6810841dfa1ccd4a6078f03df19d8a7b656",
-      "verifier_private_tree": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc"
+      "verifier_private_tree": "b379a495df9bb47b9bcfa9778dd8c6ddf0fb3536155af20573cda2ef2eb07fa3"
     },
     "evidence_use": "admission-only",
     "integrity": {
@@ -212,24 +212,24 @@
     "digests": {
       "agent_image": "addc86b6c9482e3ff1a89993c9c4375b5239361d30e1c2e54b756aaaa4dcf054",
       "agent_image_config": "e2bc22cbf7ff30a4c5b7884e01c654eb697b53e2c456f7e0108d4c054175ddae",
-      "artifact": "f437323aae132b9fbfd0b053e097f4241f9dc6d1649ef66cb622114569164620",
+      "artifact": "97b9121f31a5ac5c4e1c27bef1ed0da0af93209575630260d7c4e27eb1ad8b16",
       "config": "e24fff23c3ae37dbcb600b14f03970f528846f2445123c967d4b73ed325c20f9",
-      "runner_evidence": "04e427ed6a13c0075eecf4d81d0e7d6c90bc3d8e33ccd7892c08bb5c9c095685",
+      "runner_evidence": "01c5361d3eb0335022763effcdce081ae07ea3b2aac9bcebd42baf8bee023800",
       "runner_image": "a5e1c35fd7cc9388704eead480464c9af0c51699e81bb047bc0af315adb467f5",
       "runner_image_config": "f13b70a87e2cf0061ae05188c2734d2821f35af092be14180edcb2edc689cdc6",
       "runtime_policy": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
-      "task": "664ba34e78850b8ad0a94a3047e24b44bc00516b3b5e1fb32f2732d4d35583b2",
-      "task_public_tree": "5baf101439f2b8facab22fbc88506d124d39fc665aba216961e8c1e4613279a7",
+      "task": "a44cfd045afedf4f5513bb16802f0234ca67139655ca0e2a3391ab7481069c8e",
+      "task_public_tree": "cdeda3eb90b4285ca20a6afb3c278210397321a4d68dd315ef7e4b636d93aa01",
       "trajectory": "80737689d65316fa033470deaa3dbfa83f0886b450cce00e8b98f62eb135616e",
       "verifier_image": "204ece2ab143c639e0ce418de3d2ca34e65f1a802760627007f4f9cbc58c1950",
       "verifier_image_config": "10dbd531317190808db5db4aebf9c6810841dfa1ccd4a6078f03df19d8a7b656",
-      "verifier_private_tree": "3dcb9deba6b184c07eeae661591b413b444162a88eaa1c581cae50a3de73afbc"
+      "verifier_private_tree": "b379a495df9bb47b9bcfa9778dd8c6ddf0fb3536155af20573cda2ef2eb07fa3"
     },
     "disposition": "excluded",
     "evidence_use": "admission-only",
     "failure_domain": "experiment_scope",
     "model_outcome": "no-valid-attempt",
-    "observation_digest_sha256": "8ed6552236b9cb072f86863bb91882507044191eb38b45519037e5fc11d2b88e",
+    "observation_digest_sha256": "d36d3a1f37571ae9ef5e7e1d0cee0102b8aac13884a046de127be067e4c86aa4",
     "observation_id": "pr6-precision-tamper-2-observation",
     "reason_code": "non-scored-evidence",
     "schema_version": "omp.attempt-outcome/v2",
@@ -246,6 +246,6 @@
   "passed": true,
   "policy_digest_sha256": "dc9efcc295d30dfe7e49f3a229d6b0b7e07d9debd0959a2120cf882f30140d70",
   "run_id": "pr6-precision-tamper-2",
-  "runner_evidence_digest_sha256": "04e427ed6a13c0075eecf4d81d0e7d6c90bc3d8e33ccd7892c08bb5c9c095685",
+  "runner_evidence_digest_sha256": "01c5361d3eb0335022763effcdce081ae07ea3b2aac9bcebd42baf8bee023800",
   "schema_version": "omp.worker-run-report/v1"
 }

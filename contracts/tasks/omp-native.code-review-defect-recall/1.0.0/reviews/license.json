@@ -19,10 +19,10 @@
   "reviewer": "rolebench/reviewer/license-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "public_tree_digest_sha256": "dc2bc71d329a10c8ad03c2943f68da4ea2d38fbce6b6b83782f451efb0d45a75",
-    "source_digest_sha256": "dc2bc71d329a10c8ad03c2943f68da4ea2d38fbce6b6b83782f451efb0d45a75",
+    "public_tree_digest_sha256": "9444593766a7f04dcc1253a1eca0c0b47801f08dcb8442ad53f08bc00e51b33b",
+    "source_digest_sha256": "9444593766a7f04dcc1253a1eca0c0b47801f08dcb8442ad53f08bc00e51b33b",
     "source_task": null,
-    "verifier_private_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145"
+    "verifier_private_tree_digest_sha256": "d814c4a2799b28d92a79bb9d566163ee0d38ee299a3e5c59637217219aab2d1b"
   },
   "task_id": "omp-native.code-review-defect-recall",
   "task_version": "1.0.0"

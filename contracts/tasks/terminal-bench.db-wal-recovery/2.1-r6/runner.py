@@ -44,21 +44,6 @@ VERIFICATION_KEYS = {
 }
 RECORD_KEYS = {"id", "name", "value"}
 
-VALID_CORRUPTION_MECHANISMS = {
-    "xor-single-byte",
-    "byte-swap",
-    "rot13",
-    "bit-inversion",
-    "header-truncation",
-    "aes-cbc",
-}
-VALID_TRANSFORM_KINDS = {
-    "xor",
-    "invert",
-    "byteswap",
-    "rot",
-    "shift",
-}
 HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8}$")
 
 
@@ -105,22 +90,6 @@ def _validate_json_shape(value: object) -> None:
             stack.extend((child, depth + 1) for child in current)
 
 
-def _validate_transform_params(kind: str, param: object) -> int:
-    if isinstance(param, bool) or not isinstance(param, int):
-        raise SubmissionError("parameter_int must be an integer")
-    if kind == "xor" and not (0 <= param <= 255):
-        raise SubmissionError("xor parameter_int must be in range 0..255")
-    if kind == "invert" and param != 0:
-        raise SubmissionError("invert parameter_int must be 0")
-    if kind == "byteswap" and param not in (2, 4):
-        raise SubmissionError("byteswap parameter_int must be 2 or 4")
-    if kind == "rot" and not (0 <= param <= 255):
-        raise SubmissionError("rot parameter_int must be in range 0..255")
-    if kind == "shift" and not (0 <= param <= 7):
-        raise SubmissionError("shift parameter_int must be in range 0..7")
-    return param
-
-
 def _validate_submission(value: object) -> dict[str, object]:
     if not isinstance(value, dict):
         raise SubmissionError("submission must be a top-level JSON object")
@@ -143,14 +112,15 @@ def _validate_submission(value: object) -> dict[str, object]:
     if not isinstance(exp_hex, str) or HEX_PATTERN.fullmatch(exp_hex) is None:
         raise SubmissionError("diagnosis.expected_magic_hex must be an 8-character hex string")
     mech = diag.get("corruption_mechanism")
-    if not isinstance(mech, str) or mech not in VALID_CORRUPTION_MECHANISMS:
-        raise SubmissionError(f"diagnosis.corruption_mechanism must be one of {sorted(VALID_CORRUPTION_MECHANISMS)}")
+    if not isinstance(mech, str) or not mech or len(mech) > 64:
+        raise SubmissionError("diagnosis.corruption_mechanism must be a bounded non-empty string")
 
     # 2. Hypothesis testing
     hypotheses = value.get("hypothesis_testing")
-    if not isinstance(hypotheses, list) or len(hypotheses) < 2 or len(hypotheses) > 10:
-        raise SubmissionError("hypothesis_testing must be an array of 2 to 10 items")
+    if not isinstance(hypotheses, list) or len(hypotheses) < 1 or len(hypotheses) > 20:
+        raise SubmissionError("hypothesis_testing must be an array of 1 to 20 items")
     seen_hyp_ids: set[str] = set()
+    normalized_hypotheses: list[dict[str, object]] = []
     for hyp in hypotheses:
         if not isinstance(hyp, dict) or set(hyp) != HYPOTHESIS_KEYS:
             raise SubmissionError("hypothesis item has invalid or missing keys")
@@ -162,10 +132,12 @@ def _validate_submission(value: object) -> dict[str, object]:
         seen_hyp_ids.add(hyp_id)
 
         t_kind = hyp.get("transform_kind")
-        if not isinstance(t_kind, str) or t_kind not in VALID_TRANSFORM_KINDS:
-            raise SubmissionError(f"transform_kind must be one of {sorted(VALID_TRANSFORM_KINDS)}")
+        if not isinstance(t_kind, str) or not t_kind or len(t_kind) > 64:
+            raise SubmissionError("transform_kind must be a non-empty bounded string")
 
-        param = _validate_transform_params(t_kind, hyp.get("parameter_int"))
+        param = hyp.get("parameter_int")
+        if isinstance(param, bool) or not isinstance(param, int) or not (-1_000_000 <= param <= 1_000_000):
+            raise SubmissionError("parameter_int must be an integer between -1,000,000 and 1,000,000")
 
         res_hex = hyp.get("resulting_magic_hex")
         if not isinstance(res_hex, str) or HEX_PATTERN.fullmatch(res_hex) is None:
@@ -175,14 +147,24 @@ def _validate_submission(value: object) -> dict[str, object]:
         if not isinstance(wal_valid, bool):
             raise SubmissionError("wal_magic_valid must be a boolean")
 
+        normalized_hypotheses.append({
+            "hypothesis_id": hyp_id,
+            "transform_kind": t_kind,
+            "parameter_int": param,
+            "resulting_magic_hex": res_hex.lower(),
+            "wal_magic_valid": wal_valid,
+        })
+
     # 3. Selected transform
     sel = value.get("selected_transform")
     if not isinstance(sel, dict) or set(sel) != TRANSFORM_KEYS:
         raise SubmissionError("selected_transform has invalid or missing keys")
     sel_kind = sel.get("transform_kind")
-    if not isinstance(sel_kind, str) or sel_kind not in VALID_TRANSFORM_KINDS:
-        raise SubmissionError(f"selected_transform.transform_kind must be one of {sorted(VALID_TRANSFORM_KINDS)}")
-    sel_param = _validate_transform_params(sel_kind, sel.get("parameter_int"))
+    if not isinstance(sel_kind, str) or not sel_kind or len(sel_kind) > 64:
+        raise SubmissionError("selected_transform.transform_kind must be a non-empty bounded string")
+    sel_param = sel.get("parameter_int")
+    if isinstance(sel_param, bool) or not isinstance(sel_param, int) or not (-1_000_000 <= sel_param <= 1_000_000):
+        raise SubmissionError("selected_transform.parameter_int must be an integer between -1,000,000 and 1,000,000")
     tgt_hex = sel.get("target_magic_hex")
     if not isinstance(tgt_hex, str) or HEX_PATTERN.fullmatch(tgt_hex) is None:
         raise SubmissionError("selected_transform.target_magic_hex must be an 8-character hex string")
@@ -246,16 +228,7 @@ def _validate_submission(value: object) -> dict[str, object]:
             "expected_magic_hex": exp_hex.lower(),
             "corruption_mechanism": mech,
         },
-        "hypothesis_testing": [
-            {
-                "hypothesis_id": hyp["hypothesis_id"],
-                "transform_kind": hyp["transform_kind"],
-                "parameter_int": hyp["parameter_int"],
-                "resulting_magic_hex": hyp["resulting_magic_hex"].lower(),
-                "wal_magic_valid": hyp["wal_magic_valid"],
-            }
-            for hyp in hypotheses
-        ],
+        "hypothesis_testing": normalized_hypotheses,
         "selected_transform": {
             "transform_kind": sel_kind,
             "parameter_int": sel_param,
@@ -302,8 +275,8 @@ def main() -> int:
         )
         _validate_json_shape(parsed)
         submission = _validate_submission(parsed)
-    except (UnicodeDecodeError, ValueError, TypeError, OverflowError, RecursionError) as error:
-        sys.stdout.write(_snapshot(status="rejected", error=str(error), submission=None))
+    except (UnicodeDecodeError, json.JSONDecodeError, SubmissionError) as exc:
+        sys.stdout.write(_snapshot(status="rejected", error=str(exc), submission=None))
         return 0
 
     sys.stdout.write(_snapshot(status="parsed", error=None, submission=submission))

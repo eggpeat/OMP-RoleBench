@@ -1,1 +1,37 @@
-{"checks":{"baseline_rejected":"pass","determinism":"pass","evidence_bindings":"pass","external_provider_calls_zero":"pass","passive_verifier":"pass","reference_accepted":"pass","reward_mapping":"pass","tamper_rejected":"pass"},"decision":"approved","findings":[],"remediation":[],"report_digests_sha256":["a7f8fd5a5f84ee0584bd1aedee81856a4bcddb8ccac7b129d825881e9d636b8c","dce0a03addae891e74ca7c2d1e2ce54adddadcfe06915b31127ed51a3cbfe73e","876177fa47398bd2a6c64b94f077532cec5367ecc9b36ade135c7e17e4efbd88","40f1cf594937ed654c06af4377218d62c212e8570036a43b892dcc55876e5410","4fd49949f0436249f85e60eceeeff474c696a4f3facbba082ce60bbd6ad61c9f","9bbdc8bec047dfbc579571b705ba888c76021244c69879b8ff80506a96e4add8"],"review_type":"verifier","reviewed_at":"2026-08-15T13:20:13Z","reviewer":"rolebench/reviewer/verifier-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"c28e19d52f700ba99d07e3289db9edcc42da2d78498ced4e17f184b745c55313","runner_config_digest_sha256":"d31c9ee962c15f2edf2d280fa5d978ef78b752e789d340548a37eb9bfe24fa04","runner_image":"rolebench.local/scheduler-plan-runner@sha256:00447a1d025b491e972952fd92b4f357da4b71b9b406dcc68df290d076680e16","verifier_config_digest_sha256":"1e7e3357c60ccf90e057acae9dba8b4ee4b32f79a40c88e1a7f463a1ead1f639","verifier_image":"rolebench.local/scheduler-plan-verifier@sha256:8584af080faddcdfc98ec8256658986976604e141d1fe46f4743b28665bbd8ab","verifier_private_tree_digest_sha256":"4d128770e448fa03e81f634a358751ac1f05519181a076b726daa95ec07a85ef"},"task_id":"terminal-bench.llm-inference-batching-scheduler","task_version":"2.1-r6"}
+{
+  "checks": {
+    "baseline_rejected": "pass",
+    "determinism": "pass",
+    "evidence_bindings": "pass",
+    "external_provider_calls_zero": "pass",
+    "passive_verifier": "pass",
+    "reference_accepted": "pass",
+    "reward_mapping": "pass",
+    "tamper_rejected": "pass"
+  },
+  "decision": "approved",
+  "findings": [],
+  "remediation": [],
+  "report_digests_sha256": [
+    "f40230d190c114642ed91224aa065daec781c0399b9d7c788a64fd94e163ce11",
+    "f12105000930be92eeb391b24df264569dafaf50b75a96a44ea00f2a1686c1bb",
+    "a5f1c1ba1f73221a03638a819d1e2e9cda268bac30c474da41e826ad000b0ae4",
+    "7c128169293834a6ab0d626acf1fdc5a2b222e813bb65d670e883bb0430f9dc0",
+    "9c1b85a933cce5c3a27ccf900731419a792448808cf1f0e0d43e94887cac6520",
+    "eac11e82332334d317680661b1919071dd54aa493bfab876aa5d9e48a19b63cd"
+  ],
+  "review_type": "verifier",
+  "reviewed_at": "2026-08-15T13:20:13Z",
+  "reviewer": "rolebench/reviewer/verifier-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "c28e19d52f700ba99d07e3289db9edcc42da2d78498ced4e17f184b745c55313",
+    "runner_config_digest_sha256": "d31c9ee962c15f2edf2d280fa5d978ef78b752e789d340548a37eb9bfe24fa04",
+    "runner_image": "rolebench.local/scheduler-plan-runner@sha256:00447a1d025b491e972952fd92b4f357da4b71b9b406dcc68df290d076680e16",
+    "verifier_config_digest_sha256": "61ff47e92f1e342538f61d324be4e313e76b91c6b1516df89e621511d121d560",
+    "verifier_image": "rolebench.local/scheduler-plan-verifier@sha256:37703574725e97b84674fd7c87d6ee1ddda0b30c967aa8bf92c447664991f8c8",
+    "verifier_private_tree_digest_sha256": "e0e99b013274e0ed5c002fcef1b4d729634e15757f7d8d8afba202c26c922e8b"
+  },
+  "task_id": "terminal-bench.llm-inference-batching-scheduler",
+  "task_version": "2.1-r6"
+}

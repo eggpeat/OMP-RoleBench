@@ -9,12 +9,12 @@ Return your findings strictly as a single JSON object matching schema `rolebench
   "verdict": "changes_requested",
   "findings": [
     {
-      "file": "src/cache.py",
-      "line_start": 16,
-      "line_end": 28,
-      "severity": "high",
-      "category": "concurrency",
-      "description": "Unsynchronized mutation of shared _inflight dictionary across await points allows race conditions."
+      "file": "src/example.py",
+      "line_start": 10,
+      "line_end": 15,
+      "severity": "medium",
+      "category": "correctness",
+      "description": "Missing null check on user input before calling method may cause unhandled exception."
     }
   ]
 }

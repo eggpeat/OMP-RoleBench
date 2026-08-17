@@ -1,1 +1,140 @@
-{"checks":{"baseline_fails":{"command_digest_sha256":"29eac34f5e4f927458e41ec41b14ae8331187561e3fc78689010e1f406f5e5e9","evidence":[{"digest_sha256":"47dfc7ef15df8b9b4e6b3ec3e8773416035907b570e9a3e149ff2f119fdbe83b","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/baseline-1.json"},{"digest_sha256":"921cdb6d476de19adc39dfc19acbbc36a12b9d458eacab04403df803230e3da0","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/baseline-2.json"}],"result":"pass"},"determinism":"pass","discrimination":"calibration-required","infrastructure_classification":"pass","license":"pass","observation_authority":"pass","privacy":"pass","reference_passes":{"command_digest_sha256":"1fc26e4aa996a3165b2e7224e0486864457445e316703dff5980fd18a1def0c5","evidence":[{"digest_sha256":"0d978156713dab625cd861607c5eb1602dc9571b5a0f3b769cfb9b8c67e07b5c","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/reference-1.json"},{"digest_sha256":"8499c8ac2306670a921761dae8774edd12c35eb8b30c62da5fcadb68468d6194","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/reference-2.json"}],"result":"pass"},"runner_isolation":"pass","tamper_resistance":{"command_digest_sha256":"8986815482739fac049ed3250f9b24a41228553b776bd24528b86cd16a6d056e","evidence":[{"digest_sha256":"1f41f2df9cfc4ada59ee0f5159fc89fc53d194861892be70b61ad3788e27869d","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/tamper-1.json"},{"digest_sha256":"5f1c6877b45b05778b7656fdef368834438a83682ebbd3c688c72df6df4c9d26","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/tamper-2.json"}],"result":"pass"},"verifier_isolation":"pass"},"content_digest_sha256":"9eb688128b75119424c18e5490e08fe0082d885817be423ac62997b61bb30e9f","decision":"calibration-required","evaluation_provenance":{"review_digest_sha256":"7e8592c529bc26dacadff7f4fe803a20375491744793403978eeed3bcb3ad0dd","reviewer_id":"rolebench/reviewer/verifier-gate-v1","runner_config_digest_sha256":"abe30578a642628936d04a3199e36e0df54a47691fe5d91dfe3b681610abfbda","runner_image":"rolebench.local/metadata-normalization-tiny-runner@sha256:3203ba71cf1d1017e323ff8e0144f7c85a36bf38ba701b9fa840988d7fe74449","runner_platform":{"architecture":"amd64","os":"linux","variant":null},"verifier_config_digest_sha256":"b48ef0078cd378789f93e28895a7cca89f2e994f900bcb9742aa12825b8280e8","verifier_image":"rolebench.local/metadata-normalization-tiny-verifier@sha256:2b9249c40e0f657bee9636b306780407a8ade8c7dad2583f771af06ba8d547b1","verifier_platform":{"architecture":"amd64","os":"linux","variant":null}},"observed_mapping":{"agent_config_digest_sha256":"26d89d1b4be7f99e2337a92242e47c2ac8e9b1511388dff49661a05aac7c4327","public_tree_digest_sha256":"49e390e4a8f2600501a9e2ff97f93edc9f741fb101cee7e299fe2f4d99ac6315","runner_config_digest_sha256":"abe30578a642628936d04a3199e36e0df54a47691fe5d91dfe3b681610abfbda","task_digest_sha256":"158b5f770e1388eb8f1a893e039e8bca0b74c63d69c9af95c21f2dd494b72b62","verifier_config_digest_sha256":"b48ef0078cd378789f93e28895a7cca89f2e994f900bcb9742aa12825b8280e8","verifier_private_tree_digest_sha256":"5b3bd527c12e87bf7246d16da916aa370e425543e75416919f62089e0e18c6d5"},"reviews":{"license":{"decision":"approved","evidence_digest_sha256":"fd1c38503a08ad2f2fec43d2a0a93321232cb1475bf7468409c0c5a06291d947","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/license.json","expression":"MIT","redistribution":"permitted","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/license-gate-v1"},"privacy":{"decision":"approved","evidence_digest_sha256":"b425f9fb7e526425954039a39015d4d3cb533ffafcd02e072ab6cb95a6308197","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/privacy.json","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/privacy-gate-v1"},"split":{"assignment_method":"author-assigned","confidentiality":"public","decision":"approved","evidence_digest_sha256":"c7e945aa52f8d068b4b2d99df375090b74c531a9b9a9b92c0415550634d32171","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/split.json","family_id":"omp-native.metadata-normalization","partition":"anchor","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/role-fit-gate-v1"},"verifier":{"decision":"approved","evidence_digest_sha256":"7e8592c529bc26dacadff7f4fe803a20375491744793403978eeed3bcb3ad0dd","evidence_path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/verifier.json","private_tree_digest_sha256":"5b3bd527c12e87bf7246d16da916aa370e425543e75416919f62089e0e18c6d5","reviewed_at":"2026-08-15T20:19:16Z","reviewer":"rolebench/reviewer/verifier-gate-v1","runner_config_digest_sha256":"abe30578a642628936d04a3199e36e0df54a47691fe5d91dfe3b681610abfbda","runner_image":"rolebench.local/metadata-normalization-tiny-runner@sha256:3203ba71cf1d1017e323ff8e0144f7c85a36bf38ba701b9fa840988d7fe74449","runner_platform":{"architecture":"amd64","os":"linux","variant":null},"verifier_config_digest_sha256":"b48ef0078cd378789f93e28895a7cca89f2e994f900bcb9742aa12825b8280e8","verifier_image":"rolebench.local/metadata-normalization-tiny-verifier@sha256:2b9249c40e0f657bee9636b306780407a8ade8c7dad2583f771af06ba8d547b1","verifier_platform":{"architecture":"amd64","os":"linux","variant":null}}},"schema_version":"omp.task-qualification/v2","source_task":{"digest_sha256":"438f97ecbafe53c4034fcde5604e098d797ff32aa18ba48e218b187ca0bba001","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/task.json"},"task_id":"omp-native.metadata-normalization","task_version":"1.0.0"}
+{
+  "checks": {
+    "baseline_fails": {
+      "command_digest_sha256": "69efbc884ad9c479474460857c8ffd11b61030b49f970e6e476a8cb8da553079",
+      "evidence": [
+        {
+          "digest_sha256": "9340e7673e2a7606f4294f679fa90fa5aa84c2365616a66a9547ee2ab88d27c8",
+          "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/baseline-1.json"
+        },
+        {
+          "digest_sha256": "a3737bcc797c1af69d882b42766909e7e740874a14d1add80fe838bd7f3e8ae9",
+          "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/baseline-2.json"
+        }
+      ],
+      "result": "pass"
+    },
+    "determinism": "pass",
+    "discrimination": "calibration-required",
+    "infrastructure_classification": "pass",
+    "license": "pass",
+    "observation_authority": "pass",
+    "privacy": "pass",
+    "reference_passes": {
+      "command_digest_sha256": "f15217962161b22c0b17dc76e00265c43749ea0bb6fbadd62cd6c6fe8a267bdf",
+      "evidence": [
+        {
+          "digest_sha256": "5b9d0aaf5a554f7c4a8cb5b315d82bb51a104abb51c2710debac9d32503f8866",
+          "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/reference-1.json"
+        },
+        {
+          "digest_sha256": "40c259a27762cba01018f57ae23c91328d50d028f0e515513fda5acf087c3e3a",
+          "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/reference-2.json"
+        }
+      ],
+      "result": "pass"
+    },
+    "runner_isolation": "pass",
+    "tamper_resistance": {
+      "command_digest_sha256": "f1d83bb10c1900235683dd888d4bb0cf52ca4789b4e72cc6b56a92ecfe31bd7c",
+      "evidence": [
+        {
+          "digest_sha256": "02ee20f4ff694ccfdd786d0602d61957eda048b7ba5603845d497c5dca1e7018",
+          "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/tamper-1.json"
+        },
+        {
+          "digest_sha256": "92a081c44a7e1a1bd08fc9535021953b083834319f15696a782614f3a7ecf5ac",
+          "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/evidence/tamper-2.json"
+        }
+      ],
+      "result": "pass"
+    },
+    "verifier_isolation": "pass"
+  },
+  "content_digest_sha256": "e7f32b36c9be2ea5d44068cca4b9a6f449fecf12b15bea7f49f6d3050b4eccc7",
+  "decision": "calibration-required",
+  "evaluation_provenance": {
+    "review_digest_sha256": "12ae1897afc5b665337247b2f9e2a85be7d896697a53a1428e6cb37b0c288bba",
+    "reviewer_id": "rolebench/reviewer/verifier-gate-v1",
+    "runner_config_digest_sha256": "745925347c03b63a6cca7f2dc20ce9f2eb21a7fe60c9cf0417c78f9a0b7181f1",
+    "runner_image": "rolebench.local/metadata-normalization-tiny-runner@sha256:ef35c984295b7e20fda20cc219fc3ebd9dba51c4af26a11241d580f00018f778",
+    "runner_platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    },
+    "verifier_config_digest_sha256": "c63dc3fab93f700b70271821d761b38c0bf1418d4ef90caf88266606e7a13702",
+    "verifier_image": "rolebench.local/metadata-normalization-tiny-verifier@sha256:8f7b5fde9a8ad5f0a03919a053e2564af914dcd464509ce6b835cd947d04bd00",
+    "verifier_platform": {
+      "architecture": "amd64",
+      "os": "linux",
+      "variant": null
+    }
+  },
+  "observed_mapping": {
+    "agent_config_digest_sha256": "23150f989129fb8e77001beee179581260057d140e6399d68a6c2215f2e94f46",
+    "public_tree_digest_sha256": "9a0e3e0abf3e900a43fd6050a9add6bed59ce457b14d17d245803ab53ddd2334",
+    "runner_config_digest_sha256": "745925347c03b63a6cca7f2dc20ce9f2eb21a7fe60c9cf0417c78f9a0b7181f1",
+    "task_digest_sha256": "b2b7dd684a045953cd923eefdd6842c523749f5e8381451d3fd52307aa939fbe",
+    "verifier_config_digest_sha256": "c63dc3fab93f700b70271821d761b38c0bf1418d4ef90caf88266606e7a13702",
+    "verifier_private_tree_digest_sha256": "2f92b983a8cfd0fdf0ad08aadd4ee654f348fe32c923d749d1ffe6a999a05b43"
+  },
+  "reviews": {
+    "license": {
+      "decision": "approved",
+      "evidence_digest_sha256": "a5cf0215ab451d3f4f0f130d6e6f382a6635d96fb47da0fa745df50cef2aa929",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/license.json",
+      "expression": "MIT",
+      "redistribution": "permitted",
+      "reviewed_at": "2026-08-15T18:30:00Z",
+      "reviewer": "rolebench/reviewer/license-gate-v1"
+    },
+    "privacy": {
+      "decision": "approved",
+      "evidence_digest_sha256": "cbecc815a81e5e3b001741101bad968001150193e676caec7dfb3dadab4a0ffe",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/privacy.json",
+      "reviewed_at": "2026-08-15T18:30:00Z",
+      "reviewer": "rolebench/reviewer/privacy-gate-v1"
+    },
+    "split": {
+      "assignment_method": "author-assigned",
+      "confidentiality": "public",
+      "decision": "approved",
+      "evidence_digest_sha256": "c7e945aa52f8d068b4b2d99df375090b74c531a9b9a9b92c0415550634d32171",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/split.json",
+      "family_id": "omp-native.metadata-normalization",
+      "partition": "anchor",
+      "reviewed_at": "2026-08-15T18:30:00Z",
+      "reviewer": "rolebench/reviewer/role-fit-gate-v1"
+    },
+    "verifier": {
+      "decision": "approved",
+      "evidence_digest_sha256": "12ae1897afc5b665337247b2f9e2a85be7d896697a53a1428e6cb37b0c288bba",
+      "evidence_path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/reviews/verifier.json",
+      "private_tree_digest_sha256": "2f92b983a8cfd0fdf0ad08aadd4ee654f348fe32c923d749d1ffe6a999a05b43",
+      "reviewed_at": "2026-08-15T20:19:16Z",
+      "reviewer": "rolebench/reviewer/verifier-gate-v1",
+      "runner_config_digest_sha256": "745925347c03b63a6cca7f2dc20ce9f2eb21a7fe60c9cf0417c78f9a0b7181f1",
+      "runner_image": "rolebench.local/metadata-normalization-tiny-runner@sha256:ef35c984295b7e20fda20cc219fc3ebd9dba51c4af26a11241d580f00018f778",
+      "runner_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      },
+      "verifier_config_digest_sha256": "c63dc3fab93f700b70271821d761b38c0bf1418d4ef90caf88266606e7a13702",
+      "verifier_image": "rolebench.local/metadata-normalization-tiny-verifier@sha256:8f7b5fde9a8ad5f0a03919a053e2564af914dcd464509ce6b835cd947d04bd00",
+      "verifier_platform": {
+        "architecture": "amd64",
+        "os": "linux",
+        "variant": null
+      }
+    }
+  },
+  "schema_version": "omp.task-qualification/v2",
+  "source_task": {
+    "digest_sha256": "2b12a65b40dbe8e56953a3361724d977384f2221c52cad15b9f87f32cfa2c57c",
+    "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/task.json"
+  },
+  "task_id": "omp-native.metadata-normalization",
+  "task_version": "1.0.0"
+}

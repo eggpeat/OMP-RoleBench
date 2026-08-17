@@ -15,10 +15,10 @@
   "reviewer": "rolebench/reviewer/privacy-gate-v1",
   "schema_version": "omp.task-review-evidence/v1",
   "scope": {
-    "prompt_digest_sha256": "8492ce65fbadb0b7662d5b5c3b1d179568751cee7b3c475018743d4227aeed6b",
-    "public_tree_digest_sha256": "dc2bc71d329a10c8ad03c2943f68da4ea2d38fbce6b6b83782f451efb0d45a75",
-    "verifier_digest_sha256": "a1fbe3c6b44cb005cccfb3b8cd28ec032dfd740a03ae4c42b38ada02bf6ad848",
-    "verifier_private_tree_digest_sha256": "7c438e1336bc256e2b83197bb15ec80b99a5ac8b749fc626ecb9cf39e019e145",
+    "prompt_digest_sha256": "ba594d1e18ecd542dc6a60e68c5c7bc467e4485b5b87311fc2957ca18fad410a",
+    "public_tree_digest_sha256": "9444593766a7f04dcc1253a1eca0c0b47801f08dcb8442ad53f08bc00e51b33b",
+    "verifier_digest_sha256": "fe0a6df367cc9ef5b683a2292c114967e889c9671445cbd7a11497211bcb1dda",
+    "verifier_private_tree_digest_sha256": "d814c4a2799b28d92a79bb9d566163ee0d38ee299a3e5c59637217219aab2d1b",
     "workspace_digest_sha256": "9f2135df3b48fc74cd2232fc56e5f4f311c1f16c66326951f38ea176caa1b405"
   },
   "task_id": "omp-native.code-review-defect-recall",

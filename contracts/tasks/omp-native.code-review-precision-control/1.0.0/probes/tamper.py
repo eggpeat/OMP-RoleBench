@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tamper probe reporting hallucinated memory leak on Python list."""
+"""Tamper probe reporting false positive on double-checked locking distractor."""
 
 import json
 
@@ -9,11 +9,11 @@ submission = {
     "findings": [
         {
             "file": "src/ring_buffer.py",
-            "line_start": 30,
-            "line_end": 38,
+            "line_start": 60,
+            "line_end": 77,
             "severity": "high",
-            "category": "resource-leak",
-            "description": "Fabricated issue: pop() method leaks memory because Python list does not deallocate None.",
+            "category": "concurrency",
+            "description": "False positive: drain() uses unsafe double-checked locking pattern for empty check.",
         }
     ],
 }

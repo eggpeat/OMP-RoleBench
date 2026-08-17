@@ -11,28 +11,34 @@ RUNNER_EVIDENCE_SCHEMA_VERSION = "omp.runner-evidence/v1"
 VERIFIER_RESULT_SCHEMA_VERSION = "omp.verifier-result/v1"
 
 
-def verify_submission(submission: dict) -> tuple[bool, str, dict]:
+def verify_submission(submission: dict) -> tuple[bool, float, str, dict]:
     if not isinstance(submission, dict):
-        return False, "submission is not a dictionary", {}
+        return False, 0.0, "submission is not a dictionary", {}
 
     verdict = submission.get("verdict")
     findings = submission.get("findings", [])
     if not isinstance(findings, list):
-        return False, "findings must be a list", {}
+        return False, 0.0, "findings must be a list", {}
 
+    n_fp = len(findings)
     details = {
         "verdict": verdict,
-        "false_positive_count": len(findings),
+        "false_positive_count": n_fp,
         "findings_reported": findings,
     }
 
     if verdict != "approved":
-        return False, f"expected verdict 'approved' on clean change, got {verdict!r}", details
+        details["score"] = 0.0
+        return False, 0.0, f"expected verdict 'approved' on clean change, got {verdict!r} with {n_fp} false-positive finding(s)", details
 
-    if len(findings) > 0:
-        return False, f"reported {len(findings)} false-positive findings on clean change", details
+    # Calculate score: full credit 1.0 only for zero findings, penalized for each false positive
+    score = max(0.0, 1.0 - 0.5 * n_fp)
+    details["score"] = score
 
-    return True, "clean change correctly approved with zero false positives", details
+    if n_fp == 0:
+        return True, 1.0, "clean change correctly approved with zero false positives", details
+
+    return False, score, f"reported {n_fp} false-positive finding(s) on clean change; score penalized to {score:.2f}", details
 
 
 def main() -> int:
@@ -74,12 +80,12 @@ def main() -> int:
         return 0
 
     submission = snapshot.get("submission")
-    passed, reason, details = verify_submission(submission)
+    passed, score, reason, details = verify_submission(submission)
 
     out = {
         "schema_version": VERIFIER_RESULT_SCHEMA_VERSION,
         "verdict": "pass" if passed else "fail",
-        "score": 1.0 if passed else 0.0,
+        "score": score,
         "reason": reason,
         "details": details,
     }

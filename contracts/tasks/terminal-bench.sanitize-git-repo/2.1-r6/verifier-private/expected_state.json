@@ -1,5 +1,6 @@
 {
   "dclm/clean_sentinel.txt": {
+    "clean": true,
     "content_base64": "Y2xlYW4tc2VudGluZWwtdjEK",
     "mode": "100644",
     "path": "dclm/clean_sentinel.txt",
@@ -7,24 +8,18 @@
     "size_bytes": 18
   },
   "dclm/exp_data/datasets/tokenized/rw_v2_fasttext_openhermes_vs_rw_v2_bigram_0.1_arcade100k.json": {
-    "content_base64": "ewogICJuYW1lIjogInJvbGViZW5jaC1zeW50aGV0aWMtdG9rZW5pemVkLWRhdGFzZXQiLAogICJkZXNjcmlwdGlvbiI6ICJTeW50aGV0aWMgZml4dHVyZTsgY3JlZGVudGlhbC1zaGFwZWQgdmFsdWVzIGFyZSBub3QgbGl2ZSBjcmVkZW50aWFscy4iLAogICJwcm92ZW5hbmNlIjogewogICAgInNvdXJjZSI6ICJyb2xlYmVuY2gtc2VjdXJpdHktZml4dHVyZSIsCiAgICAicmV2aXNpb24iOiAiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIKICB9LAogICJkY25scF9kaWZmIjogImRpZmYgLS1naXQgYS9leGFtcGxlLnB5IGIvZXhhbXBsZS5weVxuLS0tIGEvZXhhbXBsZS5weVxuKysrIGIvZXhhbXBsZS5weVxuQEAgLTEgKzEgQEBcbi10b2tlbiA9IFxcXCJzYWZlLXBsYWNlaG9sZGVyXFxcIlxuK3Rva2VuID0gXFxcIjx5b3VyLWh1Z2dpbmdmYWNlLXRva2VuPlxcXCJcbiIsCiAgImRhdGFfa2V5IjogInN5bnRoZXRpYy5qc29uLmd6IiwKICAic2FtcGxpbmdfeWFtbCI6IG51bGwKfQo=",
+    "clean": false,
     "mode": "100644",
-    "path": "dclm/exp_data/datasets/tokenized/rw_v2_fasttext_openhermes_vs_rw_v2_bigram_0.1_arcade100k.json",
-    "sha256": "c379e6b627a66d1593c93ef58d14231e18ee0c30b0096ca9c345c4b1f40c9ccd",
-    "size_bytes": 515
+    "path": "dclm/exp_data/datasets/tokenized/rw_v2_fasttext_openhermes_vs_rw_v2_bigram_0.1_arcade100k.json"
   },
   "dclm/ray_processing/process.py": {
-    "content_base64": "IiIiU3ludGhldGljIGRhdGEtcHJvY2Vzc2luZyBmaXh0dXJlIGNvbnRhaW5pbmcgZmFrZSBjcmVkZW50aWFscy4iIiIKCmZyb20gX19mdXR1cmVfXyBpbXBvcnQgYW5ub3RhdGlvbnMKCmltcG9ydCBvcwoKCmRlZiBjb25maWd1cmVfZXhhbXBsZV9jcmVkZW50aWFscygpIC0+IGRpY3Rbc3RyLCBzdHJdOgogICAgIiIiUG9wdWxhdGUgaW50ZW50aW9uYWxseSBmYWtlIHZhbHVlcyBmb3IgdGhlIHNhbml0aXphdGlvbiBleGVyY2lzZS4iIiIKCiAgICBvcy5lbnZpcm9uWyJBV1NfQUNDRVNTX0tFWV9JRCJdID0gIjx5b3VyLWF3cy1hY2Nlc3Mta2V5LWlkPiIKICAgIG9zLmVudmlyb25bIkFXU19TRUNSRVRfQUNDRVNTX0tFWSJdID0gIjx5b3VyLWF3cy1zZWNyZXQtYWNjZXNzLWtleT4iCiAgICByZXR1cm4gewogICAgICAgICJzdGF0dXMiOiAic3ludGhldGljLWZpeHR1cmUiLAogICAgICAgICJzYWZlX3ZhbHVlIjogInByZXNlcnZlLXRoaXMtdmFsdWUiLAogICAgfQo=",
+    "clean": false,
     "mode": "100644",
-    "path": "dclm/ray_processing/process.py",
-    "sha256": "fd5a6cb997c5c82fd8f9552aa37941e5f7999ba7fe9b16c6bf68aa51351ecc78",
-    "size_bytes": 491
+    "path": "dclm/ray_processing/process.py"
   },
   "dclm/ray_processing/ray_cluster.yaml": {
-    "content_base64": "IyBTeW50aGV0aWMgUm9sZUJlbmNoIHNlY3VyaXR5IGZpeHR1cmUuIEV2ZXJ5IGNyZWRlbnRpYWwtc2hhcGVkIHZhbHVlIGlzIGZha2UuCmNsdXN0ZXJfbmFtZTogcm9sZWJlbmNoX3N5bnRoZXRpY19jbHVzdGVyCm1heF93b3JrZXJzOiAyCnByb3ZpZGVyOgogICAgdHlwZTogYXdzCiAgICByZWdpb246IHVzLXdlc3QtMgpzZXR1cF9jb21tYW5kczoKICAgIC0gZWNobyAnZXhwb3J0IEFXU19BQ0NFU1NfS0VZX0lEPTx5b3VyLWF3cy1hY2Nlc3Mta2V5LWlkPicgPj4gfi8uYmFzaHJjCiAgICAtIGVjaG8gJ2V4cG9ydCBBV1NfU0VDUkVUX0FDQ0VTU19LRVk9PHlvdXItYXdzLXNlY3JldC1hY2Nlc3Mta2V5PicgPj4gfi8uYmFzaHJjCiAgICAtIGdpdCBjbG9uZSBodHRwczovLzx5b3VyLWdpdGh1Yi10b2tlbj5AZ2l0aHViLmNvbS9leGFtcGxlL3N5bnRoZXRpYy1yZXBvc2l0b3J5LmdpdAogICAgLSBodWdnaW5nZmFjZS1jbGkgbG9naW4gLS10b2tlbiA8eW91ci1odWdnaW5nZmFjZS10b2tlbj4gLXkKc2FmZV9zZXR0aW5nOiBwcmVzZXJ2ZS10aGlzLWxpbmUK",
+    "clean": false,
     "mode": "100644",
-    "path": "dclm/ray_processing/ray_cluster.yaml",
-    "sha256": "a32aeb7245212c2dbec611cb4e4b52353626e8989cfcb1b19eae7e52668501f7",
-    "size_bytes": 543
+    "path": "dclm/ray_processing/ray_cluster.yaml"
   }
 }

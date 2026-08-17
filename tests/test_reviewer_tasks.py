@@ -118,6 +118,94 @@ class TestReviewerTasks(unittest.TestCase):
         passed, reason, details = verifier.verify_submission(low_sev_sub)
         self.assertFalse(passed)
         self.assertEqual(details["recalled_defects"], 0)
+    def test_defect_recall_verifier_proportional_scoring(self) -> None:
+        task_dir = (self.root / "contracts/tasks/omp-native.code-review-defect-recall/1.0.0").resolve()
+        sys.path.insert(0, str(task_dir / "verifier-private"))
+        import verifier
+
+        # 1 defect out of 3, 0 FP -> score = 1/3 (0.3333)
+        one_defect_sub = {
+            "verdict": "changes_requested",
+            "findings": [
+                {
+                    "file": "src/cache.py",
+                    "line_start": 16,
+                    "line_end": 28,
+                    "severity": "high",
+                    "category": "concurrency",
+                    "description": "race condition",
+                }
+            ],
+        }
+        passed, reason, details = verifier.verify_submission(one_defect_sub)
+        self.assertFalse(passed)
+        self.assertEqual(details["recalled_defects"], 1)
+        self.assertEqual(details["false_positive_count"], 0)
+        self.assertAlmostEqual(details["score"], 1 / 3, places=3)
+
+        # 2 defects out of 3, 0 FP -> score = 2/3 (0.6667)
+        two_defects_sub = {
+            "verdict": "changes_requested",
+            "findings": [
+                {
+                    "file": "src/cache.py",
+                    "line_start": 16,
+                    "line_end": 28,
+                    "severity": "high",
+                    "category": "concurrency",
+                    "description": "race condition",
+                },
+                {
+                    "file": "src/storage.py",
+                    "line_start": 11,
+                    "line_end": 14,
+                    "severity": "medium",
+                    "category": "resource-leak",
+                    "description": "file handle leak",
+                },
+            ],
+        }
+        passed, reason, details = verifier.verify_submission(two_defects_sub)
+        self.assertFalse(passed)
+        self.assertEqual(details["recalled_defects"], 2)
+        self.assertEqual(details["false_positive_count"], 0)
+        self.assertAlmostEqual(details["score"], 2 / 3, places=3)
+
+        # 2 defects out of 3 with 1 false positive -> score = (2 - 1) / 3 = 1/3 (0.3333)
+        two_defects_with_fp = {
+            "verdict": "changes_requested",
+            "findings": [
+                {
+                    "file": "src/cache.py",
+                    "line_start": 16,
+                    "line_end": 28,
+                    "severity": "high",
+                    "category": "concurrency",
+                    "description": "race condition",
+                },
+                {
+                    "file": "src/storage.py",
+                    "line_start": 11,
+                    "line_end": 14,
+                    "severity": "medium",
+                    "category": "resource-leak",
+                    "description": "file handle leak",
+                },
+                {
+                    "file": "src/auth.py",
+                    "line_start": 1,
+                    "line_end": 3,
+                    "severity": "low",
+                    "category": "correctness",
+                    "description": "fabricated import issue",
+                },
+            ],
+        }
+        passed, reason, details = verifier.verify_submission(two_defects_with_fp)
+        self.assertFalse(passed)
+        self.assertEqual(details["recalled_defects"], 2)
+        self.assertEqual(details["false_positive_count"], 1)
+        self.assertAlmostEqual(details["score"], 1 / 3, places=3)
 
     def test_precision_control_verifier_and_probes(self) -> None:
         task_dir = (self.root / "contracts/tasks/omp-native.code-review-precision-control/1.0.0").resolve()
@@ -151,6 +239,58 @@ class TestReviewerTasks(unittest.TestCase):
         v_out = json.loads(v_res.stdout)
         self.assertEqual(v_out["verdict"], "fail")
         self.assertEqual(v_out["score"], 0.0)
+
+        # 4. Approved with 1 false positive gets penalized score (0.5)
+        fp1_sub = {
+            "schema_version": "rolebench.review-findings/v1",
+            "verdict": "approved",
+            "findings": [
+                {
+                    "file": "src/ring_buffer.py",
+                    "line_start": 33,
+                    "line_end": 49,
+                    "severity": "low",
+                    "category": "performance",
+                    "description": "Questionable retry loop in try_push",
+                }
+            ],
+        }
+        r_res = subprocess.run(["python3", str(runner_py)], input=json.dumps(fp1_sub).encode(), capture_output=True, check=True, cwd=task_dir)
+        v_res = subprocess.run(["python3", str(verifier_py)], input=r_res.stdout, capture_output=True, check=True)
+        v_out = json.loads(v_res.stdout)
+        self.assertEqual(v_out["verdict"], "fail")
+        self.assertEqual(v_out["score"], 0.5)
+        self.assertEqual(v_out["details"]["false_positive_count"], 1)
+
+        # 5. Approved with 2 false positives gets 0.0
+        fp2_sub = {
+            "schema_version": "rolebench.review-findings/v1",
+            "verdict": "approved",
+            "findings": [
+                {
+                    "file": "src/ring_buffer.py",
+                    "line_start": 33,
+                    "line_end": 49,
+                    "severity": "low",
+                    "category": "performance",
+                    "description": "Questionable retry loop in try_push",
+                },
+                {
+                    "file": "src/ring_buffer.py",
+                    "line_start": 79,
+                    "line_end": 99,
+                    "severity": "medium",
+                    "category": "correctness",
+                    "description": "Broad exception in clear",
+                },
+            ],
+        }
+        r_res = subprocess.run(["python3", str(runner_py)], input=json.dumps(fp2_sub).encode(), capture_output=True, check=True, cwd=task_dir)
+        v_res = subprocess.run(["python3", str(verifier_py)], input=r_res.stdout, capture_output=True, check=True)
+        v_out = json.loads(v_res.stdout)
+        self.assertEqual(v_out["verdict"], "fail")
+        self.assertEqual(v_out["score"], 0.0)
+        self.assertEqual(v_out["details"]["false_positive_count"], 2)
 
 
 if __name__ == "__main__":

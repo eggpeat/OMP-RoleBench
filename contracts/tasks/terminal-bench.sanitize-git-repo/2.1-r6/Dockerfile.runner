@@ -5,6 +5,12 @@ ARG PUBLIC_TREE_SHA256
 LABEL org.omp.rolebench.task.role="default" \
       org.omp.rolebench.task.stage="runner" \
       org.omp.rolebench.task.public-tree-sha256="${PUBLIC_TREE_SHA256}"
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git patch \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /workspace \
+    && chown 1000:1000 /workspace
+
 
 COPY public/ /opt/rolebench/task/public/
 COPY runner.py /usr/local/bin/rolebench-task-runner

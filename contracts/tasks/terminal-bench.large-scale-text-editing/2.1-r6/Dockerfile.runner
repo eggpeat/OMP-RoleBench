@@ -6,10 +6,6 @@ LABEL org.omp.rolebench.task.role="smol" \
       org.omp.rolebench.task.stage="runner" \
       org.omp.rolebench.task.public-tree-sha256="${PUBLIC_TREE_SHA256}"
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends vim=2:9.0.1378-2+deb12u2 \
- && rm -rf /var/lib/apt/lists/*
-
 COPY public/ /opt/rolebench/task/public/
 COPY runner.py /usr/local/bin/rolebench-task-runner
 RUN chmod -R a+rX /opt/rolebench/task/public \

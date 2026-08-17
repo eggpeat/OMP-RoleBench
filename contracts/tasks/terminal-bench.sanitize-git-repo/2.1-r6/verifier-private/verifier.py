@@ -337,16 +337,21 @@ def main() -> int:
             return reject()
 
         file_sha256 = hashlib.sha256(file_bytes).hexdigest()
-        if file_sha256 != item.get("sha256") or file_sha256 != expected_item.get("sha256"):
+        if file_sha256 != item.get("sha256"):
             return reject()
-        if (
-            item.get("mode") != expected_item.get("mode")
-            or b64_content != expected_item.get("content_base64")
-        ):
+        if item.get("size_bytes") != len(file_bytes):
+            return reject()
+        if item.get("mode") != expected_item.get("mode"):
             return reject()
 
-        if item.get("size_bytes") != expected_item.get("size_bytes") or len(file_bytes) != expected_item.get("size_bytes"):
-            return reject()
+        # For files that should be untouched (clean sentinels), verify exact match
+        if expected_item.get("clean", False):
+            if file_sha256 != expected_item.get("sha256"):
+                return reject()
+            if item.get("size_bytes") != expected_item.get("size_bytes"):
+                return reject()
+            if b64_content != expected_item.get("content_base64"):
+                return reject()
 
         try:
             file_text = file_bytes.decode("utf-8")

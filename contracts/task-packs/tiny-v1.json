@@ -1,1 +1,33 @@
-{"entries":[{"qualification":{"digest_sha256":"14bde35a8b9637db0f43a58e675c11d6fe4d8abb1d1fbaa3fd208bc6cb7bbf8f","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/qualification.json"},"task":{"digest_sha256":"438f97ecbafe53c4034fcde5604e098d797ff32aa18ba48e218b187ca0bba001","path":"contracts/tasks/omp-native.metadata-normalization/1.0.0/task.json"}}],"pack_id":"tiny-v1","partition":"anchor","required_capabilities":["structured-output","exact-format-following","metadata-transformation","classification","minimal-output"],"role":"tiny","role_contract":{"contract_id":"role-contract/tiny/v1","digest_sha256":"1dc4d1f96cb93e7bab22f3334e1310dd3ab8acfeba98466a2c1523b3d6426941"},"routing_eligible":false,"schema_version":"omp.task-pack/v1","selection_method":"fixed-anchor","status":"calibration","task_mix":"tiny-v1"}
+{
+  "entries": [
+    {
+      "qualification": {
+        "digest_sha256": "83411b5c1fb0dc80571a24bec146f9e6aa45b7926721cb171b0a2c889e55be0e",
+        "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "2b12a65b40dbe8e56953a3361724d977384f2221c52cad15b9f87f32cfa2c57c",
+        "path": "contracts/tasks/omp-native.metadata-normalization/1.0.0/task.json"
+      }
+    }
+  ],
+  "pack_id": "tiny-v1",
+  "partition": "anchor",
+  "required_capabilities": [
+    "structured-output",
+    "exact-format-following",
+    "metadata-transformation",
+    "classification",
+    "minimal-output"
+  ],
+  "role": "tiny",
+  "role_contract": {
+    "contract_id": "role-contract/tiny/v1",
+    "digest_sha256": "1dc4d1f96cb93e7bab22f3334e1310dd3ab8acfeba98466a2c1523b3d6426941"
+  },
+  "routing_eligible": false,
+  "schema_version": "omp.task-pack/v1",
+  "selection_method": "fixed-anchor",
+  "status": "calibration",
+  "task_mix": "tiny-v1"
+}

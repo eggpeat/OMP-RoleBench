@@ -1,1 +1,43 @@
-{"entries":[{"qualification":{"digest_sha256":"40f8102663e8dd2237054e0dd2b34ee073410bb8296bd93a5f056239260ab8c8","path":"contracts/tasks/terminal-bench.code-from-image/2.1-r6/qualification.json"},"task":{"digest_sha256":"94ad5235802db671893013dca05b99d09716546be18d396707609eff13b5a4ea","path":"contracts/tasks/terminal-bench.code-from-image/2.1-r6/task.json"}},{"qualification":{"digest_sha256":"1fa8a70baaef8e46420edd552ba4eacc77a8d040846a5d0a4f20053c8449e303","path":"contracts/tasks/terminal-bench.cad-model/3.0-r1/qualification.json"},"task":{"digest_sha256":"9ed87b03497f15d48349b556c8caeabcabea1f708de58e4e52f2459f9c3e58b0","path":"contracts/tasks/terminal-bench.cad-model/3.0-r1/task.json"}}],"pack_id":"vision-v1","partition":"anchor","required_capabilities":["image-input","visual-evidence-grounding","multimodal-reasoning","spatial-understanding","text-in-image-reading"],"role":"vision","role_contract":{"contract_id":"role-contract/vision/v1","digest_sha256":"cc5a4c3617303038dd923f1aa89b29169b1584d8eb5682704a45b4acefe86bb9"},"routing_eligible":false,"schema_version":"omp.task-pack/v1","selection_method":"fixed-anchor","status":"calibration","task_mix":"vision-v1"}
+{
+  "entries": [
+    {
+      "qualification": {
+        "digest_sha256": "1719c563b87475ec618bf0a16c4c23647a5d8c0cec2f56a128ab01cebbfffc22",
+        "path": "contracts/tasks/terminal-bench.code-from-image/2.1-r6/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "6bca8be9d6fde8ba45ae67ff913d457ee04a41fa08ca04cb78f98405c0bb2ed7",
+        "path": "contracts/tasks/terminal-bench.code-from-image/2.1-r6/task.json"
+      }
+    },
+    {
+      "qualification": {
+        "digest_sha256": "1fa8a70baaef8e46420edd552ba4eacc77a8d040846a5d0a4f20053c8449e303",
+        "path": "contracts/tasks/terminal-bench.cad-model/3.0-r1/qualification.json"
+      },
+      "task": {
+        "digest_sha256": "9ed87b03497f15d48349b556c8caeabcabea1f708de58e4e52f2459f9c3e58b0",
+        "path": "contracts/tasks/terminal-bench.cad-model/3.0-r1/task.json"
+      }
+    }
+  ],
+  "pack_id": "vision-v1",
+  "partition": "anchor",
+  "required_capabilities": [
+    "image-input",
+    "visual-evidence-grounding",
+    "multimodal-reasoning",
+    "spatial-understanding",
+    "text-in-image-reading"
+  ],
+  "role": "vision",
+  "role_contract": {
+    "contract_id": "role-contract/vision/v1",
+    "digest_sha256": "cc5a4c3617303038dd923f1aa89b29169b1584d8eb5682704a45b4acefe86bb9"
+  },
+  "routing_eligible": false,
+  "schema_version": "omp.task-pack/v1",
+  "selection_method": "fixed-anchor",
+  "status": "calibration",
+  "task_mix": "vision-v1"
+}

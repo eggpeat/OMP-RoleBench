@@ -9,7 +9,7 @@ License: Apache License 2.0; see https://github.com/harbor-framework/terminal-be
 
 RoleBench Modification Notice
 
-RoleBench adapted the source task into an offline, provider-disabled smol-role anchor. RoleBench modifications include a bounded headless Vim runner, strict macro syntax validation, passive evidence verification, content-bound manifests, deterministic baseline/reference/tamper probes, and reviewed admission evidence. These modifications are covered by the repository MIT license.
+RoleBench adapted the source task into an offline, provider-disabled smol-role bounded mechanical editing benchmark. RoleBench modifications include a multi-file mechanical refactoring workspace, semantic syntax and argument verification, content-bound manifests, deterministic baseline/reference/tamper probes, and reviewed admission evidence. These modifications are covered by the repository MIT license.
 
 MIT License
 

@@ -1,1 +1,36 @@
-{"decision":"approved","evidence":[{"expression":"Apache-2.0","kind":"official-license","url":"https://github.com/harbor-framework/terminal-bench/blob/main/LICENSE"},{"digest_sha256":"7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a","kind":"dataset-release","reference":"terminal-bench/terminal-bench-2-1@6"}],"findings":[],"license":{"expression":"Apache-2.0 AND MIT","redistribution":"permitted"},"requirements":["Retain Terminal-Bench Apache-2.0 attribution and modified-work notice.","Identify the deterministic runner and passive verifier harness as RoleBench modifications under MIT."],"review_type":"license","reviewed_at":"2026-08-15T18:30:00Z","reviewer":"rolebench/reviewer/license-gate-v1","schema_version":"omp.task-review-evidence/v1","scope":{"public_tree_digest_sha256":"26e9c6ea6cf7095d9a12499ecc44bb98a5995410d12f05aaab2d8e0cf05401cc","source_digest_sha256":"ef2907bb300d9b3352410c2a75dbf831278c187c073298371870ea9c83526f78","source_task":"terminal-bench/code-from-image","verifier_private_tree_digest_sha256":"43769de939c5a897a8221ced67b35189bc6354cf06d1d29a82f6458a49434767"},"task_id":"terminal-bench.code-from-image","task_version":"2.1-r6"}
+{
+  "decision": "approved",
+  "evidence": [
+    {
+      "expression": "Apache-2.0",
+      "kind": "official-license",
+      "url": "https://github.com/harbor-framework/terminal-bench/blob/main/LICENSE"
+    },
+    {
+      "digest_sha256": "7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a",
+      "kind": "dataset-release",
+      "reference": "terminal-bench/terminal-bench-2-1@6"
+    }
+  ],
+  "findings": [],
+  "license": {
+    "expression": "Apache-2.0 AND MIT",
+    "redistribution": "permitted"
+  },
+  "requirements": [
+    "Retain Terminal-Bench Apache-2.0 attribution and modified-work notice.",
+    "Identify the deterministic runner and passive verifier harness as RoleBench modifications under MIT."
+  ],
+  "review_type": "license",
+  "reviewed_at": "2026-08-17T00:00:00Z",
+  "reviewer": "rolebench/reviewer/license-gate-v1",
+  "schema_version": "omp.task-review-evidence/v1",
+  "scope": {
+    "public_tree_digest_sha256": "ab615db74af973133977ccadb2b88df0e5b8fccf31a0036841a23fc28dc1c977",
+    "source_digest_sha256": "ef2907bb300d9b3352410c2a75dbf831278c187c073298371870ea9c83526f78",
+    "source_task": "terminal-bench/code-from-image",
+    "verifier_private_tree_digest_sha256": "35aed8c40ed45391b52822be43da91b94676853e553639bfc42305b630e16c82"
+  },
+  "task_id": "terminal-bench.code-from-image",
+  "task_version": "2.1-r6"
+}

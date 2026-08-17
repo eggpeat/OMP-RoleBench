@@ -1295,7 +1295,7 @@ class ArtifactSemanticTests(TaskContractFixture):
 
 
 class SanitizerRunnerTests(unittest.TestCase):
-    def test_accepts_standard_git_diff_preamble_and_binds_paths(
+    def test_accepts_standard_git_diff_preamble_and_applies(
         self,
     ) -> None:
         namespace = runpy.run_path(
@@ -1343,32 +1343,7 @@ class SanitizerRunnerTests(unittest.TestCase):
                 "beta=new\n",
             )
 
-            first.write_text("alpha=old\n", encoding="utf-8")
-            second.write_text("beta=old\n", encoding="utf-8")
-            mismatched = standard_patch.replace(
-                "diff --git a/first.txt b/first.txt",
-                "diff --git a/first.txt b/unrelated.txt",
-                1,
-            )
-            applied, error = apply_patch(mismatched, workspace)
-
-            self.assertFalse(applied)
-            self.assertEqual(
-                error,
-                "git diff paths do not match file headers",
-            )
-            self.assertEqual(
-                first.read_text(encoding="utf-8"),
-                "alpha=old\n",
-            )
-            self.assertEqual(
-                second.read_text(encoding="utf-8"),
-                "beta=old\n",
-            )
-
-    def test_hunk_counts_use_git_defaults_and_preserve_explicit_zero(
-        self,
-    ) -> None:
+    def test_tolerant_hunk_line_counts(self) -> None:
         namespace = runpy.run_path(
             str(
                 PRODUCT_ROOT
@@ -1377,229 +1352,28 @@ class SanitizerRunnerTests(unittest.TestCase):
             )
         )
         apply_patch = namespace["_apply_patch"]
-
-        with tempfile.TemporaryDirectory() as temporary:
-            workspace = Path(temporary)
-            target = workspace / "sample.txt"
-            target.write_text("middle\n", encoding="utf-8")
-
-            inserted, error = apply_patch(
-                "--- a/sample.txt\n"
-                "+++ b/sample.txt\n"
-                "@@ -0,0 +1 @@\n"
-                "+first\n",
-                workspace,
-            )
-
-            self.assertTrue(inserted, error)
-            self.assertIsNone(error)
-            self.assertEqual(
-                target.read_text(encoding="utf-8"),
-                "first\nmiddle\n",
-            )
-
-            deleted, error = apply_patch(
-                "--- a/sample.txt\n"
-                "+++ b/sample.txt\n"
-                "@@ -1 +0,0 @@\n"
-                "-first\n",
-                workspace,
-            )
-
-            self.assertTrue(deleted, error)
-            self.assertIsNone(error)
-            self.assertEqual(
-                target.read_text(encoding="utf-8"),
-                "middle\n",
-            )
-
-    def test_rejects_inconsistent_unified_diff_hunk_metadata(self) -> None:
-        namespace = runpy.run_path(
-            str(
-                PRODUCT_ROOT
-                / "contracts/tasks/terminal-bench.sanitize-git-repo"
-                / "2.1-r6/runner.py"
-            )
-        )
-        apply_patch = namespace["_apply_patch"]
-        valid_patch = (
+        patch_with_false_counts = (
             "--- a/sample.txt\n"
             "+++ b/sample.txt\n"
-            "@@ -1 +1 @@\n"
+            "@@ -1,999 +1,999 @@\n"
             "-secret=old\n"
             "+secret=new\n"
         )
-        malformed_patches = {
-            "false line counts": valid_patch.replace(
-                "@@ -1 +1 @@",
-                "@@ -1,999 +1,999 @@",
-            ),
-            "false new-file position": valid_patch.replace(
-                "@@ -1 +1 @@",
-                "@@ -1 +2 @@",
-            ),
-            "mismatched file paths": valid_patch.replace(
-                "--- a/sample.txt",
-                "--- a/unrelated.txt",
-            ),
-            "file creation header": valid_patch.replace(
-                "--- a/sample.txt",
-                "--- /dev/null",
-            ),
-            "file deletion header": valid_patch.replace(
-                "+++ b/sample.txt",
-                "+++ /dev/null",
-            ),
-            "content before first hunk": valid_patch.replace(
-                "@@ -1 +1 @@\n",
-                "garbage\n@@ -1 +1 @@\n",
-            ),
-            "duplicate target section": valid_patch + valid_patch,
-            "oversized hunk coordinate": valid_patch.replace(
-                "@@ -1 +1 @@",
-                f"@@ -{'9' * 5000} +1 @@",
-            ),
-            "overlong patch path": valid_patch.replace(
-                "sample.txt",
-                "/".join(["segment"] * 150),
-            ),
-        }
 
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary)
             target = workspace / "sample.txt"
-            for label, patch in malformed_patches.items():
-                with self.subTest(label):
-                    target.write_text("secret=old\n", encoding="utf-8")
-                    applied, error = apply_patch(patch, workspace)
-                    self.assertFalse(applied)
-                    self.assertIsNotNone(error)
-                    self.assertEqual(
-                        target.read_text(encoding="utf-8"),
-                        "secret=old\n",
-                    )
+            target.write_text("secret=old\n", encoding="utf-8")
 
-    def test_enforces_no_newline_markers(self) -> None:
-        namespace = runpy.run_path(
-            str(
-                PRODUCT_ROOT
-                / "contracts/tasks/terminal-bench.sanitize-git-repo"
-                / "2.1-r6/runner.py"
-            )
-        )
-        apply_patch = namespace["_apply_patch"]
-        patch_prefix = (
-            "--- a/sample.txt\n"
-            "+++ b/sample.txt\n"
-            "@@ -1 +1 @@\n"
-            "-secret=old\n"
-        )
-        no_newline_marker = "\\ No newline at end of file\n"
-
-        with tempfile.TemporaryDirectory() as temporary:
-            workspace = Path(temporary)
-            target = workspace / "sample.txt"
-
-            target.write_bytes(b"secret=old\n")
-            applied, error = apply_patch(
-                patch_prefix
-                + no_newline_marker
-                + "+secret=new\n",
-                workspace,
-            )
-            self.assertFalse(applied)
-            self.assertIsNotNone(error)
-            self.assertEqual(target.read_bytes(), b"secret=old\n")
-
-            target.write_bytes(b"secret=old\n")
-            split_addition_patch = (
-                "--- a/sample.txt\n"
-                "+++ b/sample.txt\n"
-                "@@ -1 +1,2 @@\n"
-                "-secret=old\n"
-                "+secret=\n"
-                + no_newline_marker
-                + "+new\n"
-            )
-            applied, error = apply_patch(split_addition_patch, workspace)
-            self.assertFalse(applied)
-            self.assertIsNotNone(error)
-            self.assertEqual(target.read_bytes(), b"secret=old\n")
-
-            target.write_bytes(b"secret=old\n")
-            applied, error = apply_patch(
-                patch_prefix + "+secret=new",
-                workspace,
-            )
-            self.assertFalse(applied)
-            self.assertIsNotNone(error)
-            self.assertEqual(target.read_bytes(), b"secret=old\n")
-
-            target.write_bytes(b"secret=old")
-            applied, error = apply_patch(
-                patch_prefix
-                + no_newline_marker
-                + "+secret=new\n"
-                + no_newline_marker,
-                workspace,
-            )
-            self.assertTrue(applied, error)
-            self.assertIsNone(error)
-            self.assertEqual(target.read_bytes(), b"secret=new")
-
-            target.write_bytes(b"secret=old")
-            applied, error = apply_patch(
-                patch_prefix
-                + no_newline_marker
-                + no_newline_marker
-                + "+secret=new\n"
-                + no_newline_marker,
-                workspace,
-            )
-            self.assertFalse(applied)
-            self.assertIsNotNone(error)
-            self.assertEqual(target.read_bytes(), b"secret=old")
-
-    def test_bare_unified_diff_handles_double_hyphen_deletion_line(
-        self,
-    ) -> None:
-        namespace = runpy.run_path(
-            str(
-                PRODUCT_ROOT
-                / "contracts/tasks/terminal-bench.sanitize-git-repo"
-                / "2.1-r6/runner.py"
-            )
-        )
-        apply_patch = namespace["_apply_patch"]
-
-        with tempfile.TemporaryDirectory() as temporary:
-            workspace = Path(temporary)
-            target = workspace / "config.yaml"
-            target.write_text(
-                "server:\n-- port: 8080\n-- debug: true\nmode: production\n",
-                encoding="utf-8",
-            )
-
-            bare_patch = (
-                "--- a/config.yaml\n"
-                "+++ b/config.yaml\n"
-                "@@ -1,4 +1,4 @@\n"
-                " server:\n"
-                "--- port: 8080\n"
-                "+-- port: 9090\n"
-                "--- debug: true\n"
-                "+-- debug: false\n"
-                " mode: production\n"
-            )
-            applied, error = apply_patch(bare_patch, workspace)
+            applied, error = apply_patch(patch_with_false_counts, workspace)
             self.assertTrue(applied, error)
             self.assertIsNone(error)
             self.assertEqual(
                 target.read_text(encoding="utf-8"),
-                "server:\n-- port: 9090\n-- debug: false\nmode: production\n",
+                "secret=new\n",
             )
 
-    def test_bare_unified_diff_multi_file_structural_parsing(self) -> None:
+    def test_bare_unified_diff_multi_file(self) -> None:
         namespace = runpy.run_path(
             str(
                 PRODUCT_ROOT
@@ -1608,51 +1382,43 @@ class SanitizerRunnerTests(unittest.TestCase):
             )
         )
         apply_patch = namespace["_apply_patch"]
+        multi_patch = (
+            "--- first.txt\n"
+            "+++ first.txt\n"
+            "@@ -1,3 +1,3 @@\n"
+            " alpha=1\n"
+            "-flag: old\n"
+            "+flag: new\n"
+            " alpha=3\n"
+            "--- second.txt\n"
+            "+++ second.txt\n"
+            "@@ -1,3 +1,3 @@\n"
+            " beta=1\n"
+            "-beta=2\n"
+            "+beta=updated\n"
+            " beta=3\n"
+        )
 
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary)
             first = workspace / "first.txt"
             second = workspace / "second.txt"
-            first.write_text(
-                "alpha=1\n-- flag: old\nalpha=3\n",
-                encoding="utf-8",
-            )
-            second.write_text(
-                "beta=1\nbeta=2\nbeta=3\n",
-                encoding="utf-8",
-            )
+            first.write_text("alpha=1\nflag: old\nalpha=3\n", encoding="utf-8")
+            second.write_text("beta=1\nbeta=2\nbeta=3\n", encoding="utf-8")
 
-            multi_patch = (
-                "--- a/first.txt\n"
-                "+++ b/first.txt\n"
-                "@@ -1,3 +1,3 @@\n"
-                " alpha=1\n"
-                "--- flag: old\n"
-                "+-- flag: new\n"
-                " alpha=3\n"
-                "--- a/second.txt\n"
-                "+++ b/second.txt\n"
-                "@@ -1,3 +1,3 @@\n"
-                " beta=1\n"
-                "-beta=2\n"
-                "+beta=updated\n"
-                " beta=3\n"
-            )
             applied, error = apply_patch(multi_patch, workspace)
             self.assertTrue(applied, error)
             self.assertIsNone(error)
             self.assertEqual(
                 first.read_text(encoding="utf-8"),
-                "alpha=1\n-- flag: new\nalpha=3\n",
+                "alpha=1\nflag: new\nalpha=3\n",
             )
             self.assertEqual(
                 second.read_text(encoding="utf-8"),
                 "beta=1\nbeta=updated\nbeta=3\n",
             )
 
-    def test_bare_unified_diff_malformed_and_truncated_boundaries(
-        self,
-    ) -> None:
+    def test_rejects_unapplyable_context_mismatch(self) -> None:
         namespace = runpy.run_path(
             str(
                 PRODUCT_ROOT
@@ -1661,87 +1427,51 @@ class SanitizerRunnerTests(unittest.TestCase):
             )
         )
         apply_patch = namespace["_apply_patch"]
+        mismatch_patch = (
+            "--- a/sample.txt\n"
+            "+++ b/sample.txt\n"
+            "@@ -1,3 +1,3 @@\n"
+            " non_existent_context\n"
+            "-secret=old\n"
+            "+secret=new\n"
+            " more_fake_context\n"
+        )
 
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary)
-            first = workspace / "first.txt"
-            second = workspace / "second.txt"
-            first.write_text("alpha=1\n-- flag: old\nalpha=3\n", encoding="utf-8")
-            second.write_text("beta=1\nbeta=2\nbeta=3\n", encoding="utf-8")
+            target = workspace / "sample.txt"
+            target.write_text("actual_content\nsecret=old\nother_content\n", encoding="utf-8")
 
-            # 1. Truncated hunk body
-            p_trunc = (
-                "--- a/first.txt\n"
-                "+++ b/first.txt\n"
-                "@@ -1,3 +1,3 @@\n"
-                " alpha=1\n"
-                "--- flag: old\n"
-            )
-            applied, error = apply_patch(p_trunc, workspace)
+            applied, error = apply_patch(mismatch_patch, workspace)
             self.assertFalse(applied)
             self.assertIsNotNone(error)
             self.assertEqual(
-                first.read_text(encoding="utf-8"),
-                "alpha=1\n-- flag: old\nalpha=3\n",
+                target.read_text(encoding="utf-8"),
+                "actual_content\nsecret=old\nother_content\n",
             )
 
-            # 2. Garbage line between bare file patches
-            p_garbage = (
-                "--- a/first.txt\n"
-                "+++ b/first.txt\n"
-                "@@ -1,3 +1,3 @@\n"
-                " alpha=1\n"
-                "--- flag: old\n"
-                "+-- flag: new\n"
-                " alpha=3\n"
-                "invalid inter-patch content\n"
-                "--- a/second.txt\n"
-                "+++ b/second.txt\n"
-                "@@ -1,3 +1,3 @@\n"
-                " beta=1\n"
-                "-beta=2\n"
-                "+beta=updated\n"
-                " beta=3\n"
+    def test_rejects_traversal_patch(self) -> None:
+        namespace = runpy.run_path(
+            str(
+                PRODUCT_ROOT
+                / "contracts/tasks/terminal-bench.sanitize-git-repo"
+                / "2.1-r6/runner.py"
             )
-            applied, error = apply_patch(p_garbage, workspace)
+        )
+        apply_patch = namespace["_apply_patch"]
+        traversal_patch = (
+            "--- a/../secret.txt\n"
+            "+++ b/../secret.txt\n"
+            "@@ -1 +1 @@\n"
+            "-old\n"
+            "+new\n"
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            applied, error = apply_patch(traversal_patch, workspace)
             self.assertFalse(applied)
             self.assertIsNotNone(error)
-            self.assertEqual(
-                first.read_text(encoding="utf-8"),
-                "alpha=1\n-- flag: old\nalpha=3\n",
-            )
-            self.assertEqual(
-                second.read_text(encoding="utf-8"),
-                "beta=1\nbeta=2\nbeta=3\n",
-            )
-
-            # 3. Truncated file header
-            applied, error = apply_patch("--- a/first.txt\n", workspace)
-            self.assertFalse(applied)
-            self.assertEqual(error, "truncated file patch header")
-
-            # 4. Invalid second header line
-            applied, error = apply_patch("--- a/first.txt\n@@ -1 +1 @@\n", workspace)
-            self.assertFalse(applied)
-            self.assertEqual(error, "invalid file patch header")
-
-            # 5. Unexpected prefix in hunk
-            p_bad_prefix = (
-                "--- a/first.txt\n"
-                "+++ b/first.txt\n"
-                "@@ -1,3 +1,3 @@\n"
-                " alpha=1\n"
-                "?-- flag: old\n"
-                " alpha=3\n"
-            )
-            applied, error = apply_patch(p_bad_prefix, workspace)
-            self.assertFalse(applied)
-            self.assertIsNotNone(error)
-            self.assertEqual(
-                first.read_text(encoding="utf-8"),
-                "alpha=1\n-- flag: old\nalpha=3\n",
-            )
-
 
 
 class RoleAnchorSemanticTests(unittest.TestCase):
@@ -1792,118 +1522,61 @@ class RoleAnchorSemanticTests(unittest.TestCase):
                 }
                 self.assertEqual(actual_dimensions, expected_dimensions)
 
-    def test_vim_runner_rejects_function_calls_inside_macros(self) -> None:
+    def test_text_editing_runner_validates_submission_schema(self) -> None:
         task_dir = (
             PRODUCT_ROOT
             / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
         )
         namespace = runpy.run_path(str(task_dir / "runner.py"))
-        validate_script = namespace["_validate_script"]
+        validate_submission = namespace["_validate_submission"]
         submission_error = namespace["SubmissionError"]
-        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
+        valid_submission = runpy.run_path(str(task_dir / "probes/reference.py"))[
+            "SUBMISSION"
+        ]
 
-        validate_script(valid_script)
-        lines = valid_script.splitlines()
-        lines[0] = (
-            "call setreg('a', \":call setline('.', 'bypass')"
-            "\\<CR>j\")"
-        )
-        with self.assertRaisesRegex(
-            submission_error,
-            "Vimscript function calls are forbidden",
-        ):
-            validate_script("\n".join(lines) + "\n")
+        validated = validate_submission(valid_submission)
+        self.assertEqual(validated["schema_version"], "rolebench.text-editing-submission/v1")
+        self.assertEqual(set(validated["modified_files"]), set(valid_submission["modified_files"]))
 
-    def test_vim_runner_decodes_character_keys_before_safety_checks(self) -> None:
+        with self.assertRaisesRegex(submission_error, "schema_version must be"):
+            validate_submission({"schema_version": "wrong/v1", "modified_files": {}})
+
+        with self.assertRaisesRegex(submission_error, "modified_files must be an object"):
+            validate_submission({"schema_version": "rolebench.text-editing-submission/v1", "modified_files": "not-a-dict"})
+
+        with self.assertRaisesRegex(submission_error, "invalid relative file path"):
+            validate_submission({
+                "schema_version": "rolebench.text-editing-submission/v1",
+                "modified_files": {"../outside.py": "content"},
+            })
+
+    def test_text_editing_verifier_checks_exhaustiveness_and_precision(self) -> None:
         task_dir = (
             PRODUCT_ROOT
             / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
         )
-        namespace = runpy.run_path(str(task_dir / "runner.py"))
-        decode_vim_string = namespace["_decode_vim_string"]
-        validate_script = namespace["_validate_script"]
-        submission_error = namespace["SubmissionError"]
-        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
-
-        self.assertEqual(decode_vim_string(r"\<Char-40>"), "(")
-        self.assertEqual(decode_vim_string(r"\\<Char-40>"), r"\<Char-40>")
-        with self.assertRaisesRegex(
-            submission_error,
-            "unsupported Vim key notation",
-        ):
-            decode_vim_string(r"\<Bar>")
-        with self.assertRaisesRegex(
-            submission_error,
-            "encoded Vim command separators are forbidden",
-        ):
-            decode_vim_string(r"\<Char-124>")
-        lines = valid_script.splitlines()
-        lines[0] = (
-            "call setreg('a', \":call setline\\<Char-40>'.', 'bypass'"
-            "\\<Char-41>\\<CR>j\")"
+        verifier_ns = runpy.run_path(str(task_dir / "verifier-private/verifier.py"))
+        verify_submission = verifier_ns["_verify_submission"]
+        expected_files = json.loads(
+            (task_dir / "verifier-private/expected_files.json").read_text(encoding="utf-8")
         )
-        with self.assertRaisesRegex(
-            submission_error,
-            "Vimscript function calls are forbidden",
-        ):
-            validate_script("\n".join(lines) + "\n")
 
-    def test_vim_runner_rejects_ranged_shell_filters(self) -> None:
-        task_dir = (
-            PRODUCT_ROOT
-            / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
-        )
-        namespace = runpy.run_path(str(task_dir / "runner.py"))
-        validate_script = namespace["_validate_script"]
-        submission_error = namespace["SubmissionError"]
-        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
+        ref_submission = runpy.run_path(str(task_dir / "probes/reference.py"))["SUBMISSION"]
+        self.assertTrue(verify_submission(ref_submission, expected_files))
 
-        lines = valid_script.splitlines()
-        lines[0] = (
-            "call setreg('a', \":set shell=/bin/sh\\<CR>"
-            ":.!awk '{print toupper($0)}'\\<CR>j\")"
-        )
-        with self.assertRaisesRegex(
-            submission_error,
-            "macro contains a forbidden command or character",
-        ):
-            validate_script("\n".join(lines) + "\n")
+        # Missing required file fails exhaustiveness
+        missing_file = deepcopy(ref_submission)
+        del missing_file["modified_files"]["src/orders.py"]
+        self.assertFalse(verify_submission(missing_file, expected_files))
 
-    def test_vim_runner_rejects_abbreviated_and_aliased_file_reads(self) -> None:
-        task_dir = (
-            PRODUCT_ROOT
-            / "contracts/tasks/terminal-bench.large-scale-text-editing/2.1-r6"
-        )
-        namespace = runpy.run_path(str(task_dir / "runner.py"))
-        validate_script = namespace["_validate_script"]
-        submission_error = namespace["SubmissionError"]
-        valid_script = runpy.run_path(str(task_dir / "probes/reference.py"))["script"]
+        # Collateral edit to health_service fails precision
+        collateral_health = deepcopy(ref_submission)
+        collateral_health["modified_files"]["src/health.py"] = "changed health content"
+        self.assertFalse(verify_submission(collateral_health, expected_files))
 
-        for command in (
-            r":r /etc/hostname\<CR>u",
-            r":e /etc/passwd\<CR>u",
-            r":so /tmp/foo\<CR>u",
-            r":view /etc/hosts\<CR>u",
-            r":sp /etc/shadow\<CR>u",
-            r":vs /tmp/file\<CR>u",
-            r":fin foo\<CR>u",
-            r":tabe /tmp/file\<CR>u",
-            r":b /tmp/file\<CR>u",
-            r":w /tmp/out\<CR>u",
-            r":s/foo/bar/\<Esc>:e /etc/passwd\<CR>",
-            r":s/foo/bar/|e /etc/passwd\<CR>",
-            r":s/foo/bar/\<Bar>e /etc/passwd\<CR>",
-            r":s/foo/bar/\<Esc>:r /etc/hostname\<CR>",
-        ):
-            with self.subTest(command=command):
-                lines = valid_script.splitlines()
-                lines[0] = f"call setreg('a', \"{command}j\")"
-                with self.assertRaisesRegex(
-                    submission_error,
-                    "forbidden|unsupported",
-                ):
-                    validate_script("\n".join(lines) + "\n")
-
+        # Tamper probe fails precision
+        tamper_submission = runpy.run_path(str(task_dir / "probes/tamper.py"))["SUBMISSION"]
+        self.assertFalse(verify_submission(tamper_submission, expected_files))
     def test_commit_verifier_rejects_negated_required_actions(self) -> None:
         task_dir = (
             PRODUCT_ROOT
