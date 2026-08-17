@@ -223,10 +223,10 @@ def main() -> int:
         return emit("rejected", 0)
 
     cursor = len(RUNNER_EVIDENCE_MAGIC)
-    if len(raw) < cursor + 4:
+    if len(raw) < cursor + 8:
         return emit("rejected", 0)
-    (header_length,) = struct.unpack(">I", raw[cursor : cursor + 4])
-    cursor += 4
+    (header_length,) = struct.unpack(">Q", raw[cursor : cursor + 8])
+    cursor += 8
     if header_length <= 0 or len(raw) < cursor + header_length:
         return emit("rejected", 0)
 
