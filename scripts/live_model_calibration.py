@@ -18,6 +18,7 @@ import socket
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -213,16 +214,22 @@ def call_live_model(
     cmd.extend(["-p", "-"])
 
     timeout = get_provider_timeout(str(route.get("provider", "")))
-    try:
-        proc = subprocess.run(
-            cmd,
-            input=full_prompt.encode("utf-8", errors="replace"),
-            capture_output=True,
-            timeout=timeout,
-            cwd=str(discover_root(Path(__file__).resolve().parent)),
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise TimeoutError(f"omp dispatch timed out after {timeout}s") from exc
+    # Run OMP in an isolated empty working dir. With --auto-approve the model may
+    # write files (db-wal recovery artifacts, __pycache__, etc.); running in the
+    # repo root let those writes land in the source task trees and corrupt the
+    # content digests (cascading "exact pair" failures). A throwaway cwd keeps the
+    # task sources pristine. Absolute image paths remain readable.
+    with tempfile.TemporaryDirectory(prefix="rolebench-omp-") as sandbox:
+        try:
+            proc = subprocess.run(
+                cmd,
+                input=full_prompt.encode("utf-8", errors="replace"),
+                capture_output=True,
+                timeout=timeout,
+                cwd=sandbox,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError(f"omp dispatch timed out after {timeout}s") from exc
 
     stdout_text = proc.stdout.decode("utf-8", errors="replace")
     stderr_text = proc.stderr.decode("utf-8", errors="replace")
