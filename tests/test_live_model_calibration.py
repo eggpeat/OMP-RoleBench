@@ -228,10 +228,11 @@ class CallLiveModelDispatchTests(unittest.TestCase):
                 "json",
                 "--no-tools",
                 "-p",
-                "solve this",
+                "-",
             ],
         )
         self.assertEqual(mock_run.call_args[1]["timeout"], 900)
+        self.assertEqual(mock_run.call_args[1]["input"], b"solve this")
 
     def test_call_live_model_with_system_prompt(self) -> None:
         route = {"route_id": "xai/grok-4", "provider": "xai", "model": "grok-4"}
@@ -252,7 +253,8 @@ class CallLiveModelDispatchTests(unittest.TestCase):
         cmd = mock_run.call_args[0][0]
         self.assertIn("-p", cmd)
         p_index = cmd.index("-p")
-        self.assertEqual(cmd[p_index + 1], "system instructions\n\nuser prompt")
+        self.assertEqual(cmd[p_index + 1], "-")
+        self.assertEqual(mock_run.call_args[1]["input"], "system instructions\n\nuser prompt".encode())
 
     def test_call_live_model_thinking_flag(self) -> None:
         route_high = {"provider": "deepseek", "model": "r1", "thinking": "high"}
@@ -293,7 +295,8 @@ class CallLiveModelDispatchTests(unittest.TestCase):
         self.assertIn("@/tmp/diagram.png", cmd)
         self.assertIn("@/tmp/chart.jpg", cmd)
         p_index = cmd.index("-p")
-        self.assertEqual(cmd[p_index + 1], "describe image")
+        self.assertEqual(cmd[p_index + 1], "-")
+        self.assertEqual(mock_run.call_args[1]["input"], b"describe image")
 
     def test_call_live_model_text_only_withholds_images_and_adds_note(self) -> None:
         route = {"provider": "deepseek", "model": "deepseek-chat", "input_modalities": ["text"]}
@@ -306,7 +309,8 @@ class CallLiveModelDispatchTests(unittest.TestCase):
         cmd = mock_run.call_args[0][0]
         self.assertNotIn("@/tmp/schema.png", cmd)
         p_index = cmd.index("-p")
-        full_prompt = cmd[p_index + 1]
+        self.assertEqual(cmd[p_index + 1], "-")
+        full_prompt = mock_run.call_args[1]["input"].decode()
         self.assertIn("solve task", full_prompt)
         self.assertIn("[NOTE: This task references image file(s) /tmp/schema.png", full_prompt)
         self.assertIn("text-only", full_prompt)

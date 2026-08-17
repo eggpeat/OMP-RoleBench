@@ -208,12 +208,15 @@ def call_live_model(
     # OMP attaches images as separate @path CLI args (multimodal routes only).
     for path in image_paths:
         cmd.append(f"@{path}")
-    cmd.extend(["-p", full_prompt])
+    # Prompt goes via stdin ("-p -"): avoids argv length limits (bottle.py 192KB
+    # prompt -> E2BIG) and embedded-null-byte errors on binary-derived content.
+    cmd.extend(["-p", "-"])
 
     timeout = get_provider_timeout(str(route.get("provider", "")))
     try:
         proc = subprocess.run(
             cmd,
+            input=full_prompt.encode("utf-8", errors="replace"),
             capture_output=True,
             timeout=timeout,
             cwd=str(discover_root(Path(__file__).resolve().parent)),
@@ -254,7 +257,7 @@ def collect_task_images(task_dir: Path) -> list[str]:
     bytes) to the dispatch."""
     images: list[str] = []
     for fpath in _collect_workspace_files(task_dir):
-        if fpath.suffix.lower() in IMAGE_EXTENSIONS and fpath.stat().st_size <= 16 * 1024 * 1024:
+        if _matches_binary(fpath.name, IMAGE_EXTENSIONS) and fpath.stat().st_size <= 16 * 1024 * 1024:
             images.append(str(fpath.resolve()))
     return images
 
@@ -273,8 +276,14 @@ BINARY_EXTENSIONS = frozenset(
 )
 # Binary-but-textual-analysis extensions: small enough to embed as base64 so the
 # model can reason about them (e.g. SQLite db/wal forensics).
-BASE64_EMBEDDABLE_EXTENSIONS = frozenset({".db", ".wal", ".sqlite", ".sqlite3", ".encrypted"})
+BASE64_EMBEDDABLE_EXTENSIONS = frozenset({".db", ".wal", ".sqlite", ".sqlite3", ".encrypted", ".db-wal", ".db-shal", ".db-wal.encrypted", ".db.encrypted"})
 BASE64_EMBED_MAX_BYTES = 256 * 1024
+
+
+def _matches_binary(name: str, exts: frozenset[str]) -> bool:
+    """Match compound extensions: main.db-wal must match .wal, not fall to text."""
+    lower = name.lower()
+    return any(lower.endswith(e) for e in exts)
 # Text files larger than the inline cap are truncated with an explicit marker
 # rather than silently dropped. Silently dropping bottle.py (175KB) made
 # fix-code-vulnerability unanswerable in v1.
@@ -305,12 +314,13 @@ def build_task_prompt(task_dir: Path) -> str:
     workspace_context = []
     for fpath in _collect_workspace_files(task_dir):
         suffix = fpath.suffix.lower()
+        name = fpath.name
         size = fpath.stat().st_size
         rel = fpath.relative_to(public_dir).as_posix()
         try:
-            if suffix in IMAGE_EXTENSIONS:
+            if _matches_binary(name, IMAGE_EXTENSIONS):
                 continue  # injected separately as image content blocks
-            if suffix in BASE64_EMBEDDABLE_EXTENSIONS:
+            if _matches_binary(name, BASE64_EMBEDDABLE_EXTENSIONS):
                 if size <= BASE64_EMBED_MAX_BYTES:
                     b64 = base64.b64encode(fpath.read_bytes()).decode()
                     workspace_context.append(
@@ -321,7 +331,7 @@ def build_task_prompt(task_dir: Path) -> str:
                         f"--- File: {rel} ({suffix} binary, {size} bytes, too large to embed) ---\n[binary content omitted]\n"
                     )
                 continue
-            if suffix in BINARY_EXTENSIONS:
+            if _matches_binary(name, BINARY_EXTENSIONS):
                 continue  # undecodable binary, not an image; skip
             # Text-ish file.
             if size <= TEXT_INLINE_MAX_BYTES:
